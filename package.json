@@ -1,0 +1,37 @@
+{
+  "name": "res-scrapy",
+  "version": "0.1.0",
+  "description": "A web scraper using rescript",
+  "type": "module",
+  "scripts": {
+    "start": "echo \"Hello world\"",
+    "res:build": "rescript",
+    "res:dev": "rescript watch",
+    "res:clean": "rescript clean",
+    "rolldown:build": "rolldown -c"
+  },
+  "author": {
+    "name": "José Martínez Santana"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MetalbolicX/res-scrapy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MetalbolicX/res-scrapy/issues"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@rescript/runtime": "^12.2.0",
+    "rescript": "^12.2.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "devDependencies": {
+    "rolldown": "1.0.0-rc.13"
+  }
+}
