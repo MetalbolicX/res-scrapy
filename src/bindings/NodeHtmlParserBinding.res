@@ -6,4 +6,4 @@ type htmlElement = {
 }
 @module("node-html-parser") external parse: string => htmlElement = "parse"
 @send external querySelectorAll: (htmlElement, string) => array<htmlElement> = "querySelectorAll"
-@send external querySelector: (htmlElement, string) => htmlElement = "querySelector"
+@send external querySelector: (htmlElement, string) => Nullable.t<htmlElement> = "querySelector"

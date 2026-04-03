@@ -1,12 +1,12 @@
 let showHelp: unit => unit = () => {
   Console.log(`
   Usage: res-scrapy command [options]
-    -h, --help      Display this help message
-    -s, --selector  Specify a CSS selector to extract data
-    -m, --mode      Specify the mode to extract data, single or multiple
-    -t, --text      Extract text instead of attributes
-    -c, --schema    Specify the schema to use
-    -p, --schemaPath Specify the path to the schema
+    -h, --help        Display this help message
+    -s, --selector    Specify a CSS selector to extract data
+    -m, --mode        Specify the mode to extract data, single or multiple
+    -t, --text        Extract text instead of attributes
+    -c, --schema      Specify the schema to use
+    -p, --schemaPath  Specify the path to the schema
   `)
   NodeJsBinding.Process.exit(0)
 }

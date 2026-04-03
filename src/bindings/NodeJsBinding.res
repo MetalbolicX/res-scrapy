@@ -50,3 +50,5 @@ module Util = {
 
   @module("node:util") external parseArgs: parseConfig => parseResults = "parseArgs"
 }
+
+@val @scope("JSON") external jsonStringify: 'a => string = "stringify"

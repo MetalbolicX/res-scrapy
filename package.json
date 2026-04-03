@@ -4,11 +4,15 @@
   "description": "A web scraper using rescript",
   "type": "module",
   "scripts": {
-    "start": "echo \"Hello world\"",
+    "start": "node dist/main.js",
+    "build": "rescript && rolldown -c",
     "res:build": "rescript",
     "res:dev": "rescript watch",
     "res:clean": "rescript clean",
     "rolldown:build": "rolldown -c"
+  },
+  "bin": {
+    "res-scrapy": "dist/main.js"
   },
   "author": {
     "name": "José Martínez Santana"
@@ -26,6 +30,7 @@
   "license": "MIT",
   "dependencies": {
     "@rescript/runtime": "^12.2.0",
+    "node-html-parser": "^7.1.0",
     "rescript": "^12.2.0"
   },
   "engines": {

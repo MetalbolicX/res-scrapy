@@ -9,5 +9,6 @@ export default defineConfig({
   output: {
     format: "es",
     file: join(dirname, "dist", "main.js"),
+    banner: "#!/usr/bin/env node",
   },
 });
