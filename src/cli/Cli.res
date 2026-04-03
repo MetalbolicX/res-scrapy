@@ -8,29 +8,32 @@ let showHelp: unit => unit = () => {
     -c, --schema    Specify the schema to use
     -p, --schemaPath Specify the path to the schema
   `)
-  Bindings.Process.exit(0)
+  NodeJsBinding.Process.exit(0)
 }
 
+let parse: unit => NodeJsBinding.Util.cliValues = () => {
+  open NodeJsBinding.Util
+  let options = Dict.fromArray([
+    ("mode", {type_: "string", short: "m", default: String("single")}),
+    ("selector", {type_: "string", short: "s"}),
+    ("text", {type_: "boolean", short: "t", default: Bool(false)}),
+    ("schema", {type_: "string", short: "c"}),
+    ("schemaPath", {type_: "string", short: "p"}),
+    ("help", {type_: "boolean", short: "h"}),
+  ])
 
-let parse: unit => Bindings.Util.cliArgs = () => {
-  let config = {
-    "args": Bindings.Process.argv->Array.slice(~start=2),
-    "allowPositionals": false,
-    "options": {
-      "help": { "type": "boolean", "short": "h" },
-      "selector": { "type": "string", "short": "s", "default": "" },
-      "mode": { "type": "string", "short": "m", "default": "single" },
-      "text": { "type": "boolean", "short": "t", "default": false },
-      "schema": { "type": "string", "short": "c", "default": "" },
-      "schemaPath": { "type": "string", "short": "p", "default": "" },
-    },
-    "strict": false,
-  }
-  let args = Bindings.Util.parseArgs(config)
-  let values = args["values"]
+  let args = parseArgs({
+    args: NodeJsBinding.Process.argv->Array.slice(~start=2),
+    allowPositionals: false,
+    options,
+    strict: true,
+    tokens: true,
+  })
+  let {values} = args
 
-  if (values.help === Nullable.make(true)) {
-    showHelp()
+  switch values.help {
+  | Some(true) => showHelp()
+  | _ => ()
   }
 
   values

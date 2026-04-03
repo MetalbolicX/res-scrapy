@@ -4,7 +4,7 @@ type stdInError =
   | ReadError(string)
 
 let hasStdinData: unit => bool = () => {
-  open Bindings.Process
+  open NodeJsBinding.Process
   switch stdin.isTTY {
   | Some(true) => false
   | _ => true
@@ -17,7 +17,7 @@ let readFromStdin: unit => promise<Result.t<string, stdInError>> = () => {
     if !hasStdinData() {
       resolve(Result.Error(NoInput("No HTML input provided via stdin")))
     } else {
-      open Bindings.Process
+      open NodeJsBinding.Process
 
       stdin->setEncoding("utf8")
 
