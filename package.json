@@ -3,13 +3,18 @@
   "version": "0.1.0",
   "description": "A web scraper using rescript",
   "type": "module",
+  "main": "dist/main.js",
+  "exports": {
+    ".": {
+      "import": "./dist/main.js"
+    }
+  },
   "scripts": {
     "start": "node dist/main.js",
     "build": "rescript && rolldown -c",
     "res:build": "rescript",
     "res:dev": "rescript watch",
-    "res:clean": "rescript clean",
-    "rolldown:build": "rolldown -c"
+    "res:clean": "rescript clean"
   },
   "bin": {
     "res-scrapy": "dist/main.js"
@@ -38,5 +43,8 @@
   },
   "devDependencies": {
     "rolldown": "1.0.0-rc.13"
+  },
+  "peerDependencies": {
+    "node-html-parser": "^7.1.0"
   }
 }
