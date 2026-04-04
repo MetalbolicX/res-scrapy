@@ -179,7 +179,9 @@ let parseSchema: string => result<schema, schemaError> = raw =>
               | None => {ignoreErrors: false, limit: 0}
               | Some(c) => {
                   ignoreErrors: (dictGet(c, "ignoreErrors"): option<bool>)->Option.getOr(false),
-                  limit: (dictGet(c, "limit"): option<int>)->Option.getOr(0),
+                  limit: (dictGet(c, "limit"): option<Nullable.t<int>>)
+                  ->Option.flatMap(n => n->Nullable.toOption)
+                  ->Option.getOr(0),
                 }
               }
               Ok({
