@@ -1,116 +1,145 @@
 # res-scrapy
 
-<div align="center">
-  <img src="./images/logo.png" alt="res-scrapy Logo" width="200" height="200" />
-</div>
+A small command-line HTML scraper written in ReScript. It reads HTML from stdin
+and writes JSON to stdout. Supports simple selector-based extraction and
+schema-driven structured extraction.
 
-> `res-scrapy` small slogan.
+**Key ideas**
 
-**Supported Versions:**
+- Read HTML from stdin, write results to stdout (JSON).
+- Two extraction modes: selector-based (single|multiple) and schema-driven.
+- Designed as a small, installable CLI: `res-scrapy` (see `package.json` `bin`).
 
-![Something](https://img.shields.io/badge/something->=1.5.5-blue)
+**Requirements**
 
+- Node.js >= 22.0.0
 
-## Features
+**Install & build**
 
-1.
-2.
+Clone, install dependencies and build:
 
-## 🚀 Quick Installation
-
-### 1. Create a ReScript Application
-
-First, create a new ReScript application using one of the following commands:
-
-```sh
-npm create rescript-app@latest
+```bash
+git clone https://github.com/MetalbolicX/res-scrapy.git
+cd res-scrapy
+npm install
+npm run build
 ```
 
-> 📝**Note:** For more information on setting up a ReScript project, refer to the [official ReScript documentation](https://rescript-lang.org/docs/manual/latest/installation).
+After building you can run the packaged script directly with `node` or link
+it as a global CLI:
 
-### 2. Install Dependencies
+```bash
+# run directly (recommended during development)
+node dist/main.js -h
 
-Add the required dependencies to your project:
-
-```sh
-npm i vanjs-core res-scrapy
+# or install locally for global use
+npm link
+res-scrapy -h
 ```
 
-### 3. Update Configuration `rescript.json` file
+Scripts available in `package.json`:
 
-In your `rescript.json` file, add the following dependency:
+- `npm run build` — compile ReScript and bundle (`rescript && rolldown -c`)
+- `npm start` — run `node dist/main.js`
+- `npm run res:dev` — ReScript watch mode
+
+**Usage**
+
+res-scrapy reads HTML from stdin and accepts options via flags. Output is JSON
+printed to stdout; errors are logged to stderr and the process exits with code
+1 on failure.
+
+```
+res-scrapy [options]
+
+Options:
+  -h, --help        Display this help message
+  -s, --selector    CSS selector to extract data
+  -m, --mode        Extraction mode: single | multiple (default: single)
+  -t, --text        Extract textContent instead of outer HTML (boolean)
+  -c, --schema      Inline JSON schema (string)
+  -p, --schemaPath  Path to a schema JSON file
+```
+
+Notes:
+
+- When `--schema` or `--schemaPath` is provided the CLI performs structured
+  extraction using the schema and ignores `--selector`/`--mode`/`--text`.
+- `--mode single` returns the first match (as a JSON array with 0 or 1 item).
+- `--mode multiple` returns all matches as a JSON array.
+
+**Examples**
+
+# Selector: multiple matches, extract text
+
+```bash
+cat page.html | res-scrapy -s '.product' -m multiple -t
+```
+
+# Selector: single match
+
+```bash
+cat page.html | res-scrapy -s '.title' -m single -t
+```
+
+# Inline schema (small schemas can be passed as a single JSON string)
+
+```bash
+cat page.html | res-scrapy -c '{"fields":{"title":{"selector":".title","type":"text"}}}'
+```
+
+# Schema from file
+
+```bash
+cat page.html | res-scrapy -p ./schema-product.json
+```
+
+**Schema format (short)**
+
+The schema is a JSON object with a top-level `fields` entry. Each field has a
+CSS `selector`, a `type`, and optional flags like `required` and `default`.
+
+Supported field types: `text`, `html`, `number`, `boolean`, `attribute`.
+When using `attribute` the field must also include an `attribute` key with the
+attribute name.
+
+Example schema:
 
 ```json
 {
-  "bs-dependencies": ["res-scrapy"]
+  "name": "Products",
+  "fields": {
+    "title": { "selector": ".product-title", "type": "text", "required": true },
+    "price": { "selector": ".price", "type": "number" },
+    "url": {
+      "selector": ".product-link",
+      "type": "attribute",
+      "attribute": "href"
+    }
+  },
+  "config": { "ignoreErrors": false, "limit": 0 }
 }
 ```
 
-## 🙌 Hello World Example
+Behavior notes (schema extraction):
 
-Here's a simple example of how to use `res-scrapy` to create a reactive UI component:
+- Each field is queried independently from the document root.
+- Rows are produced by zipping field match lists; the row count is taken from
+  the first field's match list.
+- Missing values use the field's `default` or `null`.
+- `required: true` makes missing values a fatal error unless
+  `config.ignoreErrors` is set to `true`.
 
-1. Create a file named `Main.res` in your `src` folder.
-2. Add the following code to `Main.res`:
+**Exit codes**
 
-```rescript
-@val @scope("document") @return(nullable)
-external getElementById: string => option<Dom.element> = "getElementById"
+- `0` — success
+- `1` — error (parse error, missing selector, schema errors, read errors, etc.)
 
-let root = switch getElementById("root") {
-| Some(el) => el
-| None => Exn.raiseError("Root element not found")
-}
+**Contributing**
 
-let hello: unit => Dom.element = () => {
-  Van.Tag.make("div")
-  ->Van.Tags.addChild(Text("Hello, World!"))
-  ->Van.Tags.build
-}
+Contributions welcome. Please open issues or pull requests on
+https://github.com/MetalbolicX/res-scrapy.
 
-Van.add(root, [Dom(hello())])->ignore
-```
+**License**
 
-## 🛠 Build and Run
-
-To build and run your ReScript application, see the [Compile and Run](https://metalbolicx.github.io/res-scrapy/#/compile-run) section.
-
-## 📚 Documentation
-
-<div align="center">
-
-  [![view - Documentation](https://img.shields.io/badge/view-Documentation-blue?style=for-the-badge)](https://metalbolicx.github.io/res-scrapy/#/api-reference)
-
-</div>
-
-## ✍ Do you want to learn more?
-
-1.
-2.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Technologies used
-
-<table>
-  <tr>
-    <td align="center">
-      <a href="https://vanjs.org/" target="_blank">
-        <img src="./images/vanjs-logo.png" alt="VanJS" width="42" height="42" /><br/>
-        <b>VanJS</b><br/>
-      </a>
-    </td>
-    <td align="center">
-      <a href="https://rescript-lang.org/" target="_blank">
-        <img src="./images/rescript-logo.png" alt="ReScript" width="42" height="42" /><br/>
-        <b>ReScript</b><br/>
-      </a>
-    </td>
-  </tr>
-</table>
-
-## License
-
-Released under [MIT](/LICENSE) by [@MetalbolicX](https://github.com/MetalbolicX).
+MIT (see LICENSE)
