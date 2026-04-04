@@ -64,7 +64,17 @@ let main: unit => promise<unit> = async () => {
                     )
                     NodeJsBinding.Process.exit(1)
                   }
-                | Error(_) => ()
+                | Error(InvalidJson(msg))
+                | Error(MissingFields(msg))
+                | Error(FileReadError(msg))
+                | Error(AttributeMissingKey(msg)) => {
+                    Console.error(msg)
+                    NodeJsBinding.Process.exit(1)
+                  }
+                | Error(InvalidFieldType({field, got})) => {
+                    Console.error(`Invalid field type "${got}" for field "${field}"`)
+                    NodeJsBinding.Process.exit(1)
+                  }
                 | Ok(json) => Console.log(NodeJsBinding.jsonStringify(json))
                 }
               }

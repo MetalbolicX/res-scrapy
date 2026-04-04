@@ -242,14 +242,10 @@ let extractValue: (NodeHtmlParserBinding.htmlElement, fieldType) => JSON.t = (el
   switch fieldType {
   | Text => el.textContent->String.trim->JSON.Encode.string
   | Html => el.innerHTML->JSON.Encode.string
-  | Attribute(attr) => {
-      let v: option<string> = %raw(
-        "(el, attr) => el.getAttribute ? el.getAttribute(attr) : undefined"
-      )(el, attr)
-      switch v {
-      | None => JSON.Encode.null
-      | Some(s) => s->JSON.Encode.string
-      }
+  | Attribute(attr) =>
+    switch el->NodeHtmlParserBinding.getAttribute(attr)->Nullable.toOption {
+    | None => JSON.Encode.null
+    | Some(s) => s->JSON.Encode.string
     }
   | Number => {
       let n = el.textContent->String.trim->toFloat

@@ -21,3 +21,6 @@ type htmlElement = {
 
 /** Returns the first descendant matching `selector`, or `null` when none match. */
 @send external querySelector: (htmlElement, string) => Nullable.t<htmlElement> = "querySelector"
+
+/** Returns the value of a named attribute, or `null` when the attribute does not exist. */
+@send external getAttribute: (htmlElement, string) => Nullable.t<string> = "getAttribute"

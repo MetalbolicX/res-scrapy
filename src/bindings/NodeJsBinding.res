@@ -67,7 +67,7 @@ module Util = {
     * - `short`   — optional single-character alias (e.g. `"s"` for `--selector`).
     * - `default` — optional default value; omit to make the flag undefined when absent.
    */
-  type flafConfig = {
+  type flagConfig = {
     @as("type") type_: string,
     short?: string,
     default?: defaultValue,
@@ -101,14 +101,14 @@ module Util = {
     * Input configuration for `parseArgs`.
     *
     * - `args`             — the raw argument array (typically `process.argv.slice(2)`).
-    * - `options`          — a dictionary of flag name → `flafConfig`.
+    * - `options`          — a dictionary of flag name → `flagConfig`.
     * - `strict`           — when `true`, throws on unknown flags.
     * - `allowPositionals` — when `true`, non-flag tokens are collected into `positionals`.
     * - `tokens`           — when `true`, also returns a low-level token array (unused here).
    */
   type parseConfig = {
     args: array<string>,
-    options: dict<flafConfig>,
+    options: dict<flagConfig>,
     strict?: bool,
     allowPositionals?: bool,
     tokens?: bool,
