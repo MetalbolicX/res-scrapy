@@ -12,7 +12,7 @@ type schemaField = {
   selector: string,
   fieldType: fieldType,
   required: bool,
-  default: option<string>,
+  default?: string,
 }
 
 type schemaConfig = {
@@ -21,8 +21,8 @@ type schemaConfig = {
 }
 
 type schema = {
-  name: option<string>,
-  description: option<string>,
+  name?: string,
+  description?: string,
   fields: array<(string, schemaField)>,
   config: schemaConfig,
 }

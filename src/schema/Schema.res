@@ -25,7 +25,7 @@ type schemaField = {
   selector: string,
   fieldType: fieldType,
   required: bool,
-  default: option<string>,
+  default?: string,
 }
 
 /**
@@ -48,8 +48,8 @@ type schemaConfig = {
   * - `config`      — run-time behaviour options.
  */
 type schema = {
-  name: option<string>,
-  description: option<string>,
+  name?: string,
+  description?: string,
   fields: array<(string, schemaField)>,
   config: schemaConfig,
 }
@@ -129,7 +129,7 @@ let parseField: (string, {..}) => result<schemaField, schemaError> = (fieldName,
     | Ok(fieldType) =>
       let required: bool = (dictGet(rawField, "required"): option<bool>)->Option.getOr(false)
       let default: option<string> = dictGet(rawField, "default")
-      Ok({selector, fieldType, required, default})
+      Ok({selector, fieldType, required, ?default})
     }
   }
 
@@ -173,7 +173,7 @@ let parseSchema: string => result<schema, schemaError> = raw =>
           })
           switch parsed {
           | Error(e) => Error(e)
-          | Ok(fieldArr) => {
+          | Ok(fieldList) => {
               let rawConfig: option<{..}> = dictGet(obj, "config")
               let config: schemaConfig = switch rawConfig {
               | None => {ignoreErrors: false, limit: 0}
@@ -184,10 +184,12 @@ let parseSchema: string => result<schema, schemaError> = raw =>
                   ->Option.getOr(0),
                 }
               }
+              let name: option<string> = dictGet(obj, "name")
+              let description: option<string> = dictGet(obj, "description")
               Ok({
-                name: dictGet(obj, "name"),
-                description: dictGet(obj, "description"),
-                fields: fieldArr,
+                ?name,
+                ?description,
+                fields: fieldList,
                 config,
               })
             }
