@@ -152,7 +152,12 @@ let parseSchema: string => result<schema, schemaError> = raw =>
       let rawFields: option<{..}> = dictGet(obj, "fields")
       switch rawFields {
       | None => Error(MissingFields("Schema must contain a \"fields\" object"))
-      | Some(fields) => {
+      | Some(rawFieldsInput) => {
+          // Normalise: support both array format [{name, selector, …}]
+          // and object format {fieldName: {selector, …}}.
+          let fields: {..} = %raw(
+            "(f) => Array.isArray(f) ? Object.fromEntries(f.map(item => [item.name, item])) : f"
+          )(rawFieldsInput)
           let fieldNames: array<string> = %raw("Object.keys")(fields)
           let parsed = fieldNames->Array.reduce(Ok([]), (acc, name) => {
             switch acc {
