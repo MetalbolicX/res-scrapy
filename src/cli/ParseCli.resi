@@ -1,9 +1,14 @@
 type mode = Single | Multiple
 
+type schemaSource =
+  | InlineJson(string)
+  | FilePath(string)
+
 type parseOptions = {
   selector: string,
   extractText: bool,
   mode: mode,
+  schemaSource: option<schemaSource>,
 }
 
 type parseError =

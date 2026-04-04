@@ -1,0 +1,42 @@
+{
+  "name": "product-schema",
+  "description": "Schema for extracting product records",
+  "fields": [
+    {
+      "name": "title",
+      "selector": ".product .title",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "price",
+      "selector": ".product .price",
+      "type": "number",
+      "required": false
+    },
+    {
+      "name": "description",
+      "selector": ".product .desc",
+      "type": "html",
+      "required": false
+    },
+    {
+      "name": "link",
+      "selector": ".product .buy",
+      "type": "attribute",
+      "attribute": "href",
+      "required": true
+    },
+    {
+      "name": "inStock",
+      "selector": ".product .inStock",
+      "type": "boolean",
+      "required": false
+    }
+  ],
+  "config": {
+    "limit": null,
+    "ignoreErrors": false,
+    "model": "zip"
+  }
+}
