@@ -120,8 +120,7 @@ let parseFieldType: (string, {..}) => result<fieldType, schemaError> = (fieldNam
   * Returns `Error(MissingFields)` when `"selector"` is absent, or propagates
   * any `fieldType` parsing error.
  */
-let // let parseField = (fieldName: string, rawField: {..}): result<schemaField, schemaError> => {
-parseField: (string, {..}) => result<schemaField, schemaError> = (fieldName, rawField) =>
+let parseField: (string, {..}) => result<schemaField, schemaError> = (fieldName, rawField) =>
   switch (dictGet(rawField, "selector"): option<string>) {
   | None => Error(MissingFields(`Field "${fieldName}" is missing the "selector" key`))
   | Some(selector) =>
