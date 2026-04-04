@@ -81,10 +81,39 @@ type schemaError =
 @get_index external dictGet: ({..}, string) => option<'a> = ""
 @val external toFloat: string => float = "parseFloat"
 @val external isNaN: float => bool = "isNaN"
+@val @scope("Array") external isArray: 'a => bool = "isArray"
+@val @scope("Object") external objectKeys: {..} => array<string> = "keys"
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/**
+  * Normalizes field definitions to support both array and object formats.
+  *
+  * Accepts:
+  * - Array format: `[{name: "field1", selector: "...", ...}, ...]`
+  * - Object format: `{field1: {selector: "...", ...}, ...}`
+  *
+  * Always returns an object/dictionary format.
+ */
+let normalizeFields: {..} => {..} = rawFieldsInput => {
+  switch isArray(rawFieldsInput) {
+  | true =>
+    let items: array<{..}> = Obj.magic(rawFieldsInput)
+    items->Array.reduce(Dict.make()->Obj.magic, (acc, item) => {
+      switch (dictGet(item, "name"): option<string>) {
+      | Some(name) => {
+          let dict: dict<{..}> = Obj.magic(acc)
+          dict->Dict.set(name, item)
+          acc
+        }
+      | None => acc
+      }
+    })
+  | false => rawFieldsInput
+  }
+}
 
 /**
   * Resolves a `fieldType` from the two raw JSON keys `"type"` and `"attribute"`.
@@ -154,19 +183,21 @@ let parseSchema: string => result<schema, schemaError> = raw =>
       | Some(rawFieldsInput) => {
           // Normalise: support both array format [{name, selector, …}]
           // and object format {fieldName: {selector, …}}.
-          let fields: {..} = %raw(
-            "(f) => Array.isArray(f) ? Object.fromEntries(f.map(item => [item.name, item])) : f"
-          )(rawFieldsInput)
-          let fieldNames: array<string> = %raw("Object.keys")(fields)
+          let fields = normalizeFields(rawFieldsInput)
+          let fieldNames = objectKeys(fields)
           let parsed = fieldNames->Array.reduce(Ok([]), (acc, name) => {
             switch acc {
             | Error(e) => Error(e)
             | Ok(arr) =>
-              switch parseField(name, %raw("(fields, name) => fields[name]")(fields, name)) {
-              | Error(e) => Error(e)
-              | Ok(field) => {
-                  arr->Array.push((name, field))
-                  Ok(arr)
+              switch dictGet(fields, name) {
+              | None => acc // Skip if field definition not found
+              | Some(fieldObj) =>
+                switch parseField(name, fieldObj) {
+                | Error(e) => Error(e)
+                | Ok(field) => {
+                    arr->Array.push((name, field))
+                    Ok(arr)
+                  }
                 }
               }
             }

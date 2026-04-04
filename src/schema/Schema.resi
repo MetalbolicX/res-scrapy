@@ -1,6 +1,3 @@
-/** Public interface for Schema.res
-  * Exposes the schema types and public function signatures.
-  */
 type fieldType =
   | Text
   | Attribute(string)
@@ -35,10 +32,5 @@ type schemaError =
   | FileReadError(string)
   | RequiredFieldMissing({fieldName: string, selector: string})
 
-// let parseFieldType: (string, {..}) => result<fieldType, schemaError>
-// let parseField: (string, {..}) => result<schemaField, schemaError>
-// let parseSchema: string => result<schema, schemaError>
 let loadSchema: (~isInline: bool, string) => result<schema, schemaError>
-
-// let extractValue: (NodeHtmlParserBinding.htmlElement, fieldType) => JSON.t
 let applySchema: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaError>
