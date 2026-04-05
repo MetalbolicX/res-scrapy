@@ -83,18 +83,26 @@ let main: unit => promise<unit> = async () => {
           // Selector-driven simple extraction
           // -----------------------------------------------------------------
           | None => {
+              let extract = (el: NodeHtmlParserBinding.htmlElement) =>
+                switch options.extract {
+                | OuterHtml => el.outerHTML
+                | InnerHtml => el.innerHTML
+                | Text => el.textContent
+                | Attribute(name) =>
+                  el->NodeHtmlParserBinding.getAttribute(name)->Nullable.toOption->Option.getOr("")
+                }
               let contents: array<string> = switch options.mode {
               | Single =>
                 switch document
                 ->NodeHtmlParserBinding.querySelector(options.selector)
                 ->Nullable.toOption {
                 | None => []
-                | Some(el) => [options.extractText ? el.textContent : el.outerHTML]
+                | Some(el) => [extract(el)]
                 }
               | Multiple =>
                 document
                 ->NodeHtmlParserBinding.querySelectorAll(options.selector)
-                ->Array.map(el => options.extractText ? el.textContent : el.outerHTML)
+                ->Array.map(el => extract(el))
               }
               Console.log(contents->NodeJsBinding.jsonStringify)
             }

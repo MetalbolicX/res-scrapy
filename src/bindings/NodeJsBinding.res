@@ -81,7 +81,7 @@ module Util = {
     help?: bool,
     selector?: string,
     mode?: bool,
-    text?: bool,
+    extract?: string,
     schema?: string,
     schemaPath?: string,
   }

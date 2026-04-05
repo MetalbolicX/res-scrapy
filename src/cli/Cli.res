@@ -7,7 +7,7 @@ let showHelp: unit => unit = () => {
     -h, --help        Display this help message
     -s, --selector    Specify a CSS selector to extract data
     -m, --mode        Extract multiple results (single by default)
-    -t, --text        Extract text instead of attributes
+    -e, --extract     What to extract: outerHtml (default), innerHtml, text, or attr:<name>
     -c, --schema      Specify the schema to use
     -p, --schemaPath  Specify the path to the schema
   `)
@@ -30,7 +30,7 @@ let parse: unit => NodeJsBinding.Util.cliValues = () => {
   let options = Dict.fromArray([
     ("mode", {type_: "boolean", short: "m", default: Bool(false)}),
     ("selector", {type_: "string", short: "s"}),
-    ("text", {type_: "boolean", short: "t", default: Bool(false)}),
+    ("extract", {type_: "string", short: "e", default: String("outerHtml")}),
     ("schema", {type_: "string", short: "c"}),
     ("schemaPath", {type_: "string", short: "p"}),
     ("help", {type_: "boolean", short: "h"}),

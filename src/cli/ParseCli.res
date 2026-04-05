@@ -1,5 +1,11 @@
 type mode = Single | Multiple
 
+type extractMode =
+  | OuterHtml
+  | InnerHtml
+  | Text
+  | Attribute(string)
+
 /** Describes how to supply a schema for structured extraction. */
 type schemaSource =
   /** Inline JSON string passed via `--schema/-c`. */
@@ -18,7 +24,7 @@ type schemaSource =
  */
 type parseOptions = {
   selector: string,
-  extractText: bool,
+  extract: extractMode,
   mode: mode,
   schemaSource?: schemaSource,
 }
@@ -64,10 +70,17 @@ let runArgsValidation: NodeJsBinding.Util.cliValues => result<
   switch selectorResult {
   | Error(e) => Error(e)
   | Ok(selector) => {
-      let extractText = values.text->Option.getOr(false)
+      let extract: extractMode = switch values.extract->Option.getOr("outerHtml") {
+      | "outerHtml" => OuterHtml
+      | "innerHtml" => InnerHtml
+      | "text" => Text
+      | s if String.startsWith(s, "attr:") =>
+        Attribute(String.slice(s, ~start=5, ~end=String.length(s)))
+      | _ => OuterHtml
+      }
       let modeFromBoolValue = values.mode->Option.getOr(false)
       let mode = modeFromBool(modeFromBoolValue)
-      Ok({selector, extractText, mode, ?schemaSource})
+      Ok({selector, extract, mode, ?schemaSource})
     }
   }
 }

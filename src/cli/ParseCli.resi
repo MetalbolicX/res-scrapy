@@ -1,12 +1,18 @@
 type mode = Single | Multiple
 
+type extractMode =
+  | OuterHtml
+  | InnerHtml
+  | Text
+  | Attribute(string)
+
 type schemaSource =
   | InlineJson(string)
   | FilePath(string)
 
 type parseOptions = {
   selector: string,
-  extractText: bool,
+  extract: extractMode,
   mode: mode,
   schemaSource?: schemaSource,
 }
