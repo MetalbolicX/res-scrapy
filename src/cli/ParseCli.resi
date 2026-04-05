@@ -8,7 +8,7 @@ type parseOptions = {
   selector: string,
   extractText: bool,
   mode: mode,
-  schemaSource: option<schemaSource>,
+  schemaSource?: schemaSource,
 }
 
 type parseError =

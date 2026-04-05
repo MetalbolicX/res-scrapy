@@ -20,7 +20,7 @@ type parseOptions = {
   selector: string,
   extractText: bool,
   mode: mode,
-  schemaSource: option<schemaSource>,
+  schemaSource?: schemaSource,
 }
 
 /** Errors produced during argument validation. */
@@ -74,7 +74,7 @@ let runArgsValidation: NodeJsBinding.Util.cliValues => result<
       let extractText = values.text->Option.getOr(false)
       let modeText = values.mode->Option.getOr("single")
       switch modeFromString(modeText) {
-      | Ok(mode) => Ok({selector, extractText, mode, schemaSource})
+      | Ok(mode) => Ok({selector, extractText, mode, ?schemaSource})
       | Error(msg) => Error(ParseError({message: msg, details: None}))
       }
     }
