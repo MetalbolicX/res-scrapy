@@ -1,6 +1,7 @@
 "use strict";
 import { defineConfig } from "rolldown";
 import { join } from "node:path";
+import { minify } from "rollup-plugin-esbuild";
 
 const dirname = import.meta.dirname ?? ".";
 
@@ -11,4 +12,6 @@ export default defineConfig({
     file: join(dirname, "dist", "main.js"),
     banner: "#!/usr/bin/env node",
   },
+  platform: "node",
+  plugins: [minify()],
 });
