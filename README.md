@@ -1,12 +1,16 @@
 # res-scrapy
 
+> HTML CLI Scraper that extracts the content you need.
+
 Command-line HTML scraper written in ReScript. Reads HTML from stdin and
 outputs JSON to stdout. Designed to be simple, scriptable and useful for
 small scraping tasks and structured extraction via JSON schemas.
 
-- **Version:** 0.1.0
-- **Author:** José Martínez Santana
-- **Repository:** https://github.com/MetalbolicX/res-scrapy
+**Supported Versions:**
+
+![Node.js](https://img.shields.io/badge/node->=22.0.0-blue)
+![ReScript](https://img.shields.io/badge/rescript->=12.0.0-blue)
+![node-html-parser](https://img.shields.io/badge/node--html--parser->=7.1.0-blue)
 
 ## Features
 
@@ -17,23 +21,19 @@ small scraping tasks and structured extraction via JSON schemas.
   `--schemaPath` (path to a `.json` schema file).
 - Outputs JSON to `stdout`, prints errors to `stderr` and exits non-zero on failure.
 
-## Requirements
-
-- Node.js >= 22.0.0
-- A JavaScript package manager (pnpm is used in this repo)
-
 ## Install & Build
 
-Install dependencies and build the distributable in `dist/`:
+Clone the repo and install dependencies:
 
-```bash
+```sh
+git clone https://github.com/MetalbolicX/res-scrapy.git
+cd res-scrapy
 pnpm install
-pnpm run build
 ```
 
 During development you can watch ReScript sources:
 
-```bash
+```sh
 pnpm run res:dev
 ```
 
@@ -47,8 +47,8 @@ The CLI reads HTML from `stdin` and writes a JSON array (or object) to
 
 Basic help (built-in):
 
-```bash
-node dist/main.js --help
+```sh
+res-scrapy --help
 ```
 
 Example flags (shorthand shown in parentheses):
@@ -60,31 +60,86 @@ Example flags (shorthand shown in parentheses):
 - `-c, --schema` : Inline JSON schema (string)
 - `-p, --schemaPath` : Path to a JSON schema file
 
-Examples:
+### Examples:
 
-```bash
-# Extract the text of the first matching element
-cat examples/sample.html | node dist/main.js -s '.product-title' -e text
+1. Extract the text of the first matching element.
 
-# Extract all links (attribute) from a document
-curl -s 'https://example.com' | node dist/main.js -s 'a.article-link' -m -e 'attr:href'
-
-# Use a schema file to produce structured JSON rows
-cat examples/sample.html | node dist/main.js -p examples/schema-product.json
+```sh
+cat examples/sample.html | res-scrapy -s '.product-title' -e text
 ```
 
-Notes:
+2. Extract all links (attribute) from a document.
 
-- When running via `pnpm start` pass CLI flags after `--`, e.g.
-  `cat file.html | pnpm start -- --selector '.foo' -m`.
-- The CLI validates arguments and will exit with code `1` and print an
-  error message on failure.
+```sh
+curl -s 'https://example.com' | res-scrapy -s 'a.article-link' -m -e 'attr:href'
+```
 
 ## Schema-driven extraction
 
 When `--schema` (inline JSON) or `--schemaPath` (file) is provided, the
-tool attempts structured extraction according to the schema. See
-`examples/schema-product.json` for an example schema format.
+tool attempts structured extraction according to the schema.
+
+**Schema format:**
+
+```json
+{
+  "name": "Schema name (optional)",
+  "description": "Schema description (optional)",
+  "fields": {
+    "fieldName": {
+      "selector": "CSS selector",
+      "type": "text|attribute|html|number|boolean",
+      "required": true|false,
+      "default": "default value"
+    }
+  },
+  "config": {
+    "ignoreErrors": true|false,
+    "limit": number
+  }
+}
+```
+
+**Field Types:**
+
+- `text`: Extract the text content of the element.
+- `attribute`: Extract a specific attribute (e.g. `attr:href`).
+- `html`: Extract the inner HTML of the element.
+- `number`: Extract and parse as a number.
+- `boolean`: Extract and parse as a boolean (e.g. "true"/"false").
+
+### Example schema:
+
+1. Inline JSON schema:
+
+```sh
+echo '<div class="product">
+  <h1>Awesome Product</h1>
+  <span class="price">$29.99</span>
+  <span class="original-price">$39.99</span>
+  <div class="in-stock">In Stock</div>
+</div>' | res-scrapy --schema '{
+  "fields": {
+    "name": {"selector": "h1", "type": "text"},
+    "price": {"selector": ".price", "type": "number"},
+    "originalPrice": {"selector": ".original-price", "type": "number"},
+    "inStock": {"selector": ".in-stock", "type": "boolean", "trueValue": "In Stock"}
+  }
+}'
+```
+
+**Output:**
+
+```json
+[
+  {
+    "name": "Awesome Product",
+    "price": 29.99,
+    "originalPrice": 39.99,
+    "inStock": true
+  }
+]
+```
 
 ## Examples and testing
 
@@ -93,4 +148,4 @@ See the included `examples/` folder for `sample.html` and
 
 ## License
 
-This project is released under the MIT License.
+Released under [MIT](/LICENSE) by [@MetalbolicX](https://github.com/MetalbolicX).
