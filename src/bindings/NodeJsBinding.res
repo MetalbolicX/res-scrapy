@@ -80,7 +80,7 @@ module Util = {
   type cliValues = {
     help?: bool,
     selector?: string,
-    mode?: string,
+    mode?: bool,
     text?: bool,
     schema?: string,
     schemaPath?: string,

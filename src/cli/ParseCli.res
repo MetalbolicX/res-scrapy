@@ -30,17 +30,10 @@ type parseError =
   | NoMatches({message: string, selector: string})
 
 /**
-  * Converts a string to a mode, returning an error if the string is not a valid mode
-  * Valid modes are "single" and "multiple"
-  * The error message includes the invalid value and the list of valid values
-
+  * Converts a boolean to a mode type.
+  * true -> Multiple results, false -> Single result
  */
-let modeFromString: string => result<mode, string> = text =>
-  switch text {
-  | "single" => Ok(Single)
-  | "multiple" => Ok(Multiple)
-  | other => Error(`Unknown mode: "${other}". Valid values are "single" or "multiple"`)
-  }
+let modeFromBool: bool => mode = isMultiple => isMultiple ? Multiple : Single
 
 /**
   * Validates the command line arguments and returns either a parseOptions object or a parseError
@@ -72,11 +65,9 @@ let runArgsValidation: NodeJsBinding.Util.cliValues => result<
   | Error(e) => Error(e)
   | Ok(selector) => {
       let extractText = values.text->Option.getOr(false)
-      let modeText = values.mode->Option.getOr("single")
-      switch modeFromString(modeText) {
-      | Ok(mode) => Ok({selector, extractText, mode, ?schemaSource})
-      | Error(msg) => Error(ParseError({message: msg, details: None}))
-      }
+      let modeFromBoolValue = values.mode->Option.getOr(false)
+      let mode = modeFromBool(modeFromBoolValue)
+      Ok({selector, extractText, mode, ?schemaSource})
     }
   }
 }
