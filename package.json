@@ -17,7 +17,7 @@
     "res:clean": "rescript clean"
   },
   "bin": {
-    "res-scrapy": "dist/main.js"
+    "res-scrapy": "src/Main.res.mjs"
   },
   "author": {
     "name": "José Martínez Santana"
