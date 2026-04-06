@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Other Extraction Examples</title>
+  </head>
+  <body>
+    <div class="product">
+      <span class="price">$1,234.56</span>
+      <span class="discount">25% OFF</span>
+      <div class="features">
+        <span class="feat">fast</span>
+        <span class="feat">cheap</span>
+        <span class="feat">cheap</span>
+      </div>
+      <span class="available">In Stock</span>
+      <script type="application/ld+json">
+        {
+          "@context": "http://schema.org",
+          "@type": "Product",
+          "name": "Gadget",
+          "offers": { "price": "19.99" }
+        }
+      </script>
+    </div>
+  </body>
+</html>

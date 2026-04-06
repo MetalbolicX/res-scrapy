@@ -1,0 +1,46 @@
+{
+  "name": "other",
+  "description": "Verify numbers, booleans, lists, and JSON extraction",
+  "fields": {
+    "price": {
+      "selector": ".product .price",
+      "type": "number",
+      "numberOptions": {
+        "stripNonNumeric": true,
+        "pattern": "\\$?([0-9,\\.]+)",
+        "precision": 2
+      }
+    },
+    "discount": {
+      "selector": ".product .discount",
+      "type": "number",
+      "numberOptions": {
+        "pattern": "([0-9\\.]+)%"
+      }
+    },
+    "features": {
+      "selector": ".product .feat",
+      "type": "list",
+      "listOptions": {
+        "itemType": "text",
+        "unique": true
+      }
+    },
+    "available": {
+      "selector": ".product .available",
+      "type": "boolean",
+      "booleanOptions": {
+        "mode": "mapping",
+        "trueValues": ["in stock", "available", "yes"],
+        "onUnknown": "false"
+      }
+    },
+    "schemaPrice": {
+      "selector": "script[type='application/ld+json']",
+      "type": "json",
+      "jsonOptions": {
+        "path": "$.offers.price"
+      }
+    }
+  }
+}

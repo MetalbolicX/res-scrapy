@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Inner / Outer HTML Examples</title>
+  </head>
+  <body>
+    <h1>Inner / Outer HTML Examples</h1>
+
+    <div class="card" id="card-1">
+      <h2 class="title">Card One</h2>
+      <div class="body">
+        <p>First paragraph <strong>bold</strong></p>
+        <p>Second paragraph</p>
+        <script>
+          console.log("remove-me");
+        </script>
+        <style>
+          .hidden {
+            display: none;
+          }
+        </style>
+      </div>
+    </div>
+
+    <div class="card" id="card-2">
+      <h2 class="title">Card Two</h2>
+      <div class="body">
+        <p>Other content <em>italic</em></p>
+      </div>
+    </div>
+  </body>
+</html>

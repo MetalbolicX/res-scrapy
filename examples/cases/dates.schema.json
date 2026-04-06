@@ -1,0 +1,35 @@
+{
+  "name": "dates",
+  "description": "Verify date parsing for multiple formats",
+  "fields": {
+    "iso": {
+      "selector": "time.iso",
+      "type": "datetime",
+      "dateOptions": {
+        "source": "attribute",
+        "attribute": "datetime",
+        "output": "iso8601"
+      }
+    },
+    "longFormat": {
+      "selector": ".long",
+      "type": "datetime",
+      "dateOptions": { "formats": ["MMMM dd, yyyy"], "output": "iso8601" }
+    },
+    "us": {
+      "selector": ".us",
+      "type": "datetime",
+      "dateOptions": { "formats": ["MM/dd/yyyy"], "output": "iso8601" }
+    },
+    "euro": {
+      "selector": ".euro",
+      "type": "datetime",
+      "dateOptions": { "formats": ["dd-MM-yyyy"], "output": "iso8601" }
+    },
+    "relative": {
+      "selector": ".relative",
+      "type": "datetime",
+      "dateOptions": { "formats": ["dd 'days ago'"], "output": "iso8601" }
+    }
+  }
+}

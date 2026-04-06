@@ -1,0 +1,29 @@
+{
+  "name": "inner-outer-html",
+  "description": "Verify inner and outer HTML extraction with strip options.",
+  "fields": {
+    "cardBodiesInner": {
+      "selector": ".card .body",
+      "type": "html",
+      "multiple": true,
+      "htmlOptions": {
+        "mode": "inner",
+        "stripScripts": true,
+        "stripStyles": true
+      }
+    },
+    "firstCardOuter": {
+      "selector": "#card-1",
+      "type": "html",
+      "required": false,
+      "htmlOptions": {
+        "mode": "outer"
+      }
+    },
+    "firstTitleText": {
+      "selector": "#card-1 .title",
+      "type": "text",
+      "required": false
+    }
+  }
+}

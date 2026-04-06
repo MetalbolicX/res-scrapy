@@ -398,6 +398,33 @@ node src/Main.res.mjs --schemaPath schema.json < sample.html
 
 ## API Reference Summary
 
+## Example Cases: verification samples
+
+The `examples/cases/` folder contains small HTML fixtures and matching schema files you can use to verify that the extractor handles common extraction types.
+
+- `examples/cases/inner_outer.html` + `examples/cases/inner_outer.schema.json` — inner/outer HTML extraction, script/style stripping.
+- `examples/cases/dates.html` + `examples/cases/dates.schema.json` — multiple date formats and attribute-sourced dates.
+- `examples/cases/attributes.html` + `examples/cases/attributes.schema.json` — multi-attribute fallback, `all` and `join` modes.
+- `examples/cases/other.html` + `examples/cases/other.schema.json` — numbers, booleans, lists, and JSON-LD extraction.
+
+Run these with the CLI (reads HTML from stdin, outputs JSON):
+
+```bash
+# Inner / Outer HTML
+node src/Main.res.mjs --schemaPath examples/cases/inner_outer.schema.json < examples/cases/inner_outer.html
+
+# Dates
+node src/Main.res.mjs --schemaPath examples/cases/dates.schema.json < examples/cases/dates.html
+
+# Attributes
+node src/Main.res.mjs --schemaPath examples/cases/attributes.schema.json < examples/cases/attributes.html
+
+# Other (numbers, booleans, lists, JSON-LD)
+node src/Main.res.mjs --schemaPath examples/cases/other.schema.json < examples/cases/other.html
+```
+
+Each command prints the extracted JSON for the schema. Use these as quick regression checks while adjusting parsing rules.
+
 ### Schema Top-Level
 
 ```typescript

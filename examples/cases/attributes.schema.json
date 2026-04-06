@@ -1,0 +1,30 @@
+{
+  "name": "attributes",
+  "description": "Verify attribute extraction modes",
+  "fields": {
+    "imageSrcFallback": {
+      "selector": "img.lazy",
+      "type": "attribute",
+      "attributes": ["data-lazy", "data-src", "src"],
+      "attrMode": "firstNonEmpty"
+    },
+    "linkHref": {
+      "selector": "a.link",
+      "type": "attribute",
+      "attribute": "href"
+    },
+    "allLinkAttrs": {
+      "selector": "a.all-attrs",
+      "type": "attribute",
+      "attributes": ["href", "title", "rel"],
+      "attrMode": "all"
+    },
+    "joinedAttrs": {
+      "selector": "a.all-attrs",
+      "type": "attribute",
+      "attributes": ["href", "title", "rel"],
+      "attrMode": "join",
+      "attrJoin": "|"
+    }
+  }
+}
