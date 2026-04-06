@@ -111,6 +111,144 @@ let parseNumberOptions: {..} => option<numberOptions> = fieldJson => {
 }
 
 // ---------------------------------------------------------------------------
+// count options
+// ---------------------------------------------------------------------------
+
+let parseCountOptions: {..} => option<countOptions> = fieldJson => {
+  switch dictGet(fieldJson, "countOptions") {
+  | None => None
+  | Some(raw) => {
+      let min = dictGet(raw, "min")
+      let max = dictGet(raw, "max")
+      Some({?min, ?max})
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// url options
+// ---------------------------------------------------------------------------
+
+let parseUrlOptions: {..} => option<urlOptions> = fieldJson => {
+  switch dictGet(fieldJson, "urlOptions") {
+  | None => None
+  | Some(raw) => {
+      let base = dictGet(raw, "base")
+      let resolve = dictGet(raw, "resolve")
+      let validate = dictGet(raw, "validate")
+      let protocol = dictGet(raw, "protocol")
+      let stripQuery = dictGet(raw, "stripQuery")
+      let stripHash = dictGet(raw, "stripHash")
+      let attribute = dictGet(raw, "attribute")
+      Some({?base, ?resolve, ?validate, ?protocol, ?stripQuery, ?stripHash, ?attribute})
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// json options
+// ---------------------------------------------------------------------------
+
+let parseJsonOptions: {..} => option<jsonOptions> = fieldJson => {
+  switch dictGet(fieldJson, "jsonOptions") {
+  | None => None
+  | Some(raw) => {
+      let source = dictGet(raw, "source")
+      let attribute = dictGet(raw, "attribute")
+      let path = dictGet(raw, "path")
+      let onError = switch dictGet(raw, "onError") {
+      | Some(s) => Some(parseErrorPolicy(s))
+      | None => None
+      }
+      Some({?source, ?attribute, ?path, ?onError})
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// datetime options
+// ---------------------------------------------------------------------------
+
+let parseDateOutput: ({..}, option<string>) => option<dateOutput> = (raw, maybeKey) => {
+  let key = Option.getOr(maybeKey, "output")
+  switch dictGet(raw, key) {
+  | None => None
+  | Some("iso8601") => Some(Iso8601)
+  | Some("epoch") => Some(Epoch)
+  | Some("epochMillis") => Some(EpochMillis)
+  | Some("custom") => {
+      let fmt: string = switch dictGet(raw, "outputFormat") {
+      | Some(f) => f
+      | None => "yyyy-MM-dd"
+      }
+      Some(Custom(fmt))
+    }
+  | Some(_) => None
+  }
+}
+
+let parseDateOptions: {..} => option<dateOptions> = fieldJson => {
+  switch dictGet(fieldJson, "dateOptions") {
+  | None => None
+  | Some(raw) => {
+      let formats = dictGet(raw, "formats")
+      let timezone = dictGet(raw, "timezone")
+      let output = parseDateOutput(raw, Some("output"))
+      let strict = dictGet(raw, "strict")
+      let source = dictGet(raw, "source")
+      let attribute = dictGet(raw, "attribute")
+      Some({?formats, ?timezone, ?output, ?strict, ?source, ?attribute})
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// list options
+// ---------------------------------------------------------------------------
+
+let parseListItemType: string => listItemType = s => {
+  if String.startsWith(s, "attribute:") {
+    let attrName = String.slice(s, ~start=10, ~end=String.length(s))
+    ListAttribute(attrName)
+  } else {
+    switch s {
+    | "html" => ListHtml
+    | "url" => ListUrl
+    | _ => ListText
+    }
+  }
+}
+
+let parseListOptions: {..} => listOptions = fieldJson => {
+  let raw: option<{..}> = dictGet(fieldJson, "listOptions")
+  let itemType = switch raw {
+  | Some(r) =>
+    switch dictGet(r, "itemType") {
+    | Some(s) => parseListItemType(s)
+    | None => ListText
+    }
+  | None => ListText
+  }
+  let unique: option<bool> = switch raw {
+  | Some(r) => dictGet(r, "unique")
+  | None => None
+  }
+  let filter: option<string> = switch raw {
+  | Some(r) => dictGet(r, "filter")
+  | None => None
+  }
+  let limit: option<int> = switch raw {
+  | Some(r) => dictGet(r, "limit")
+  | None => None
+  }
+  let join: option<string> = switch raw {
+  | Some(r) => dictGet(r, "join")
+  | None => None
+  }
+  {itemType, ?unique, ?filter, ?limit, ?join}
+}
+
+// ---------------------------------------------------------------------------
 // boolean options
 // ---------------------------------------------------------------------------
 

@@ -5,8 +5,17 @@
   * This produces one output object per row element.
   *
   * Boolean(Presence) fields return false when the sub-selector finds nothing.
+  * Count fields use querySelectorAll and extractValueList (multi-element path).
   */
 open FieldTypes
+
+/** Returns true for field types that need the full element array. */
+let isMultiElementType: fieldType => bool = ft =>
+  switch ft {
+  | Count(_) => true
+  | List(_) => true
+  | _ => false
+  }
 
 let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaError> = (
   document,
@@ -43,31 +52,37 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
           switch fAcc {
           | Error(e) => Error(e)
           | Ok(pairs) => {
-              let maybeEl =
-                NodeHtmlParserBinding.querySelector(rowEl, field.selector)->Nullable.toOption
-              let value: result<JSON.t, schemaError> = switch maybeEl {
-              | Some(el) => Ok(ExtractorRegistry.extractValue(el, field.fieldType))
-              | None =>
-                // Boolean(Presence) → false when absent
-                let presenceFalse = switch field.fieldType {
-                | Boolean(opts) =>
-                  switch opts {
-                  | Some({mode: Presence}) => true
+              let value: result<JSON.t, schemaError> = if isMultiElementType(field.fieldType) {
+                // Multi-element path: pass all matched elements to extractValueList.
+                let allEls = NodeHtmlParserBinding.querySelectorAll(rowEl, field.selector)
+                Ok(ExtractorRegistry.extractValueList(allEls, field.fieldType))
+              } else {
+                let maybeEl =
+                  NodeHtmlParserBinding.querySelector(rowEl, field.selector)->Nullable.toOption
+                switch maybeEl {
+                | Some(el) => Ok(ExtractorRegistry.extractValue(el, field.fieldType))
+                | None =>
+                  // Boolean(Presence) → false when absent
+                  let presenceFalse = switch field.fieldType {
+                  | Boolean(opts) =>
+                    switch opts {
+                    | Some({mode: Presence}) => true
+                    | _ => false
+                    }
                   | _ => false
                   }
-                | _ => false
-                }
-                if presenceFalse {
-                  Ok(JSON.Encode.bool(false))
-                } else if field.required && schema.config.ignoreErrors == false {
-                  Error(RequiredFieldMissing({fieldName: name, selector: field.selector}))
-                } else {
-                  Ok(
-                    switch field.default {
-                    | Some(d) => JSON.Encode.string(d)
-                    | None => JSON.Encode.null
-                    },
-                  )
+                  if presenceFalse {
+                    Ok(JSON.Encode.bool(false))
+                  } else if field.required && schema.config.ignoreErrors == false {
+                    Error(RequiredFieldMissing({fieldName: name, selector: field.selector}))
+                  } else {
+                    Ok(
+                      switch field.default {
+                      | Some(d) => JSON.Encode.string(d)
+                      | None => JSON.Encode.null
+                      },
+                    )
+                  }
                 }
               }
               switch value {

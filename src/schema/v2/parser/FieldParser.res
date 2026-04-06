@@ -13,6 +13,11 @@ let parseFieldType: ({..}, string) => result<fieldType, string> = (fieldJson, ty
   | "html" => Ok(Html(OptionsParser.parseHtmlOptions(fieldJson)))
   | "number" => Ok(Number(OptionsParser.parseNumberOptions(fieldJson)))
   | "boolean" | "bool" => Ok(Boolean(OptionsParser.parseBooleanOptions(fieldJson)))
+  | "count" => Ok(Count(OptionsParser.parseCountOptions(fieldJson)))
+  | "url" => Ok(Url(OptionsParser.parseUrlOptions(fieldJson)))
+  | "json" => Ok(Json(OptionsParser.parseJsonOptions(fieldJson)))
+  | "datetime" => Ok(DateTime(OptionsParser.parseDateOptions(fieldJson)))
+  | "list" => Ok(List(OptionsParser.parseListOptions(fieldJson)))
   | "attribute" =>
     switch OptionsParser.parseAttributeConfig(fieldJson) {
     | Some(cfg) => Ok(Attribute(cfg))

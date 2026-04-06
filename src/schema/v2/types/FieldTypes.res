@@ -67,6 +67,57 @@ type booleanOptions = {
   onUnknown?: bool,
 }
 
+type countOptions = {
+  min?: int,
+  max?: int,
+}
+
+type urlOptions = {
+  base?: string,
+  resolve?: bool,
+  validate?: bool,
+  protocol?: string,
+  stripQuery?: bool,
+  stripHash?: bool,
+  attribute?: string,
+}
+
+type jsonOptions = {
+  source?: string,
+  attribute?: string,
+  path?: string,
+  onError?: errorPolicy,
+}
+
+type dateOutput =
+  | Iso8601
+  | Epoch
+  | EpochMillis
+  | Custom(string)
+
+type dateOptions = {
+  formats?: array<string>,
+  timezone?: string,
+  output?: dateOutput,
+  strict?: bool,
+  source?: string,
+  attribute?: string,
+}
+
+type listItemType =
+  | ListText
+  | ListHtml
+  | ListAttribute(string)
+  | ListUrl
+
+type listOptions = {
+  itemType: listItemType,
+  unique?: bool,
+  filter?: string,
+  limit?: int,
+  join?: string,
+}
+
 // ---------------------------------------------------------------------------
 // Field type — carries its options inline
 // ---------------------------------------------------------------------------
@@ -77,6 +128,11 @@ type fieldType =
   | Html(option<htmlOptions>)
   | Number(option<numberOptions>)
   | Boolean(option<booleanOptions>)
+  | Count(option<countOptions>)
+  | Url(option<urlOptions>)
+  | Json(option<jsonOptions>)
+  | DateTime(option<dateOptions>)
+  | List(listOptions)
 
 // ---------------------------------------------------------------------------
 // Field, config, and schema records
