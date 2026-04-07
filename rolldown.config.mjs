@@ -14,4 +14,9 @@ export default defineConfig({
   },
   platform: "node",
   plugins: [minify()],
+  external: [
+    /^node:.*/,            // all node: built-ins (node:fs, node:url, etc.)
+    /^node-html-parser$/,  // native addon
+    /^@rescript\/runtime$/,// ReScript runtime
+  ],
 });
