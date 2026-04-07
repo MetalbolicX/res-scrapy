@@ -44,7 +44,7 @@ let parseWithOptions: (string, option<numberOptions>) => option<float> = (raw, o
   switch opts {
   | Some(o) =>
     switch o.thousandsSeparator {
-    | Some(sep) if sep !== "" => s := StringUtils.replaceAll(s.contents, sep, "")
+    | Some(sep) if sep !== "" => s := String.replaceAll(s.contents, sep, "")
     | _ => ()
     }
   | None => ()
@@ -54,7 +54,7 @@ let parseWithOptions: (string, option<numberOptions>) => option<float> = (raw, o
   switch opts {
   | Some(o) =>
     switch o.decimalSeparator {
-    | Some(dec) if dec !== "" && dec !== "." => s := StringUtils.replaceAll(s.contents, dec, ".")
+    | Some(dec) if dec !== "" && dec !== "." => s := String.replaceAll(s.contents, dec, ".")
     | _ => ()
     }
   | None => ()

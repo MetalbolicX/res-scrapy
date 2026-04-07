@@ -36,11 +36,11 @@ let getJsonSource: (NodeHtmlParserBinding.htmlElement, option<jsonOptions>) => o
 let getPath: ('a, string) => option<'a> = %raw(`
   (obj, path) => {
     if (!path) return obj;
-    var keys = path.split('.');
-    var current = obj;
-    for (var i = 0; i < keys.length; i++) {
-      if (current == null || typeof current !== 'object') return undefined;
-      current = current[keys[i]];
+    const keys = [...path.split(".")];
+    let current = obj;
+    for (const key of keys) {
+      if (current == null || typeof current !== "object") return undefined;
+      current = current[key];
     }
     return current;
   }

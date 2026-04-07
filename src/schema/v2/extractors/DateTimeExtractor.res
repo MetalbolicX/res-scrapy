@@ -7,10 +7,7 @@
   * Parsing tries each format in `formats` in order; defaults to ["ISO"].
   * Output defaults to Iso8601 in UTC.
   */
-
 open FieldTypes
-
-@get external textContent: NodeHtmlParserBinding.htmlElement => string = "textContent"
 
 let extract: (NodeHtmlParserBinding.htmlElement, option<dateOptions>) => option<string> = (
   el,
@@ -28,7 +25,7 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<dateOptions>) => option<
   let raw = if source === "attribute" {
     NodeHtmlParserBinding.getAttribute(el, attrName)->Nullable.toOption
   } else {
-    Some(textContent(el))
+    Some(el.textContent)
   }
 
   let trimmed = switch raw {

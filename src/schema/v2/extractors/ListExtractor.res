@@ -10,8 +10,8 @@
   */
 open FieldTypes
 
-@get external textContent: NodeHtmlParserBinding.htmlElement => string = "textContent"
-@get external innerHTML: NodeHtmlParserBinding.htmlElement => string = "innerHTML"
+// @get external textContent: NodeHtmlParserBinding.htmlElement => string = "textContent"
+// @get external innerHTML: NodeHtmlParserBinding.htmlElement => string = "innerHTML"
 
 let extractItemValue: (NodeHtmlParserBinding.htmlElement, listItemType) => option<string> = (
   el,
@@ -19,7 +19,7 @@ let extractItemValue: (NodeHtmlParserBinding.htmlElement, listItemType) => optio
 ) => {
   switch itemType {
   | ListText => {
-      let t = String.trim(textContent(el))
+      let t = String.trim(el.textContent)
       if String.length(t) === 0 {
         None
       } else {
@@ -27,7 +27,7 @@ let extractItemValue: (NodeHtmlParserBinding.htmlElement, listItemType) => optio
       }
     }
   | ListHtml => {
-      let h = innerHTML(el)
+      let h = el.innerHTML
       if String.length(h) === 0 {
         None
       } else {
