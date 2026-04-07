@@ -4,16 +4,10 @@
   */
 open FieldTypes
 
-let parseFloat_: string => float = %raw(`(text) => parseFloat(text)`)
-
-let isNaN_: float => bool = %raw(`(num) => isNaN(num)`)
-
-let applyPrecision: (float, int) => float = %raw(`(num, exponent) => {
-    // const factor = Math.pow(10, exponent);
-    const factor = 10 ** exponent;
-    return Math.round(num * factor) / factor;
-  }
-`)
+let applyPrecision: (float, int) => float = (num, exponent) => {
+  let factor = 10.0 ** Int.toFloat(exponent)
+  Math.round(num *. factor) /. factor
+}
 
 /** Full pipeline: pattern | strip | separator normalise | parseFloat | precision */
 let parseWithOptions: (string, option<numberOptions>) => option<float> = (raw, opts) => {
@@ -70,8 +64,8 @@ let parseWithOptions: (string, option<numberOptions>) => option<float> = (raw, o
   if s.contents === "" {
     None
   } else {
-    let n = parseFloat_(s.contents)
-    if isNaN_(n) {
+    let n = Float.parseFloat(s.contents)
+    if Float.isNaN(n) {
       None
     } else {
       // 6. Precision
