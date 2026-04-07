@@ -48,7 +48,13 @@ The CLI reads HTML from `stdin` and writes a JSON array (or object) to
 Basic help (built-in):
 
 ```sh
-res-scrapy --help
+Usage: res-scrapy command [options]
+  -h, --help        Display this help message
+  -s, --selector    Specify a CSS selector to extract data
+  -m, --mode        Extract multiple results (single by default)
+  -e, --extract     What to extract: outerHtml (default), innerHtml, text, or attr:<name>
+  -c, --schema      Specify the schema to use
+  -p, --schemaPath  Specify the path to the schema
 ```
 
 Example flags (shorthand shown in parentheses):
