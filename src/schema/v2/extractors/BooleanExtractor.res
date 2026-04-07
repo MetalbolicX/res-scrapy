@@ -16,7 +16,10 @@ let matchesAny: (string, array<string>) => bool = (s, arr) => {
 }
 
 /** Mapping mode: look up text in trueValues / falseValues. */
-let extractMapping: (NodeHtmlParserBinding.htmlElement, option<booleanOptions>) => option<bool> = (
+let extractMapping: (
+  NodeHtmlParserBinding.htmlElement,
+  option<booleanOptions>,
+) => result<option<bool>, schemaError> = (
   el,
   opts,
 ) => {
@@ -38,18 +41,19 @@ let extractMapping: (NodeHtmlParserBinding.htmlElement, option<booleanOptions>) 
   | None => defaultFalseValues
   }
   if matchesAny(text, trueVals) {
-    Some(true)
+    Ok(Some(true))
   } else if matchesAny(text, falseVals) {
-    Some(false)
+    Ok(Some(false))
   } else {
-    // Unknown value — return onUnknown or None
+    // Unknown value — return the configured policy.
     switch opts {
     | Some(o) =>
       switch o.onUnknown {
-      | Some(b) => Some(b)
-      | None => None
+      | Some(UnknownNull) => Ok(None)
+      | Some(UnknownError) => Error(ExtractionError(`Unknown boolean value "${text}"`))
+      | Some(UnknownFalse) | None => Ok(Some(false))
       }
-    | None => None
+    | None => Ok(Some(false))
     }
   }
 }
@@ -73,8 +77,11 @@ let extractAttributeCheck: (
   }
 }
 
-/** Dispatch to the right mode. Returns `option<bool>`. */
-let extract: (NodeHtmlParserBinding.htmlElement, option<booleanOptions>) => option<bool> = (
+/** Dispatch to the right mode. Returns `result<option<bool>, schemaError>`. */
+let extract: (
+  NodeHtmlParserBinding.htmlElement,
+  option<booleanOptions>,
+) => result<option<bool>, schemaError> = (
   el,
   opts,
 ) => {
@@ -88,7 +95,7 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<booleanOptions>) => opti
   }
   switch mode {
   | Mapping => extractMapping(el, opts)
-  | Presence => Some(extractPresence(true))
-  | AttributeCheck => extractAttributeCheck(el, opts)
+  | Presence => Ok(Some(extractPresence(true)))
+  | AttributeCheck => Ok(extractAttributeCheck(el, opts))
   }
 }

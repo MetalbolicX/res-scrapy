@@ -48,6 +48,7 @@ let main: unit => promise<unit> = async () => {
               | Error(MissingFields(msg))
               | Error(FileReadError(msg))
               | Error(AttributeMissingKey(msg))
+              | Error(ExtractionError(msg))
               | Error(RequiredFieldMissing({fieldName: msg, selector: _})) => {
                   Console.error(msg)
                   NodeJsBinding.Process.exit(1)
@@ -68,6 +69,10 @@ let main: unit => promise<unit> = async () => {
                 | Error(MissingFields(msg))
                 | Error(FileReadError(msg))
                 | Error(AttributeMissingKey(msg)) => {
+                    Console.error(msg)
+                    NodeJsBinding.Process.exit(1)
+                  }
+                | Error(ExtractionError(msg)) => {
                     Console.error(msg)
                     NodeJsBinding.Process.exit(1)
                   }

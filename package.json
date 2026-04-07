@@ -11,10 +11,10 @@
   },
   "scripts": {
     "start": "node src/Main.res.mjs",
-    "build": "rescript && rolldown -c",
     "res:build": "rescript",
     "res:dev": "rescript watch",
-    "res:clean": "rescript clean"
+    "res:clean": "rescript clean",
+    "docs": "docsify serve docs"
   },
   "bin": {
     "res-scrapy": "src/Main.res.mjs"

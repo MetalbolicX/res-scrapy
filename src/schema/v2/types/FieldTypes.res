@@ -42,6 +42,8 @@ type htmlMode =
 
 type htmlOptions = {
   mode?: htmlMode,
+  stripScripts?: bool,
+  stripStyles?: bool,
 }
 
 type numberOptions = {
@@ -59,12 +61,17 @@ type booleanMode =
   | Presence
   | AttributeCheck
 
+type booleanUnknownPolicy =
+  | UnknownFalse
+  | UnknownNull
+  | UnknownError
+
 type booleanOptions = {
   mode?: booleanMode,
   trueValues?: array<string>,
   falseValues?: array<string>,
   attribute?: string,
-  onUnknown?: bool,
+  onUnknown?: booleanUnknownPolicy,
 }
 
 type countOptions = {
@@ -118,6 +125,14 @@ type listOptions = {
   join?: string,
 }
 
+type schemaDefaults = {
+  text?: textOptions,
+  number?: numberOptions,
+  boolean?: booleanOptions,
+  datetime?: dateOptions,
+  url?: urlOptions,
+}
+
 // ---------------------------------------------------------------------------
 // Field type — carries its options inline
 // ---------------------------------------------------------------------------
@@ -142,13 +157,14 @@ type schemaField = {
   selector: string,
   fieldType: fieldType,
   required: bool,
-  default?: string,
+  default?: JSON.t,
 }
 
 type schemaConfig = {
   ignoreErrors: bool,
   limit: int,
   rowSelector?: string,
+  defaults?: schemaDefaults,
 }
 
 type schema = {
@@ -170,3 +186,4 @@ type schemaError =
   | AttributeMissingKey(string)
   | FileReadError(string)
   | RequiredFieldMissing({fieldName: string, selector: string})
+  | ExtractionError(string)

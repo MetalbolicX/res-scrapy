@@ -40,11 +40,8 @@ let parseField: ({..}, string) => result<schemaField, schemaError> = (fieldJson,
       switch parseFieldType(fieldJson, rawType) {
       | Error(msg) => Error(InvalidFieldType({field: fieldName, got: msg}))
       | Ok(fieldType) => {
-          let required: bool = switch dictGet(fieldJson, "required") {
-          | Some(false) => false
-          | _ => true
-          }
-          let default: option<string> = dictGet(fieldJson, "default")
+          let required: bool = (dictGet(fieldJson, "required"): option<bool>)->Option.getOr(false)
+          let default: option<JSON.t> = dictGet(fieldJson, "default")
           Ok({selector, fieldType, required, ?default})
         }
       }

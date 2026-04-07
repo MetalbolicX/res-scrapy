@@ -38,7 +38,9 @@ let parseHtmlOptions: {..} => option<htmlOptions> = fieldJson => {
       | Some("outer") => Some(Outer)
       | _ => Some(Inner)
       }
-      Some({?mode})
+      let stripScripts = dictGet(raw, "stripScripts")
+      let stripStyles = dictGet(raw, "stripStyles")
+      Some({?mode, ?stripScripts, ?stripStyles})
     }
   }
 }
@@ -258,6 +260,12 @@ let parseBooleanMode: string => booleanMode = s => switch s {
 | _ => Mapping
 }
 
+let parseBooleanUnknownPolicy: string => booleanUnknownPolicy = s => switch s {
+| "null" => UnknownNull
+| "error" => UnknownError
+| _ => UnknownFalse
+}
+
 let parseBooleanOptions: {..} => option<booleanOptions> = fieldJson => {
   switch dictGet(fieldJson, "booleanOptions") {
   | None => None
@@ -269,7 +277,10 @@ let parseBooleanOptions: {..} => option<booleanOptions> = fieldJson => {
       let trueValues = dictGet(raw, "trueValues")
       let falseValues = dictGet(raw, "falseValues")
       let attribute = dictGet(raw, "attribute")
-      let onUnknown = dictGet(raw, "onUnknown")
+      let onUnknown = switch dictGet(raw, "onUnknown") {
+      | Some(s) => Some(parseBooleanUnknownPolicy(s))
+      | None => None
+      }
       Some({?mode, ?trueValues, ?falseValues, ?attribute, ?onUnknown})
     }
   }
