@@ -9,7 +9,7 @@ small scraping tasks and structured extraction via JSON schemas.
 **Supported Versions:**
 
 ![Node.js](https://img.shields.io/badge/node->=22.0.0-blue)
-![ReScript](https://img.shields.io/badge/rescript->=12.0.0-blue)
+![ReScript](https://img.shields.io/badge/rescript->=12.0.0-red)
 ![node-html-parser](https://img.shields.io/badge/node--html--parser->=7.1.0-blue)
 
 ## Features
@@ -140,11 +140,6 @@ echo '<div class="product">
   }
 ]
 ```
-
-## Examples and testing
-
-See the included `examples/` folder for `sample.html` and
-`schema-product.json` to try the scraper locally.
 
 ## License
 
