@@ -57,15 +57,6 @@ Usage: res-scrapy command [options]
   -p, --schemaPath  Specify the path to the schema
 ```
 
-Example flags (shorthand shown in parentheses):
-
-- `-h, --help` : Display this help message
-- `-s, --selector` : CSS selector to extract (required unless using `--schema`)
-- `-m, --mode` : Extract multiple results (boolean flag; default is single)
-- `-e, --extract` : What to extract: `outerHtml` (default), `innerHtml`, `text`, or `attr:<name>`
-- `-c, --schema` : Inline JSON schema (string)
-- `-p, --schemaPath` : Path to a JSON schema file
-
 ### Examples:
 
 1. Extract the text of the first matching element.
