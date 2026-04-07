@@ -3,21 +3,22 @@
   "version": "0.1.0",
   "description": "A web scraper using rescript",
   "type": "module",
-  "main": "src/Main.res.mjs",
+  "main": "dist/main.js",
   "exports": {
     ".": {
-      "import": "./src/Main.res.mjs"
+      "import": "./dist/main.js"
     }
   },
   "scripts": {
-    "start": "node src/Main.res.mjs",
+    "start": "node dist/main.js",
     "res:build": "rescript",
     "res:dev": "rescript watch",
     "res:clean": "rescript clean",
-    "docs": "docsify serve docs"
+    "docs": "docsify serve docs",
+    "build": "rolldown -c"
   },
   "bin": {
-    "res-scrapy": "src/Main.res.mjs"
+    "res-scrapy": "dist/main.js"
   },
   "author": {
     "name": "José Martínez Santana"
@@ -30,7 +31,7 @@
     "url": "https://github.com/MetalbolicX/res-scrapy/issues"
   },
   "files": [
-    "src/**/*.mjs"
+    "dist"
   ],
   "license": "MIT",
   "dependencies": {
@@ -42,7 +43,8 @@
     "node": ">=22.0.0"
   },
   "devDependencies": {
-    "rolldown": "1.0.0-rc.13"
+    "rolldown": "1.0.0-rc.13",
+    "rollup-plugin-esbuild": "^6.2.1"
   },
   "peerDependencies": {
     "node-html-parser": "^7.1.0"
