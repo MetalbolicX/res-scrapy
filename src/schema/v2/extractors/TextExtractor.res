@@ -1,8 +1,10 @@
 /** Extract and transform text content from an HTML element. */
-
 open FieldTypes
 
-let extract: (NodeHtmlParserBinding.htmlElement, option<textOptions>) => option<string> = (el, opts) => {
+let extract: (NodeHtmlParserBinding.htmlElement, option<textOptions>) => option<string> = (
+  el,
+  opts,
+) => {
   // If join is set the caller may pass multiple elements; for single element join is ignored.
   let base = el.textContent
 
@@ -38,11 +40,19 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<textOptions>) => option<
     }
   }
 
-  if s.contents === "" { None } else { Some(s.contents) }
+  if s.contents === "" {
+    None
+  } else {
+    Some(s.contents)
+  }
 }
 
 /** Join text from multiple elements, used when a field targets a list. */
-let extractJoined: (array<NodeHtmlParserBinding.htmlElement>, string, option<textOptions>) => option<string> = (els, sep, opts) => {
+let extractJoined: (
+  array<NodeHtmlParserBinding.htmlElement>,
+  string,
+  option<textOptions>,
+) => option<string> = (els, sep, opts) => {
   let parts = els->Array.filterMap(el => extract(el, opts))
   if Array.length(parts) === 0 {
     None

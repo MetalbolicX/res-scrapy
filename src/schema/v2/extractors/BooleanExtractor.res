@@ -19,10 +19,7 @@ let matchesAny: (string, array<string>) => bool = (s, arr) => {
 let extractMapping: (
   NodeHtmlParserBinding.htmlElement,
   option<booleanOptions>,
-) => result<option<bool>, schemaError> = (
-  el,
-  opts,
-) => {
+) => result<option<bool>, schemaError> = (el, opts) => {
   let text = StringUtils.trimStr(el.textContent)
   let trueVals = switch opts {
   | Some(o) =>
@@ -81,10 +78,7 @@ let extractAttributeCheck: (
 let extract: (
   NodeHtmlParserBinding.htmlElement,
   option<booleanOptions>,
-) => result<option<bool>, schemaError> = (
-  el,
-  opts,
-) => {
+) => result<option<bool>, schemaError> = (el, opts) => {
   let mode = switch opts {
   | Some(o) =>
     switch o.mode {

@@ -2,25 +2,20 @@
   * Handles currency prefixes, thousand separators, custom decimal separators,
   * and precision rounding.
   */
-
 open FieldTypes
 
-let parseFloat_: string => float = %raw(`
-  function(s) { return parseFloat(s); }
-`)
+let parseFloat_: string => float = %raw(`(text) => parseFloat(text)`)
 
-let isNaN_: float => bool = %raw(`
-  function(n) { return isNaN(n); }
-`)
+let isNaN_: float => bool = %raw(`(num) => isNaN(num)`)
 
-let applyPrecision: (float, int) => float = %raw(`
-  function(n, p) {
-    var factor = Math.pow(10, p);
-    return Math.round(n * factor) / factor;
+let applyPrecision: (float, int) => float = %raw(`(num, exponent) => {
+    // const factor = Math.pow(10, exponent);
+    const factor = 10 ** exponent;
+    return Math.round(num * factor) / factor;
   }
 `)
 
-/** Full pipeline: pattern | strip | sep normalise | parseFloat | precision */
+/** Full pipeline: pattern | strip | separator normalise | parseFloat | precision */
 let parseWithOptions: (string, option<numberOptions>) => option<float> = (raw, opts) => {
   let s = ref(String.trim(raw))
 
@@ -55,8 +50,7 @@ let parseWithOptions: (string, option<numberOptions>) => option<float> = (raw, o
   switch opts {
   | Some(o) =>
     switch o.thousandsSeparator {
-    | Some(sep) when sep !== "" =>
-      s := StringUtils.replaceAll(s.contents, sep, "")
+    | Some(sep) if sep !== "" => s := StringUtils.replaceAll(s.contents, sep, "")
     | _ => ()
     }
   | None => ()
@@ -66,8 +60,7 @@ let parseWithOptions: (string, option<numberOptions>) => option<float> = (raw, o
   switch opts {
   | Some(o) =>
     switch o.decimalSeparator {
-    | Some(dec) when dec !== "" && dec !== "." =>
-      s := StringUtils.replaceAll(s.contents, dec, ".")
+    | Some(dec) if dec !== "" && dec !== "." => s := StringUtils.replaceAll(s.contents, dec, ".")
     | _ => ()
     }
   | None => ()
@@ -92,7 +85,7 @@ let parseWithOptions: (string, option<numberOptions>) => option<float> = (raw, o
       }
       // 7. Negative guard
       switch opts {
-      | Some(o) when o.allowNegative == Some(false) && result < 0.0 => None
+      | Some(o) if o.allowNegative == Some(false) && result < 0.0 => None
       | _ => Some(result)
       }
     }

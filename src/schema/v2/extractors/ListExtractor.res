@@ -8,7 +8,6 @@
   *
   * Post-processing (in order): filter → unique → limit → join/array output.
   */
-
 open FieldTypes
 
 @get external textContent: NodeHtmlParserBinding.htmlElement => string = "textContent"
@@ -21,18 +20,30 @@ let extractItemValue: (NodeHtmlParserBinding.htmlElement, listItemType) => optio
   switch itemType {
   | ListText => {
       let t = String.trim(textContent(el))
-      if String.length(t) === 0 { None } else { Some(t) }
+      if String.length(t) === 0 {
+        None
+      } else {
+        Some(t)
+      }
     }
   | ListHtml => {
       let h = innerHTML(el)
-      if String.length(h) === 0 { None } else { Some(h) }
+      if String.length(h) === 0 {
+        None
+      } else {
+        Some(h)
+      }
     }
   | ListAttribute(name) =>
     switch NodeHtmlParserBinding.getAttribute(el, name)->Nullable.toOption {
     | None => None
     | Some(v) =>
       let t = String.trim(v)
-      if String.length(t) === 0 { None } else { Some(t) }
+      if String.length(t) === 0 {
+        None
+      } else {
+        Some(t)
+      }
     }
   | ListUrl =>
     // Reuse UrlExtractor with no options (extracts href/src, validates)
@@ -42,7 +53,7 @@ let extractItemValue: (NodeHtmlParserBinding.htmlElement, listItemType) => optio
 
 /** JS helper: test whether a string matches a regex pattern */
 let matchesPattern: (string, string) => bool = %raw(`
-function(str, pattern) {
+(str, pattern) => {
   try {
     return new RegExp(pattern).test(str);
   } catch(e) {

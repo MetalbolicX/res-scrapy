@@ -13,7 +13,6 @@
   *   ss    - seconds (padded)      s    - seconds (no padding)
   *   a     - am/pm
   */
-
 open FieldTypes
 
 type jsDate
@@ -21,35 +20,35 @@ type jsDate
 /** Try to parse `str` using a single format specifier.
   * Returns `undefined` (= None) on failure. */
 let tryParseWithFormat: (string, string) => option<jsDate> = %raw(`
-function(str, fmt) {
+(str, fmt) => {
   if (!str) return undefined;
 
   // Built-in specials
   if (fmt === "ISO") {
-    var d = new Date(str);
-    return isNaN(d.getTime()) ? undefined : d;
+    const d = new Date(str);
+    return Number.isNaN(d.getTime()) ? undefined : d;
   }
   if (fmt === "epoch") {
-    var n = parseInt(str, 10);
-    if (isNaN(n)) return undefined;
-    var d = new Date(n * 1000);
-    return isNaN(d.getTime()) ? undefined : d;
+    const n = parseInt(str, 10);
+    if (Number.isNaN(n)) return undefined;
+    const d = new Date(n * 1000);
+    return Number.isNaN(d.getTime()) ? undefined : d;
   }
   if (fmt === "epochMillis") {
-    var n = parseInt(str, 10);
-    if (isNaN(n)) return undefined;
-    var d = new Date(n);
-    return isNaN(d.getTime()) ? undefined : d;
+    const n = parseInt(str, 10);
+    if (Number.isNaN(n)) return undefined;
+    const d = new Date(n);
+    return Number.isNaN(d.getTime()) ? undefined : d;
   }
 
   // Custom format parsing
-  var MONTHS_FULL = ["january","february","march","april","may","june",
-                     "july","august","september","october","november","december"];
-  var MONTHS_ABBR = ["jan","feb","mar","apr","may","jun",
-                     "jul","aug","sep","oct","nov","dec"];
+  const MONTHS_FULL = ["january","february","march","april","may","june",
+                       "july","august","september","october","november","december"];
+  const MONTHS_ABBR = ["jan","feb","mar","apr","may","jun",
+                       "jul","aug","sep","oct","nov","dec"];
 
   // Token table — longer tokens first to avoid prefix conflicts
-  var tokens = [
+  const tokens = [
     { token: "yyyy",  regex: "(\\d{4})",          group: "year4"   },
     { token: "yy",    regex: "(\\d{2})",           group: "year2"   },
     { token: "MMMM",  regex: "([A-Za-z]+)",        group: "monthFull" },
@@ -70,51 +69,52 @@ function(str, fmt) {
   ];
 
   // Build regex and group-name list from the format string
-  var regexStr = "";
-  var groups = [];
-  var remaining = fmt;
+  let regexStr = "";
+  let groups = [];
+  let remaining = fmt;
   while (remaining.length > 0) {
-    var matched = false;
-    for (var i = 0; i < tokens.length; i++) {
-      if (remaining.startsWith(tokens[i].token)) {
-        regexStr += tokens[i].regex;
-        groups.push(tokens[i].group);
-        remaining = remaining.slice(tokens[i].token.length);
+    let matched = false;
+    for (const t of tokens) {
+      if (remaining.startsWith(t.token)) {
+        regexStr += t.regex;
+        groups = [...groups, t.group];
+        remaining = remaining.slice(t.token.length);
         matched = true;
         break;
       }
     }
     if (!matched) {
       // Literal character — escape for regex
-      regexStr += remaining[0].replace(/[.*+?^$()|[\]\\]/g, "\\$&").replace("{", "\\{").replace("}", "\\}");
+      const ch = remaining[0].replace(/[.*+?^$()|[\]\\]/g, "\\$&").replace("{", "\\{").replace("}", "\\}");
+      regexStr += ch;
       remaining = remaining.slice(1);
     }
   }
 
-  var re = new RegExp("^" + regexStr + "$", "i");
-  var m = str.match(re);
+  const re = new RegExp("^" + regexStr + "$", "i");
+  const m = str.match(re);
   if (!m) return undefined;
 
   // Extract named components
-  var vals = {};
-  for (var j = 0; j < groups.length; j++) {
+  const vals = {};
+  for (let j = 0; j < groups.length; j++) {
     vals[groups[j]] = m[j + 1];
   }
 
-  var year = 1970, month = 0, day = 1, hour = 0, min = 0, sec = 0;
+  let year = 1970, month = 0, day = 1, hour = 0, min = 0, sec = 0;
 
   if (vals.year4)      year = parseInt(vals.year4, 10);
   else if (vals.year2) {
-    var y2 = parseInt(vals.year2, 10);
+    const y2 = parseInt(vals.year2, 10);
     year = y2 <= 49 ? 2000 + y2 : 1900 + y2;
   }
 
   if (vals.monthFull) {
-    var idx = MONTHS_FULL.indexOf(vals.monthFull.toLowerCase());
+    const idx = MONTHS_FULL.indexOf(vals.monthFull.toLowerCase());
     if (idx === -1) return undefined;
     month = idx;
   } else if (vals.monthAbbr) {
-    var idx = MONTHS_ABBR.indexOf(vals.monthAbbr.toLowerCase());
+    const idx = MONTHS_ABBR.indexOf(vals.monthAbbr.toLowerCase());
     if (idx === -1) return undefined;
     month = idx;
   } else if (vals.month2 !== undefined) month = parseInt(vals.month2, 10) - 1;
@@ -139,15 +139,19 @@ function(str, fmt) {
   if (vals.sec2 !== undefined)    sec = parseInt(vals.sec2, 10);
   else if (vals.sec1 !== undefined) sec = parseInt(vals.sec1, 10);
 
-  var d = new Date(Date.UTC(year, month, day, hour, min, sec));
-  return isNaN(d.getTime()) ? undefined : d;
+  const d = new Date(Date.UTC(year, month, day, hour, min, sec));
+  return Number.isNaN(d.getTime()) ? undefined : d;
 }
 `)
 
 /** Try each format in order; return the first successful parse.
   * Defaults to ["ISO"] when the array is empty. */
 let parseDate: (string, array<string>) => option<jsDate> = (str, formats) => {
-  let fmts = if Array.length(formats) === 0 { ["ISO"] } else { formats }
+  let fmts = if Array.length(formats) === 0 {
+    ["ISO"]
+  } else {
+    formats
+  }
   fmts->Array.reduce(None, (acc, fmt) => {
     switch acc {
     | Some(_) => acc
@@ -163,17 +167,16 @@ let parseDate: (string, array<string>) => option<jsDate> = (str, formats) => {
   *   any other     → custom format (same token table as parsing)
   */
 let formatDateInternal: (jsDate, string, string) => string = %raw(`
-function(date, outputSpec, timezone) {
-  var MONTHS_FULL = ["January","February","March","April","May","June",
-                     "July","August","September","October","November","December"];
-  var MONTHS_ABBR = ["Jan","Feb","Mar","Apr","May","Jun",
-                     "Jul","Aug","Sep","Oct","Nov","Dec"];
+(date, outputSpec, timezone) => {
+  const MONTHS_FULL = ["January","February","March","April","May","June",
+                       "July","August","September","October","November","December"];
+  const MONTHS_ABBR = ["Jan","Feb","Mar","Apr","May","Jun",
+                       "Jul","Aug","Sep","Oct","Nov","Dec"];
 
-  function pad2(n) { return String(n).padStart(2, "0"); }
-  function pad4(n) { return String(n).padStart(4, "0"); }
+  const pad2 = n => String(n).padStart(2, "0");
+  const pad4 = n => String(n).padStart(4, "0");
 
-  // Get date components adjusted for the given timezone
-  function getComponents(d, tz) {
+  const getComponents = (d, tz) => {
     if (!tz || tz === "UTC") {
       return {
         year:  d.getUTCFullYear(),
@@ -185,61 +188,58 @@ function(date, outputSpec, timezone) {
         offset: 0,                   // minutes east of UTC
       };
     }
-    // Use Intl to get local components and offset
-    var fmt = new Intl.DateTimeFormat("en-US", {
+
+    const fmt = new Intl.DateTimeFormat("en-US", {
       timeZone: tz,
       year: "numeric", month: "2-digit", day: "2-digit",
       hour: "2-digit", minute: "2-digit", second: "2-digit",
       hour12: false,
       timeZoneName: "shortOffset",
     });
-    var parts = {};
-    fmt.formatToParts(d).forEach(function(p) { parts[p.type] = p.value; });
-    // shortOffset looks like "GMT+5:30" or "GMT-4"
-    var offsetMin = 0;
-    var offsetStr = parts.timeZoneName || "";
-    var om = offsetStr.match(/GMT([+-])(\d+)(?::(\d+))?/);
+
+    const parts = {};
+    for (const p of fmt.formatToParts(d)) parts[p.type] = p.value;
+
+    let offsetMin = 0;
+    const offsetStr = parts.timeZoneName || "";
+    const om = offsetStr.match(/GMT([+-])(\d+)(?::(\d+))?/);
     if (om) {
-      var sign = om[1] === "+" ? 1 : -1;
+      const sign = om[1] === "+" ? 1 : -1;
       offsetMin = sign * (parseInt(om[2], 10) * 60 + (om[3] ? parseInt(om[3], 10) : 0));
     }
-    var hour = parseInt(parts.hour, 10);
+
+    let hour = parseInt(parts.hour, 10);
     if (hour === 24) hour = 0; // Intl sometimes returns 24 for midnight
+
     return {
       year:   parseInt(parts.year, 10),
       month:  parseInt(parts.month, 10) - 1, // 0-based
       day:    parseInt(parts.day, 10),
-      hour:   hour,
+      hour,
       min:    parseInt(parts.minute, 10),
       sec:    parseInt(parts.second, 10),
       offset: offsetMin,
     };
   }
 
-  function offsetToStr(offsetMin) {
+  const offsetToStr = offsetMin => {
     if (offsetMin === 0) return "Z";
-    var sign = offsetMin > 0 ? "+" : "-";
-    var abs  = Math.abs(offsetMin);
+    const sign = offsetMin > 0 ? "+" : "-";
+    const abs  = Math.abs(offsetMin);
     return sign + pad2(Math.floor(abs / 60)) + ":" + pad2(abs % 60);
   }
 
-  if (outputSpec === "epoch") {
-    return String(Math.floor(date.getTime() / 1000));
-  }
-  if (outputSpec === "epochMillis") {
-    return String(date.getTime());
-  }
+  if (outputSpec === "epoch") return String(Math.floor(date.getTime() / 1000));
+  if (outputSpec === "epochMillis") return String(date.getTime());
 
-  var c = getComponents(date, timezone || "UTC");
+  const c = getComponents(date, timezone || "UTC");
 
   if (outputSpec === "iso8601") {
-    return pad4(c.year) + "-" + pad2(c.month + 1) + "-" + pad2(c.day) +
-           "T" + pad2(c.hour) + ":" + pad2(c.min) + ":" + pad2(c.sec) +
-           offsetToStr(c.offset);
+    return pad4(c.year) + "-" + pad2(c.month + 1) + "-" + pad2(c.day) + "T" + pad2(c.hour) + ":" + pad2(c.min) + ":" + pad2(c.sec) + offsetToStr(c.offset);
   }
 
   // Custom format — single-pass tokenizer to avoid substitution conflicts
-  var tokenDefs = [
+  const tokenDefs = [
     { token: "yyyy",  value: pad4(c.year) },
     { token: "yy",    value: pad2(c.year % 100) },
     { token: "MMMM",  value: MONTHS_FULL[c.month] },
@@ -259,20 +259,20 @@ function(date, outputSpec, timezone) {
     { token: "a",     value: c.hour < 12 ? "am" : "pm" },
   ];
 
-  var result = "";
-  var remaining = outputSpec;
+  let result = "";
+  let remaining = outputSpec;
   while (remaining.length > 0) {
-    var matched = false;
-    for (var i = 0; i < tokenDefs.length; i++) {
-      if (remaining.startsWith(tokenDefs[i].token)) {
-        result += tokenDefs[i].value;
-        remaining = remaining.slice(tokenDefs[i].token.length);
+    let matched = false;
+    for (const def of tokenDefs) {
+      if (remaining.startsWith(def.token)) {
+        result = result + def.value;
+        remaining = remaining.slice(def.token.length);
         matched = true;
         break;
       }
     }
     if (!matched) {
-      result += remaining[0];
+      result = result + remaining[0];
       remaining = remaining.slice(1);
     }
   }

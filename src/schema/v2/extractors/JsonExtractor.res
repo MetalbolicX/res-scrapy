@@ -6,7 +6,6 @@
   *   - path: dot-notation path to extract a subset (e.g., "offers.price")
   *   - onError: error policy when JSON is invalid or path fails
   */
-
 open FieldTypes
 
 let getJsonSource: (NodeHtmlParserBinding.htmlElement, option<jsonOptions>) => option<string> = (
@@ -35,7 +34,7 @@ let getJsonSource: (NodeHtmlParserBinding.htmlElement, option<jsonOptions>) => o
 }
 
 let getPath: ('a, string) => option<'a> = %raw(`
-  function(obj, path) {
+  (obj, path) => {
     if (!path) return obj;
     var keys = path.split('.');
     var current = obj;
@@ -67,7 +66,7 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<jsonOptions>) => option<
       switch onErr {
       | Some(ReturnText) => Some(JSON.Encode.string(str))
       | Some(ReturnDefault) => None
-      | _ => None  // ReturnNull (default)
+      | _ => None // ReturnNull (default)
       }
     | Some(json) =>
       // Parse succeeded — apply path if provided

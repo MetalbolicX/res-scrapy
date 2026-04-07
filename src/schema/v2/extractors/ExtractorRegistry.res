@@ -33,10 +33,7 @@ let mergeTextOptions = (fieldOpts: option<textOptions>, defaultOpts: option<text
     }
   }
 
-let mergeNumberOptions = (
-  fieldOpts: option<numberOptions>,
-  defaultOpts: option<numberOptions>,
-) =>
+let mergeNumberOptions = (fieldOpts: option<numberOptions>, defaultOpts: option<numberOptions>) =>
   switch defaultOpts {
   | None => fieldOpts
   | Some(def) =>
@@ -75,10 +72,7 @@ let mergeBooleanOptions = (
     }
   }
 
-let mergeDateOptions = (
-  fieldOpts: option<dateOptions>,
-  defaultOpts: option<dateOptions>,
-) =>
+let mergeDateOptions = (fieldOpts: option<dateOptions>, defaultOpts: option<dateOptions>) =>
   switch defaultOpts {
   | None => fieldOpts
   | Some(def) =>
@@ -119,25 +113,57 @@ let resolveDefaults = (defaults: option<schemaDefaults>, fieldType: fieldType): 
   switch fieldType {
   | Text(opts) =>
     Text(
-      mergeTextOptions(opts, switch defaults { | Some(d) => d.text | None => None }),
+      mergeTextOptions(
+        opts,
+        switch defaults {
+        | Some(d) => d.text
+        | None => None
+        },
+      ),
     )
   | Attribute(cfg) => Attribute(cfg)
   | Html(opts) => Html(opts)
   | Number(opts) =>
     Number(
-      mergeNumberOptions(opts, switch defaults { | Some(d) => d.number | None => None }),
+      mergeNumberOptions(
+        opts,
+        switch defaults {
+        | Some(d) => d.number
+        | None => None
+        },
+      ),
     )
   | Boolean(opts) =>
     Boolean(
-      mergeBooleanOptions(opts, switch defaults { | Some(d) => d.boolean | None => None }),
+      mergeBooleanOptions(
+        opts,
+        switch defaults {
+        | Some(d) => d.boolean
+        | None => None
+        },
+      ),
     )
   | Count(opts) => Count(opts)
   | Url(opts) =>
-    Url(mergeUrlOptions(opts, switch defaults { | Some(d) => d.url | None => None }))
+    Url(
+      mergeUrlOptions(
+        opts,
+        switch defaults {
+        | Some(d) => d.url
+        | None => None
+        },
+      ),
+    )
   | Json(opts) => Json(opts)
   | DateTime(opts) =>
     DateTime(
-      mergeDateOptions(opts, switch defaults { | Some(d) => d.datetime | None => None }),
+      mergeDateOptions(
+        opts,
+        switch defaults {
+        | Some(d) => d.datetime
+        | None => None
+        },
+      ),
     )
   | List(opts) => List(opts)
   }
@@ -220,7 +246,7 @@ let extractValueList: (
     }
   | _ =>
     // Scalar fallback: delegate to the single-element path on the first match.
-    switch Array.get(els, 0) {
+    switch els[0] {
     | Some(el) => extractValue(el, ft, defaults)
     | None => Ok(JSON.Encode.null)
     }

@@ -9,7 +9,6 @@
   *   - stripQuery: remove query string (default: false)
   *   - stripHash: remove fragment/hash (default: false)
   */
-
 open FieldTypes
 
 let defaultAttribute: string => string = tagName => {
@@ -39,10 +38,13 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<urlOptions>) => option<s
   opts,
 ) => {
   // 1. Get the raw attribute value
-  let raw = getUrlAttribute(el, switch opts {
-  | Some(o) => o.attribute
-  | None => None
-  })
+  let raw = getUrlAttribute(
+    el,
+    switch opts {
+    | Some(o) => o.attribute
+    | None => None
+    },
+  )
 
   switch raw {
   | None => None
@@ -88,7 +90,11 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<urlOptions>) => option<s
             switch o.protocol {
             | None => true
             | Some(p) =>
-              let expected = if String.endsWith(p, ":") { p } else { p ++ ":" }
+              let expected = if String.endsWith(p, ":") {
+                p
+              } else {
+                p ++ ":"
+              }
               url.protocol === expected
             }
           | None => true
@@ -98,16 +104,20 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<urlOptions>) => option<s
           } else {
             // 4. Build final URL string, stripping query/hash as needed
             let final = ref(url.href)
-            if switch opts {
-            | Some(o) => o.stripQuery == Some(true)
-            | None => false
-            } {
+            if (
+              switch opts {
+              | Some(o) => o.stripQuery == Some(true)
+              | None => false
+              }
+            ) {
               final := url.href->String.split("?")->Array.get(0)->Option.getOr(final.contents)
             }
-            if switch opts {
-            | Some(o) => o.stripHash == Some(true)
-            | None => false
-            } {
+            if (
+              switch opts {
+              | Some(o) => o.stripHash == Some(true)
+              | None => false
+              }
+            ) {
               final := final.contents->String.split("#")->Array.get(0)->Option.getOr(final.contents)
             }
             Some(final.contents)
