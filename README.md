@@ -14,6 +14,7 @@ Command-line HTML scraper written in ReScript offers a flexible configuration fo
 
 - Read HTML from `stdin` and extract content using CSS selectors.
 - Extract `outerHtml`, `innerHtml`, `text`, or an element attribute (`attr:name`).
+- Exttract tables as JSON arrays of objects.
 - Support for single or multiple results (`--mode` / `-m`).
 - Schema-driven structured extraction via `--schema` (inline JSON) or
   `--schemaPath` (path to a `.json` schema file).

@@ -126,14 +126,5 @@
     "iex": false
   },
   "chat.tools.terminal.ignoreDefaultAutoApproveRules": false,
-  "chat.tools.terminal.enforceTimeoutFromModel": true,
-  "chat.agentSkillsLocations": {
-    ".github/skills": true,
-    ".agents/skills": true,
-    ".claude/skills": true,
-    "~/.copilot/skills": true,
-    "~/.agents/skills": true,
-    "~/.claude/skills": true,
-    "~/.config/opencode/skills": true
-  }
+  "chat.tools.terminal.enforceTimeoutFromModel": true
 }
