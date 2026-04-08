@@ -9,6 +9,19 @@
   */
 open FieldTypes
 
+let columnTypeToFieldType: columnFieldType => fieldType = columnType =>
+  switch columnType {
+  | ColumnText(opts) => Text(opts)
+  | ColumnAttribute(cfg) => Attribute(cfg)
+  | ColumnHtml(opts) => Html(opts)
+  | ColumnNumber(opts) => Number(opts)
+  | ColumnBoolean(opts) => Boolean(opts)
+  | ColumnUrl(opts) => Url(opts)
+  | ColumnJson(opts) => Json(opts)
+  | ColumnDateTime(opts) => DateTime(opts)
+  | ColumnList(opts) => List(opts)
+  }
+
 let pickOption = (current, fallback) =>
   switch current {
   | Some(value) => Some(value)
@@ -166,13 +179,15 @@ let resolveDefaults = (defaults: option<schemaDefaults>, fieldType: fieldType): 
       ),
     )
   | List(opts) => List(opts)
+  | Table(opts) => Table(opts)
   }
 
-let extractValue: (
+let rec extractValue: (
   NodeHtmlParserBinding.htmlElement,
   fieldType,
   option<schemaDefaults>,
-) => result<JSON.t, schemaError> = (el, ft, defaults) => {
+  bool,
+) => result<JSON.t, schemaError> = (el, ft, defaults, ignoreErrors) => {
   switch resolveDefaults(defaults, ft) {
   | Text(opts) =>
     switch TextExtractor.extract(el, opts) {
@@ -222,6 +237,98 @@ let extractValue: (
   | List(_) =>
     // List requires the full element array; callers must use extractValueList.
     Ok(JSON.Encode.null)
+  | Table(tableOpts) => {
+      let rows: array<NodeHtmlParserBinding.htmlElement> = switch tableOpts.rowSelector {
+      | Some(sel) => el->NodeHtmlParserBinding.querySelectorAll(sel)
+      | None => {
+          let tbodyRows = el->NodeHtmlParserBinding.querySelectorAll("tbody tr")
+          if Array.length(tbodyRows) > 0 {
+            tbodyRows
+          } else {
+            let allRows = el->NodeHtmlParserBinding.querySelectorAll("tr")
+            if Array.length(allRows) <= 1 {
+              []
+            } else {
+              Array.slice(allRows, ~start=1, ~end=Array.length(allRows))
+            }
+          }
+        }
+      }
+
+      let rowsResult: result<array<JSON.t>, schemaError> = rows->Array.reduce(Ok([]), (acc, rowEl) => {
+        switch acc {
+        | Error(e) => Error(e)
+        | Ok(outputRows) => {
+            let pairsResult: result<array<(string, JSON.t)>, schemaError> =
+              tableOpts.columns->Array.reduce(Ok([]), (pAcc, col) => {
+                switch pAcc {
+                | Error(e) => Error(e)
+                | Ok(pairs) => {
+                    let value: result<JSON.t, schemaError> = switch col.columnType {
+                    | ColumnList(opts) => {
+                        let allEls = rowEl->NodeHtmlParserBinding.querySelectorAll(col.selector)
+                        switch ListExtractor.extract(allEls, opts) {
+                        | Some(json) => Ok(json)
+                        | None => Ok(JSON.Encode.null)
+                        }
+                      }
+                    | _ => {
+                        let fieldType = columnTypeToFieldType(col.columnType)
+                        switch rowEl
+                        ->NodeHtmlParserBinding.querySelector(col.selector)
+                        ->Nullable.toOption {
+                        | Some(colEl) => extractValue(colEl, fieldType, defaults, ignoreErrors)
+                        | None =>
+                          if col.required && ignoreErrors == false {
+                            Error(RequiredFieldMissing({fieldName: col.name, selector: col.selector}))
+                          } else {
+                            Ok(
+                              switch col.default {
+                              | Some(d) => d
+                              | None => JSON.Encode.null
+                              },
+                            )
+                          }
+                        }
+                      }
+                    }
+                    switch value {
+                    | Error(e) =>
+                      if ignoreErrors {
+                        let fallback = switch col.default {
+                        | Some(d) => d
+                        | None => JSON.Encode.null
+                        }
+                        pairs->Array.push((col.name, fallback))
+                        Ok(pairs)
+                      } else {
+                        Error(e)
+                      }
+                    | Ok(v) => {
+                        pairs->Array.push((col.name, v))
+                        Ok(pairs)
+                      }
+                    }
+                  }
+                }
+              })
+
+            switch pairsResult {
+            | Error(e) => Error(e)
+            | Ok(pairs) => {
+                outputRows->Array.push(JSON.Encode.object(Dict.fromArray(pairs)))
+                Ok(outputRows)
+              }
+            }
+          }
+        }
+      })
+
+      switch rowsResult {
+      | Error(e) => Error(e)
+      | Ok(arr) => Ok(JSON.Encode.array(arr))
+      }
+    }
   }
 }
 
@@ -232,7 +339,8 @@ let extractValueList: (
   array<NodeHtmlParserBinding.htmlElement>,
   fieldType,
   option<schemaDefaults>,
-) => result<JSON.t, schemaError> = (els, ft, defaults) => {
+  bool,
+) => result<JSON.t, schemaError> = (els, ft, defaults, ignoreErrors) => {
   switch resolveDefaults(defaults, ft) {
   | Count(opts) =>
     switch CountExtractor.extract(els, opts) {
@@ -247,7 +355,7 @@ let extractValueList: (
   | _ =>
     // Scalar fallback: delegate to the single-element path on the first match.
     switch els[0] {
-    | Some(el) => extractValue(el, ft, defaults)
+    | Some(el) => extractValue(el, ft, defaults, ignoreErrors)
     | None => Ok(JSON.Encode.null)
     }
   }
@@ -260,9 +368,10 @@ let extractValueOrAbsent: (
   option<NodeHtmlParserBinding.htmlElement>,
   fieldType,
   option<schemaDefaults>,
-) => result<JSON.t, schemaError> = (maybeEl, ft, defaults) => {
+  bool,
+) => result<JSON.t, schemaError> = (maybeEl, ft, defaults, ignoreErrors) => {
   switch maybeEl {
-  | Some(el) => extractValue(el, ft, defaults)
+  | Some(el) => extractValue(el, ft, defaults, ignoreErrors)
   | None =>
     switch ft {
     | Boolean(opts)

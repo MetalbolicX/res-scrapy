@@ -137,6 +137,30 @@ type schemaDefaults = {
 // Field type — carries its options inline
 // ---------------------------------------------------------------------------
 
+type columnFieldType =
+  | ColumnText(option<textOptions>)
+  | ColumnAttribute(attributeConfig)
+  | ColumnHtml(option<htmlOptions>)
+  | ColumnNumber(option<numberOptions>)
+  | ColumnBoolean(option<booleanOptions>)
+  | ColumnUrl(option<urlOptions>)
+  | ColumnJson(option<jsonOptions>)
+  | ColumnDateTime(option<dateOptions>)
+  | ColumnList(listOptions)
+
+type columnField = {
+  name: string,
+  selector: string,
+  columnType: columnFieldType,
+  required: bool,
+  default?: JSON.t,
+}
+
+type tableOptions = {
+  rowSelector?: string,
+  columns: array<columnField>,
+}
+
 type fieldType =
   | Text(option<textOptions>)
   | Attribute(attributeConfig)
@@ -148,6 +172,7 @@ type fieldType =
   | Json(option<jsonOptions>)
   | DateTime(option<dateOptions>)
   | List(listOptions)
+  | Table(tableOptions)
 
 // ---------------------------------------------------------------------------
 // Field, config, and schema records

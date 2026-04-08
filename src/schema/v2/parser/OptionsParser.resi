@@ -11,3 +11,4 @@ let parseUrlOptions: {..} => option<urlOptions>
 let parseJsonOptions: {..} => option<jsonOptions>
 let parseDateOptions: {..} => option<dateOptions>
 let parseListOptions: {..} => listOptions
+let parseTableOptions: {..} => result<tableOptions, string>

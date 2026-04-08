@@ -18,6 +18,11 @@ let parseFieldType: ({..}, string) => result<fieldType, string> = (fieldJson, ty
   | "json" => Ok(Json(OptionsParser.parseJsonOptions(fieldJson)))
   | "datetime" => Ok(DateTime(OptionsParser.parseDateOptions(fieldJson)))
   | "list" => Ok(List(OptionsParser.parseListOptions(fieldJson)))
+  | "table" =>
+    switch OptionsParser.parseTableOptions(fieldJson) {
+    | Ok(opts) => Ok(Table(opts))
+    | Error(msg) => Error(msg)
+    }
   | "attribute" =>
     switch OptionsParser.parseAttributeConfig(fieldJson) {
     | Some(cfg) => Ok(Attribute(cfg))

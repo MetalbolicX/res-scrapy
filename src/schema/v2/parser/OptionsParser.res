@@ -285,3 +285,87 @@ let parseBooleanOptions: {..} => option<booleanOptions> = fieldJson => {
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// table options
+// ---------------------------------------------------------------------------
+
+let parseColumnFieldType: ({..}, string) => result<columnFieldType, string> = (columnJson, typeName) => {
+  switch typeName {
+  | "text" => Ok(ColumnText(parseTextOptions(columnJson)))
+  | "html" => Ok(ColumnHtml(parseHtmlOptions(columnJson)))
+  | "number" => Ok(ColumnNumber(parseNumberOptions(columnJson)))
+  | "boolean" | "bool" => Ok(ColumnBoolean(parseBooleanOptions(columnJson)))
+  | "url" => Ok(ColumnUrl(parseUrlOptions(columnJson)))
+  | "json" => Ok(ColumnJson(parseJsonOptions(columnJson)))
+  | "datetime" => Ok(ColumnDateTime(parseDateOptions(columnJson)))
+  | "list" => Ok(ColumnList(parseListOptions(columnJson)))
+  | "attribute" =>
+    switch parseAttributeConfig(columnJson) {
+    | Some(cfg) => Ok(ColumnAttribute(cfg))
+    | None => Error("attribute column requires an \"attribute\" or \"attributes\" key")
+    }
+  | "count" => Error("table column type \"count\" is not supported")
+  | "table" => Error("nested table columns are not supported")
+  | other => Error(`Unknown column type: "${other}"`)
+  }
+}
+
+let parseColumnField: {..} => result<columnField, string> = columnJson => {
+  switch (dictGet(columnJson, "name"), dictGet(columnJson, "selector")) {
+  | (Some(name), Some(selector)) => {
+      let rawType: string = switch dictGet(columnJson, "type") {
+      | Some(t) => t
+      | None => "text"
+      }
+      switch parseColumnFieldType(columnJson, rawType) {
+      | Error(msg) => Error(msg)
+      | Ok(columnType) => {
+          let required: bool = (dictGet(columnJson, "required"): option<bool>)->Option.getOr(false)
+          let default: option<JSON.t> = dictGet(columnJson, "default")
+          Ok({name, selector, columnType, required, ?default})
+        }
+      }
+    }
+  | (None, _) => Error("table column is missing required key \"name\"")
+  | (_, None) => Error("table column is missing required key \"selector\"")
+  }
+}
+
+let parseTableOptions: {..} => result<tableOptions, string> = fieldJson => {
+  switch dictGet(fieldJson, "tableOptions") {
+  | None => Error("table field requires a \"tableOptions\" object")
+  | Some(raw) => {
+      let rowSelector: option<string> = dictGet(raw, "rowSelector")
+      let columnsRaw: option<array<{..}>> = dictGet(raw, "columns")
+      switch columnsRaw {
+      | None => Error("table field requires \"tableOptions.columns\"")
+      | Some(cols) if Array.length(cols) == 0 =>
+        Error("table field requires at least one column in \"tableOptions.columns\"")
+      | Some(cols) => {
+          let parsedColumnsResult: result<array<columnField>, string> = cols->Array.reduce(Ok([]), (
+            acc,
+            colJson,
+          ) => {
+            switch acc {
+            | Error(e) => Error(e)
+            | Ok(parsedCols) =>
+              switch parseColumnField(colJson) {
+              | Error(e) => Error(e)
+              | Ok(col) => {
+                  parsedCols->Array.push(col)
+                  Ok(parsedCols)
+                }
+              }
+            }
+          })
+
+          switch parsedColumnsResult {
+          | Error(e) => Error(e)
+          | Ok(columns) => Ok({?rowSelector, columns})
+          }
+        }
+      }
+    }
+  }
+}

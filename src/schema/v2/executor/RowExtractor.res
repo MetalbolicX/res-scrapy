@@ -55,13 +55,23 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
                 let value: result<JSON.t, schemaError> = if isMultiElementType(field.fieldType) {
                   // Multi-element path: pass all matched elements to extractValueList.
                   let allEls = NodeHtmlParserBinding.querySelectorAll(rowEl, field.selector)
-                  ExtractorRegistry.extractValueList(allEls, field.fieldType, schema.config.defaults)
+                  ExtractorRegistry.extractValueList(
+                    allEls,
+                    field.fieldType,
+                    schema.config.defaults,
+                    schema.config.ignoreErrors,
+                  )
                 } else {
                   let maybeEl =
                     NodeHtmlParserBinding.querySelector(rowEl, field.selector)->Nullable.toOption
                   switch maybeEl {
                   | Some(el) =>
-                    ExtractorRegistry.extractValue(el, field.fieldType, schema.config.defaults)
+                    ExtractorRegistry.extractValue(
+                      el,
+                      field.fieldType,
+                      schema.config.defaults,
+                      schema.config.ignoreErrors,
+                    )
                   | None =>
                     // Boolean(Presence) → false when absent
                     let presenceFalse = switch field.fieldType {

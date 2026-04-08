@@ -57,11 +57,21 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
                   let value: result<JSON.t, schemaError> = if isMultiElementType(field.fieldType) {
                     // Aggregate path: pass the full element array; result is the
                     // same for every row (e.g., total count across the document).
-                    ExtractorRegistry.extractValueList(els, field.fieldType, schema.config.defaults)
+                    ExtractorRegistry.extractValueList(
+                      els,
+                      field.fieldType,
+                      schema.config.defaults,
+                      schema.config.ignoreErrors,
+                    )
                   } else {
                     switch Array.get(els, idx) {
                     | Some(el) =>
-                      ExtractorRegistry.extractValue(el, field.fieldType, schema.config.defaults)
+                      ExtractorRegistry.extractValue(
+                        el,
+                        field.fieldType,
+                        schema.config.defaults,
+                        schema.config.ignoreErrors,
+                      )
                     | None =>
                       if field.required && schema.config.ignoreErrors == false {
                         Error(RequiredFieldMissing({fieldName: name, selector: field.selector}))
