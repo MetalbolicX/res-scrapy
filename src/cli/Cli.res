@@ -10,6 +10,7 @@ let showHelp: unit => unit = () => {
     -e, --extract     What to extract: outerHtml (default), innerHtml, text, or attr:<name>
     -c, --schema      Specify the schema to use
     -p, --schemaPath  Specify the path to the schema
+    -t, --table       Extract a table as JSON; pair with --selector to target a specific table (defaults to "table")
   `)
   NodeJsBinding.Process.exit(0)
 }
@@ -33,6 +34,7 @@ let parse: unit => NodeJsBinding.Util.cliValues = () => {
     ("extract", {type_: "string", short: "e", default: String("outerHtml")}),
     ("schema", {type_: "string", short: "c"}),
     ("schemaPath", {type_: "string", short: "p"}),
+    ("table", {type_: "boolean", short: "t", default: Bool(false)}),
     ("help", {type_: "boolean", short: "h"}),
   ])
 

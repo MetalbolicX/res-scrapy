@@ -3,14 +3,14 @@
   "version": "0.1.0",
   "description": "A web scraper using rescript",
   "type": "module",
-  "main": "dist/main.js",
+  "main": "dist/main.mjs",
   "exports": {
     ".": {
-      "import": "./dist/main.js"
+      "import": "./dist/main.mjs"
     }
   },
   "scripts": {
-    "start": "node dist/main.js",
+    "start": "node dist/main.mjs",
     "res:build": "rescript",
     "res:dev": "rescript watch",
     "res:clean": "rescript clean",
@@ -18,7 +18,7 @@
     "build": "rolldown -c"
   },
   "bin": {
-    "res-scrapy": "dist/main.js"
+    "res-scrapy": "dist/main.mjs"
   },
   "author": {
     "name": "José Martínez Santana"

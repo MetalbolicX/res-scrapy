@@ -9,6 +9,7 @@ type extractMode =
 type schemaSource =
   | InlineJson(string)
   | FilePath(string)
+  | TableSelector(string)
 
 type parseOptions = {
   selector: string,

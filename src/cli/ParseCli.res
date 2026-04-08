@@ -12,6 +12,10 @@ type schemaSource =
   | InlineJson(string)
   /** Path to a `.json` file passed via `--schemaPath/-p`. */
   | FilePath(string)
+  /** CSS selector pointing to a `<table>` element.
+    * Set via `--table/-t` (boolean); the selector value comes from `--selector/-s`,
+    * defaulting to `"table"` when `--selector` is absent. */
+  | TableSelector(string)
 
 /**
   * Validated, fully-typed options produced by `runArgsValidation`.
@@ -21,6 +25,7 @@ type schemaSource =
   * - `mode`         — `Single` (first match) or `Multiple` (all matches).
   * - `schemaSource` — optional structured-extraction descriptor; takes precedence
   *                    over `selector`/`mode`/`extractText` when present.
+  *                    `TableSelector` triggers table extraction.
  */
 type parseOptions = {
   selector: string,
@@ -50,11 +55,25 @@ let runArgsValidation: NodeJsBinding.Util.cliValues => result<
   parseOptions,
   parseError,
 > = values => {
-  // Resolve schema source first — it supersedes selector/mode/text flags
-  let schemaSource: option<schemaSource> = switch (values.schema, values.schemaPath) {
-  | (Some(s), _) if s != "" => Some(InlineJson(s))
-  | (_, Some(p)) if p != "" => Some(FilePath(p))
+  // `--table/-t` takes precedence over schema and selector flags.
+  // When set, use --selector as the table CSS selector (defaulting to "table").
+  let tableSource: option<schemaSource> = switch values.table {
+  | Some(true) => {
+      let sel = values.selector->Option.getOr("table")
+      Some(TableSelector(sel == "" ? "table" : sel))
+    }
   | _ => None
+  }
+
+  // Resolve schema source — only consulted when --table is absent
+  let schemaSource: option<schemaSource> = switch tableSource {
+  | Some(_) as t => t
+  | None =>
+    switch (values.schema, values.schemaPath) {
+    | (Some(s), _) if s != "" => Some(InlineJson(s))
+    | (_, Some(p)) if p != "" => Some(FilePath(p))
+    | _ => None
+    }
   }
 
   // When a schema is provided, --selector is not required

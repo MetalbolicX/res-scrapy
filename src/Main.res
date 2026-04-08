@@ -4,9 +4,11 @@
   * Flow:
   * 1. Parse and validate CLI flags via `Cli` and `ParseCli`.
   * 2. Read HTML from stdin via `StdIn`.
-  * 3a. When `--schema`/`--schemaPath` is provided: load and apply the schema via
+  * 3a. When `--table`/`-t` is provided: extract the matching `<table>` as a JSON
+  *     array of row objects via `TableExtractor`.
+  * 3b. When `--schema`/`--schemaPath` is provided: load and apply the schema via
   *     `Schema`, outputting a JSON array of row objects.
-  * 3b. Otherwise: extract elements matching `--selector` in `--mode single|multiple`,
+  * 3c. Otherwise: extract elements matching `--selector` in `--mode single|multiple`,
   *     returning text content or outer HTML per `--text`.
   * 4. Write the JSON result to stdout; exit with code 1 on any error.
  */
@@ -36,12 +38,24 @@ let main: unit => promise<unit> = async () => {
           let document = NodeHtmlParserBinding.parse(html)
           switch options.schemaSource {
           // -----------------------------------------------------------------
+          // Table extraction  (--table / -t)
+          // -----------------------------------------------------------------
+          | Some(TableSelector(selector)) =>
+            switch TableExtractor.extract(document, selector) {
+            | Error(msg) => {
+                Console.error(msg)
+                NodeJsBinding.Process.exit(1)
+              }
+            | Ok(rows) => Console.log(NodeJsBinding.jsonStringify(rows))
+            }
+          // -----------------------------------------------------------------
           // Schema-driven structured extraction
           // -----------------------------------------------------------------
           | Some(schemaSource) => {
               let schemaResult = switch schemaSource {
               | InlineJson(raw) => Schema.loadSchema(~isInline=true, raw)
               | FilePath(path) => Schema.loadSchema(~isInline=false, path)
+              | TableSelector(_) => Error(ExtractionError("Unreachable: TableSelector handled above"))
               }
               switch schemaResult {
               | Error(InvalidJson(msg))

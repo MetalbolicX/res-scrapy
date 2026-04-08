@@ -84,6 +84,7 @@ module Util = {
     extract?: string,
     schema?: string,
     schemaPath?: string,
+    table?: bool,
   }
 
   /**
