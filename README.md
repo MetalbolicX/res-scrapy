@@ -29,6 +29,12 @@ cd res-scrapy
 pnpm install
 ```
 
+Compile the ReScript sources:
+
+```sh
+pnpm run res:build
+```
+
 During development you can watch ReScript sources:
 
 ```sh
