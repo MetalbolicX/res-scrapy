@@ -38,7 +38,7 @@ pnpm run res:dev
 ```
 
 The package exposes a `bin` entry (`res-scrapy`) and the built CLI is
-`dist/main.js`.
+`dist/main.mjs`.
 
 ## Usage
 
@@ -55,6 +55,7 @@ Usage: res-scrapy command [options]
   -e, --extract     What to extract: outerHtml (default), innerHtml, text, or attr:<name>
   -c, --schema      Specify the schema to use
   -p, --schemaPath  Specify the path to the schema
+  -t, --table       Extract a table as JSON: pair with --selector to target a specific table (default to "table")
 ```
 
 ### Examples:
