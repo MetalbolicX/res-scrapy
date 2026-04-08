@@ -84,6 +84,8 @@ tool attempts structured extraction according to the schema.
 
 **Schema format:**
 
+## TODO: Add more details about schema configuration options (e.g. `trueValue` for boolean fields, `default` values, etc.)
+
 ```json
 {
   "name": "Schema name (optional)",
