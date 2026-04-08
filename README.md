@@ -2,9 +2,7 @@
 
 > HTML CLI Scraper that extracts the content you need.
 
-Command-line HTML scraper written in ReScript. Reads HTML from stdin and
-outputs JSON to stdout. Designed to be simple, scriptable and useful for
-small scraping tasks and structured extraction via JSON schemas.
+Command-line HTML scraper written in ReScript offers a flexible configuration for extracting content from HTML documents using CSS selectors. It supports both single and multiple results, as well as schema-driven structured extraction for more specific data needs.
 
 **Supported Versions:**
 
