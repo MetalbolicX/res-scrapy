@@ -30,7 +30,10 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
   ))
 
   // Row count is driven by the first non-aggregate field's element count.
-  // Aggregate fields (Count) produce a single value per output row regardless.
+  // Aggregate fields (Count/List) produce a single value per output row regardless.
+  // Edge case: if all fields are aggregate and rowSelector is not set, rowCount
+  // is 0 and the output is an empty array. Use rowSelector to enable row-based
+  // extraction in that scenario.
   let rowCount = switch fieldLists->Array.find(((_, field, _)) =>
     !isMultiElementType(field.fieldType)
   ) {

@@ -1,21 +1,9 @@
 /** Parse the top-level `config` block of a schema JSON. */
 open FieldTypes
-
-@get_index external dictGet: ({..}, string) => option<'a> = ""
+open JsonUtils
+open OptionsParser
 
 let defaultConfig: schemaConfig = {ignoreErrors: false, limit: 0}
-
-let parseErrorPolicy: string => errorPolicy = s => switch s {
-| "returnText" => ReturnText
-| "returnDefault" => ReturnDefault
-| _ => ReturnNull
-}
-
-let parseBooleanUnknownPolicy: string => booleanUnknownPolicy = s => switch s {
-| "null" => UnknownNull
-| "error" => UnknownError
-| _ => UnknownFalse
-}
 
 let parseTextDefaults: {..} => textOptions = raw => {
   let trim = dictGet(raw, "trim")

@@ -89,17 +89,42 @@ let runArgsValidation: NodeJsBinding.Util.cliValues => result<
   switch selectorResult {
   | Error(e) => Error(e)
   | Ok(selector) => {
-      let extract: extractMode = switch values.extract->Option.getOr("outerHtml") {
-      | "outerHtml" => OuterHtml
-      | "innerHtml" => InnerHtml
-      | "text" => Text
-      | s if String.startsWith(s, "attr:") =>
-        Attribute(String.slice(s, ~start=5, ~end=String.length(s)))
-      | _ => OuterHtml
+      let extractResult: result<extractMode, parseError> = switch values.extract->Option.getOr(
+        "outerHtml",
+      ) {
+      | "outerHtml" => Ok(OuterHtml)
+      | "innerHtml" => Ok(InnerHtml)
+      | "text" => Ok(Text)
+      | s if String.startsWith(s, "attr:") => {
+          let attr = String.slice(s, ~start=5, ~end=String.length(s))
+          if attr == "" {
+            Error(
+              ParseError({
+                message: "Invalid --extract value \"attr:\". Expected format: attr:<name>",
+                details: None,
+              }),
+            )
+          } else {
+            Ok(Attribute(attr))
+          }
+        }
+      | s =>
+        Error(
+          ParseError({
+            message:
+              `Invalid --extract value "${s}". Valid values are: outerHtml, innerHtml, text, attr:<name>`,
+            details: None,
+          }),
+        )
       }
-      let modeFromBoolValue = values.mode->Option.getOr(false)
-      let mode = modeFromBool(modeFromBoolValue)
-      Ok({selector, extract, mode, ?schemaSource})
+      switch extractResult {
+      | Error(e) => Error(e)
+      | Ok(extract) => {
+          let modeFromBoolValue = values.mode->Option.getOr(false)
+          let mode = modeFromBool(modeFromBoolValue)
+          Ok({selector, extract, mode, ?schemaSource})
+        }
+      }
     }
   }
 }

@@ -64,38 +64,17 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
                 } else {
                   let maybeEl =
                     NodeHtmlParserBinding.querySelector(rowEl, field.selector)->Nullable.toOption
-                  switch maybeEl {
-                  | Some(el) =>
-                    ExtractorRegistry.extractValue(
-                      el,
-                      field.fieldType,
-                      schema.config.defaults,
-                      schema.config.ignoreErrors,
-                    )
-                  | None =>
-                    // Boolean(Presence) → false when absent
-                    let presenceFalse = switch field.fieldType {
-                  | Boolean(opts) =>
-                    switch opts {
-                    | Some({mode: Presence}) => true
-                    | _ => false
-                    }
-                  | _ => false
-                  }
-                    if presenceFalse {
-                      Ok(JSON.Encode.bool(false))
-                    } else if field.required && schema.config.ignoreErrors == false {
-                      Error(RequiredFieldMissing({fieldName: name, selector: field.selector}))
-                    } else {
-                      Ok(
-                        switch field.default {
-                        | Some(d) => d
-                        | None => JSON.Encode.null
-                        },
-                      )
-                    }
+                  ExtractorRegistry.extractValueOrAbsent(
+                    maybeEl,
+                    field.fieldType,
+                    field.default,
+                    field.required,
+                    name,
+                    field.selector,
+                    schema.config.defaults,
+                    schema.config.ignoreErrors,
+                  )
                 }
-              }
               switch value {
               | Error(e) => Error(e)
               | Ok(v) => {

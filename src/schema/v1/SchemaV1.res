@@ -80,7 +80,8 @@ type schemaError =
 // immediately after, so the coercions are safe in practice.
 // ---------------------------------------------------------------------------
 
-@get_index external dictGet: ({..}, string) => option<'a> = ""
+open JsonUtils
+
 @val external toFloat: string => float = "parseFloat"
 @val external isNaN: float => bool = "isNaN"
 @val @scope("Array") external isArray: 'a => bool = "isArray"

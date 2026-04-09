@@ -3,8 +3,7 @@
   * or returns a `schemaError`.
   */
 open FieldTypes
-
-@get_index external dictGet: ({..}, string) => option<'a> = ""
+open JsonUtils
 
 /** Normalise the `fields` value to an object, supporting both:
   * - Object format: `{"title": {"selector": ".title"}, ...}` (v2 preferred)

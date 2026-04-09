@@ -3,8 +3,7 @@
   */
 
 open FieldTypes
-
-@get_index external dictGet: ({..}, string) => option<'a> = ""
+open JsonUtils
 
 /** Map the `type` string + field JSON  → fieldType variant. */
 let parseFieldType: ({..}, string) => result<fieldType, string> = (fieldJson, typeName) => {

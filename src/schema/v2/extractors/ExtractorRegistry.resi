@@ -15,6 +15,10 @@ let extractValueList: (
 let extractValueOrAbsent: (
   option<NodeHtmlParserBinding.htmlElement>,
   fieldType,
+  option<JSON.t>,
+  bool,
+  string,
+  string,
   option<schemaDefaults>,
   bool,
 ) => result<JSON.t, schemaError>

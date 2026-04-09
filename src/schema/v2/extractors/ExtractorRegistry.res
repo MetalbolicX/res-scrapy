@@ -435,9 +435,22 @@ let extractValueList: (
 let extractValueOrAbsent: (
   option<NodeHtmlParserBinding.htmlElement>,
   fieldType,
+  option<JSON.t>,
+  bool,
+  string,
+  string,
   option<schemaDefaults>,
   bool,
-) => result<JSON.t, schemaError> = (maybeEl, ft, defaults, ignoreErrors) => {
+) => result<JSON.t, schemaError> = (
+  maybeEl,
+  ft,
+  defaultValue,
+  required,
+  fieldName,
+  selector,
+  defaults,
+  ignoreErrors,
+) => {
   switch maybeEl {
   | Some(el) => extractValue(el, ft, defaults, ignoreErrors)
   | None =>
@@ -448,7 +461,15 @@ let extractValueOrAbsent: (
       | _ => false
       } =>
       Ok(JSON.Encode.bool(false))
-    | _ => Ok(JSON.Encode.null)
+    | _ =>
+      if required && ignoreErrors == false {
+        Error(RequiredFieldMissing({fieldName, selector}))
+      } else {
+        Ok(switch defaultValue {
+        | Some(d) => d
+        | None => JSON.Encode.null
+        })
+      }
     }
   }
 }

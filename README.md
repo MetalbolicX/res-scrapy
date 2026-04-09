@@ -82,6 +82,10 @@ curl -s 'https://example.com' | res-scrapy -s 'a.article-link' -m -e 'attr:href'
 When `--schema` (inline JSON) or `--schemaPath` (file) is provided, the
 tool attempts structured extraction according to the schema.
 
+Note: in zip mode (no `config.rowSelector`), if every field is aggregate-only
+(`count`/`list`), no rows can be produced and the output is `[]`. Use
+`config.rowSelector` for row-based extraction in that case.
+
 **Schema format:**
 
 ```json

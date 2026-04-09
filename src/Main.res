@@ -9,7 +9,7 @@
   * 3b. When `--schema`/`--schemaPath` is provided: load and apply the schema via
   *     `Schema`, outputting a JSON array of row objects.
   * 3c. Otherwise: extract elements matching `--selector` in `--mode single|multiple`,
-  *     returning text content or outer HTML per `--text`.
+  *     returning output per `--extract`.
   * 4. Write the JSON result to stdout; exit with code 1 on any error.
  */
 let main: unit => promise<unit> = async () => {
@@ -71,7 +71,22 @@ let main: unit => promise<unit> = async () => {
                   Console.error(`Invalid field type "${got}" for field "${field}"`)
                   NodeJsBinding.Process.exit(1)
                 }
-              | Ok(schema) =>
+              | Ok(schema) => {
+                let hasOnlyAggregateFields = schema.fields->Array.every(((_, field)) =>
+                  switch field.fieldType {
+                  | Count(_) | List(_) => true
+                  | _ => false
+                  }
+                )
+                let isZipMode = switch schema.config.rowSelector {
+                | None => true
+                | Some(_) => false
+                }
+                if isZipMode && hasOnlyAggregateFields {
+                  Console.error(
+                    "Warning: schema uses zip mode (no config.rowSelector) with only aggregate fields (count/list), so no rows can be produced. Add config.rowSelector for row-based extraction.",
+                  )
+                }
                 switch Schema.applySchema(document, schema) {
                 | Error(RequiredFieldMissing({fieldName, selector})) => {
                     Console.error(
@@ -91,11 +106,12 @@ let main: unit => promise<unit> = async () => {
                     NodeJsBinding.Process.exit(1)
                   }
                 | Error(InvalidFieldType({field, got})) => {
-                    Console.error(`Invalid field type "${got}" for field "${field}"`)
-                    NodeJsBinding.Process.exit(1)
+                  Console.error(`Invalid field type "${got}" for field "${field}"`)
+                  NodeJsBinding.Process.exit(1)
                   }
                 | Ok(json) => Console.log(NodeJsBinding.jsonStringify(json))
                 }
+              }
               }
             }
           // -----------------------------------------------------------------

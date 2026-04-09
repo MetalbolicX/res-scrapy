@@ -1,9 +1,10 @@
 open FieldTypes
 
-let dictGet: ({..}, string) => option<'a>
 let parseTextOptions: {..} => option<textOptions>
 let parseHtmlOptions: {..} => option<htmlOptions>
 let parseAttributeConfig: {..} => option<attributeConfig>
+let parseErrorPolicy: string => errorPolicy
+let parseBooleanUnknownPolicy: string => booleanUnknownPolicy
 let parseNumberOptions: {..} => option<numberOptions>
 let parseBooleanOptions: {..} => option<booleanOptions>
 let parseCountOptions: {..} => option<countOptions>
