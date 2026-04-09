@@ -124,23 +124,19 @@ const buildRegexFromFormat = (fmt) => {
   );
   let remaining = fmt;
   let regexStr = "";
-  const groups = [];
+  let groups = [];
 
   while (remaining.length > 0) {
-    let matched = false;
-    for (const t of TOKENS) {
-      if (remaining.startsWith(t.token)) {
-        regexStr += t.regex;
-        groups.push(t.group);
-        remaining = remaining.slice(t.token.length);
-        matched = true;
-        break;
-      }
+    const t = TOKENS.find(({ token }) => remaining.startsWith(token));
+    if (t) {
+      regexStr += t.regex;
+      groups = [...groups, t.group];
+      remaining = remaining.slice(t.token.length);
+      continue;
     }
-    if (!matched) {
-      regexStr += escapeRegexChar(remaining[0]);
-      remaining = remaining.slice(1);
-    }
+
+    regexStr += escapeRegexChar(remaining[0]);
+    remaining = remaining.slice(1);
   }
 
   try {
