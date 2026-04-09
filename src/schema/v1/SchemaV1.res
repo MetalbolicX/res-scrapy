@@ -1,3 +1,5 @@
+@@deprecated("Schema v1 is deprecated. Use schema v2 via Schema/SchemaV2 modules instead.")
+
 /** Supported extraction types for a schema field.
   *
   * - `Text`      — `.textContent` of the matched element.

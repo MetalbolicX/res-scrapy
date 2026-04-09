@@ -21,9 +21,10 @@ let showHelp: unit => unit = () => {
   * The expected arguments are:
   * --selector/-s: a required string argument specifying the CSS selector to use for scraping
   * --mode/-m: an optional boolean flag indicating whether to extract multiple results (false by default for single result)
-  * --text/-t: an optional boolean flag indicating whether to extract text content instead of outer HTML, defaulting to false
+  * --extract/-e: an optional string argument indicating what to extract (outerHtml, innerHtml, text, attr:<name>)
   * --schema/-c: an optional string argument specifying the schema to use for validation
   * --schemaPath/-p: an optional string argument specifying the path to the schema file
+  * --table/-t: an optional boolean flag to extract a table as JSON (uses --selector, defaults to "table")
   * The function returns an object containing the parsed values for these arguments, which can then be validated and used in the main logic of the application
  */
 let parse: unit => NodeJsBinding.Util.cliValues = () => {

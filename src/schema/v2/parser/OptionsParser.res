@@ -209,8 +209,8 @@ let parseDateOptions: {..} => option<dateOptions> = fieldJson => {
 // ---------------------------------------------------------------------------
 
 let parseListItemType: string => listItemType = s => {
-  if String.startsWith(s, "attribute:") {
-    let attrName = String.slice(s, ~start=10, ~end=String.length(s))
+  if String.startsWith(s, "attr:") {
+    let attrName = String.slice(s, ~start=5, ~end=String.length(s))
     ListAttribute(attrName)
   } else {
     switch s {

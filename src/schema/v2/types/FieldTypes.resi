@@ -127,8 +127,11 @@ type listOptions = {
 
 type schemaDefaults = {
   text?: textOptions,
+  html?: htmlOptions,
   number?: numberOptions,
   boolean?: booleanOptions,
+  count?: countOptions,
+  json?: jsonOptions,
   datetime?: dateOptions,
   url?: urlOptions,
 }

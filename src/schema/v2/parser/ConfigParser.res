@@ -27,6 +27,17 @@ let parseTextDefaults: {..} => textOptions = raw => {
   {?trim, ?normalizeWhitespace, ?lowercase, ?uppercase, ?pattern, ?join}
 }
 
+let parseHtmlDefaults: {..} => htmlOptions = raw => {
+  let mode = switch dictGet(raw, "mode") {
+  | Some("outer") => Some(Outer)
+  | Some("inner") => Some(Inner)
+  | Some(_) | None => None
+  }
+  let stripScripts = dictGet(raw, "stripScripts")
+  let stripStyles = dictGet(raw, "stripStyles")
+  {?mode, ?stripScripts, ?stripStyles}
+}
+
 let parseNumberDefaults: {..} => numberOptions = raw => {
   let stripNonNumeric = dictGet(raw, "stripNonNumeric")
   let pattern = dictGet(raw, "pattern")
@@ -92,12 +103,33 @@ let parseUrlDefaults: {..} => urlOptions = raw => {
   {?base, ?resolve, ?validate, ?protocol, ?stripQuery, ?stripHash, ?attribute}
 }
 
+let parseCountDefaults: {..} => countOptions = raw => {
+  let min = dictGet(raw, "min")
+  let max = dictGet(raw, "max")
+  {?min, ?max}
+}
+
+let parseJsonDefaults: {..} => jsonOptions = raw => {
+  let source = dictGet(raw, "source")
+  let attribute = dictGet(raw, "attribute")
+  let path = dictGet(raw, "path")
+  let onError = switch dictGet(raw, "onError") {
+  | Some(s) => Some(parseErrorPolicy(s))
+  | None => None
+  }
+  {?source, ?attribute, ?path, ?onError}
+}
+
 let parseDefaults: {..} => option<schemaDefaults> = schemaJson => {
   switch dictGet(schemaJson, "defaults") {
   | None => None
   | Some(raw) => {
       let text = switch dictGet(raw, "text") {
       | Some(textRaw) => Some(parseTextDefaults(textRaw))
+      | None => None
+      }
+      let html = switch dictGet(raw, "html") {
+      | Some(htmlRaw) => Some(parseHtmlDefaults(htmlRaw))
       | None => None
       }
       let number = switch dictGet(raw, "number") {
@@ -108,6 +140,14 @@ let parseDefaults: {..} => option<schemaDefaults> = schemaJson => {
       | Some(booleanRaw) => Some(parseBooleanDefaults(booleanRaw))
       | None => None
       }
+      let count = switch dictGet(raw, "count") {
+      | Some(countRaw) => Some(parseCountDefaults(countRaw))
+      | None => None
+      }
+      let json = switch dictGet(raw, "json") {
+      | Some(jsonRaw) => Some(parseJsonDefaults(jsonRaw))
+      | None => None
+      }
       let datetime = switch dictGet(raw, "datetime") {
       | Some(dateRaw) => Some(parseDateDefaults(dateRaw))
       | None => None
@@ -116,7 +156,7 @@ let parseDefaults: {..} => option<schemaDefaults> = schemaJson => {
       | Some(urlRaw) => Some(parseUrlDefaults(urlRaw))
       | None => None
       }
-      Some({?text, ?number, ?boolean, ?datetime, ?url})
+      Some({?text, ?html, ?number, ?boolean, ?count, ?json, ?datetime, ?url})
     }
   }
 }

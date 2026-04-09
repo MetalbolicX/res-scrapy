@@ -46,6 +46,21 @@ let mergeTextOptions = (fieldOpts: option<textOptions>, defaultOpts: option<text
     }
   }
 
+let mergeHtmlOptions = (fieldOpts: option<htmlOptions>, defaultOpts: option<htmlOptions>) =>
+  switch defaultOpts {
+  | None => fieldOpts
+  | Some(def) =>
+    switch fieldOpts {
+    | None => Some(def)
+    | Some(opts) =>
+      Some({
+        mode: ?pickOption(opts.mode, def.mode),
+        stripScripts: ?pickOption(opts.stripScripts, def.stripScripts),
+        stripStyles: ?pickOption(opts.stripStyles, def.stripStyles),
+      })
+    }
+  }
+
 let mergeNumberOptions = (fieldOpts: option<numberOptions>, defaultOpts: option<numberOptions>) =>
   switch defaultOpts {
   | None => fieldOpts
@@ -82,6 +97,16 @@ let mergeBooleanOptions = (
         attribute: ?pickOption(opts.attribute, def.attribute),
         onUnknown: ?pickOption(opts.onUnknown, def.onUnknown),
       })
+    }
+  }
+
+let mergeCountOptions = (fieldOpts: option<countOptions>, defaultOpts: option<countOptions>) =>
+  switch defaultOpts {
+  | None => fieldOpts
+  | Some(def) =>
+    switch fieldOpts {
+    | None => Some(def)
+    | Some(opts) => Some({min: ?pickOption(opts.min, def.min), max: ?pickOption(opts.max, def.max)})
     }
   }
 
@@ -122,6 +147,22 @@ let mergeUrlOptions = (fieldOpts: option<urlOptions>, defaultOpts: option<urlOpt
     }
   }
 
+let mergeJsonOptions = (fieldOpts: option<jsonOptions>, defaultOpts: option<jsonOptions>) =>
+  switch defaultOpts {
+  | None => fieldOpts
+  | Some(def) =>
+    switch fieldOpts {
+    | None => Some(def)
+    | Some(opts) =>
+      Some({
+        source: ?pickOption(opts.source, def.source),
+        attribute: ?pickOption(opts.attribute, def.attribute),
+        path: ?pickOption(opts.path, def.path),
+        onError: ?pickOption(opts.onError, def.onError),
+      })
+    }
+  }
+
 let resolveDefaults = (defaults: option<schemaDefaults>, fieldType: fieldType): fieldType =>
   switch fieldType {
   | Text(opts) =>
@@ -135,7 +176,16 @@ let resolveDefaults = (defaults: option<schemaDefaults>, fieldType: fieldType): 
       ),
     )
   | Attribute(cfg) => Attribute(cfg)
-  | Html(opts) => Html(opts)
+  | Html(opts) =>
+    Html(
+      mergeHtmlOptions(
+        opts,
+        switch defaults {
+        | Some(d) => d.html
+        | None => None
+        },
+      ),
+    )
   | Number(opts) =>
     Number(
       mergeNumberOptions(
@@ -156,7 +206,16 @@ let resolveDefaults = (defaults: option<schemaDefaults>, fieldType: fieldType): 
         },
       ),
     )
-  | Count(opts) => Count(opts)
+  | Count(opts) =>
+    Count(
+      mergeCountOptions(
+        opts,
+        switch defaults {
+        | Some(d) => d.count
+        | None => None
+        },
+      ),
+    )
   | Url(opts) =>
     Url(
       mergeUrlOptions(
@@ -167,7 +226,16 @@ let resolveDefaults = (defaults: option<schemaDefaults>, fieldType: fieldType): 
         },
       ),
     )
-  | Json(opts) => Json(opts)
+  | Json(opts) =>
+    Json(
+      mergeJsonOptions(
+        opts,
+        switch defaults {
+        | Some(d) => d.json
+        | None => None
+        },
+      ),
+    )
   | DateTime(opts) =>
     DateTime(
       mergeDateOptions(
