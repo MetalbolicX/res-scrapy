@@ -140,8 +140,10 @@ const getTzComponents = (d, tz) => {
     timeZoneName: "shortOffset",
   });
 
-  const parts = {};
-  for (const p of fmt.formatToParts(d)) parts[p.type] = p.value;
+  const parts = fmt.formatToParts(d).reduce((acc, p) => {
+    acc[p.type] = p.value;
+    return acc;
+  }, {});
 
   let hour = parseInt(parts.hour, 10);
   if (hour === 24) hour = 0;
@@ -164,10 +166,8 @@ const getTzComponents = (d, tz) => {
  * @param {string} [tz] - Optional IANA timezone identifier. If omitted or equal to "UTC", UTC components are returned.
  * @returns {Object} An object containing individual date/time components (e.g. year, month, day, hour, minute, second, millisecond). The exact shape may vary depending on whether UTC or timezone-specific helpers are used.
  */
-const getComponents = (d, tz) => {
-  if (!tz || tz === "UTC") return getUtcComponents(d);
-  return getTzComponents(d, tz);
-};
+const getComponents = (d, tz) =>
+  !tz || tz === "UTC" ? getUtcComponents(d) : getTzComponents(d, tz);
 
 /**
  * Convert a timezone offset in minutes to an RFC-3339 style timezone string.

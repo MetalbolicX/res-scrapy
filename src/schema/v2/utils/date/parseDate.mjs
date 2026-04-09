@@ -181,11 +181,8 @@ const escapeRegexChar = (ch) => ch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * mapMatchToGroups(groups, matchArray); // returns { year: "2024", month: "06" }
  * ```
  */
-const mapMatchToGroups = (groups, matchArray) => {
-  const vals = {};
-  for (let i = 0; i < groups.length; i++) vals[groups[i]] = matchArray[i + 1];
-  return vals;
-};
+const mapMatchToGroups = (groups, matchArray) =>
+  groups.reduce((acc, g, i) => ((acc[g] = matchArray[i + 1]), acc), {});
 
 /**
  * Parses a value as a base-10 integer.
