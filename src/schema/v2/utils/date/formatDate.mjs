@@ -32,17 +32,17 @@ const MONTHS_ABBR = [
 /**
  * Return a two-character string for the given value, padding with a leading zero if necessary.
  *
- * @param {number|string} n - The value to format.
+ * @param {number|string} value - The value to format.
  * @returns {string} The value converted to a string and left-padded with '0' to at least two characters.
  */
-const pad2 = (n) => String(n).padStart(2, "0");
+const padToTwoDigits = (value) => String(value).padStart(2, "0");
 /**
  * Pads a value to at least four characters with leading zeros.
  *
- * @param {number|string} n - The value to pad; will be converted to a string.
+ * @param {number|string} value - The value to pad; will be converted to a string.
  * @returns {string} The input as a string left-padded with zeros to a minimum length of 4.
  */
-const pad4 = (n) => String(n).padStart(4, "0");
+const padToFourDigits = (value) => String(value).padStart(4, "0");
 
 /**
  * Parses a timezone name in the "GMT±HH" or "GMT±HH:MM" form and returns the offset in minutes.
@@ -57,25 +57,25 @@ const pad4 = (n) => String(n).padStart(4, "0");
  *
  * @example
  * ```JavaScript
- * parseOffsetFromTimeZoneName('GMT+2');       // returns 120
- * parseOffsetFromTimeZoneName('GMT-05:30');   // returns -330
- * parseOffsetFromTimeZoneName(null);          // returns 0
+ * parseTimeZoneOffsetMinutes('GMT+2');       // returns 120
+ * parseTimeZoneOffsetMinutes('GMT-05:30');   // returns -330
+ * parseTimeZoneOffsetMinutes(null);          // returns 0
  * ```
  */
-const parseOffsetFromTimeZoneName = (timeZoneName) => {
+const parseTimeZoneOffsetMinutes = (timeZoneName) => {
   if (!timeZoneName) return 0;
-  const m = timeZoneName.match(/GMT([+-])(\d+)(?::(\d+))?/);
-  if (!m) return 0;
-  const sign = m[1] === "+" ? 1 : -1;
-  const hours = parseInt(m[2], 10) || 0;
-  const mins = parseInt(m[3] || "0", 10);
-  return sign * (hours * 60 + mins);
+  const match = timeZoneName.match(/GMT([+-])(\d+)(?::(\d+))?/);
+  if (!match) return 0;
+  const sign = match[1] === "+" ? 1 : -1;
+  const hours = parseInt(match[2], 10) || 0;
+  const minutes = parseInt(match[3] || "0", 10);
+  return sign * (hours * 60 + minutes);
 };
 
 /**
  * Extract UTC date/time components from a Date object.
  *
- * @param {Date} d - The Date instance to read UTC values from.
+ * @param {Date} date - The Date instance to read UTC values from.
  * @returns {{year: number, month: number, day: number, hour: number, min: number, sec: number, offset: number}}
  *   An object containing:
  *   - year: full UTC year (e.g., 2026)
@@ -86,21 +86,21 @@ const parseOffsetFromTimeZoneName = (timeZoneName) => {
  *   - sec: UTC seconds (0-59)
  *   - offset: timezone offset in hours relative to UTC (always 0 for UTC components)
  */
-const getUtcComponents = (d) => ({
-  year: d.getUTCFullYear(),
-  month: d.getUTCMonth(),
-  day: d.getUTCDate(),
-  hour: d.getUTCHours(),
-  min: d.getUTCMinutes(),
-  sec: d.getUTCSeconds(),
+const getUtcDateComponents = (date) => ({
+  year: date.getUTCFullYear(),
+  month: date.getUTCMonth(),
+  day: date.getUTCDate(),
+  hour: date.getUTCHours(),
+  min: date.getUTCMinutes(),
+  sec: date.getUTCSeconds(),
   offset: 0,
 });
 
 /**
  * Get numeric date/time components for a Date in a specific IANA timezone.
  *
- * @param {Date} d - The Date instance to format.
- * @param {string} tz - IANA timezone identifier (e.g. "America/New_York").
+ * @param {Date} date - The Date instance to format.
+ * @param {string} timeZone - IANA timezone identifier (e.g. "America/New_York").
  * @returns {{
  *   year: number,
  *   month: number, // zero-based (0 = January)
@@ -114,7 +114,7 @@ const getUtcComponents = (d) => ({
  * @example
  * ```JavaScript
  * const date = new Date('2024-06-01T12:00:00Z');
- * getTzComponents(date, 'America/New_York');
+ * getTimeZoneDateComponents(date, 'America/New_York');
  * // Might return:
  * // {
  * //   year: 2024,
@@ -127,9 +127,9 @@ const getUtcComponents = (d) => ({
  * // }
  * ```
  */
-const getTzComponents = (d, tz) => {
-  const fmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: tz,
+const getTimeZoneDateComponents = (date, timeZone) => {
+  const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -140,34 +140,38 @@ const getTzComponents = (d, tz) => {
     timeZoneName: "shortOffset",
   });
 
-  const parts = fmt.formatToParts(d).reduce((acc, p) => {
-    acc[p.type] = p.value;
-    return acc;
-  }, {});
+  const dateParts = dateTimeFormatter
+    .formatToParts(date)
+    .reduce((accumulator, part) => {
+      accumulator[part.type] = part.value;
+      return accumulator;
+    }, {});
 
-  let hour = parseInt(parts.hour, 10);
+  let hour = parseInt(dateParts.hour, 10);
   if (hour === 24) hour = 0;
 
   return {
-    year: parseInt(parts.year, 10),
-    month: parseInt(parts.month, 10) - 1,
-    day: parseInt(parts.day, 10),
+    year: parseInt(dateParts.year, 10),
+    month: parseInt(dateParts.month, 10) - 1,
+    day: parseInt(dateParts.day, 10),
     hour,
-    min: parseInt(parts.minute, 10),
-    sec: parseInt(parts.second, 10),
-    offset: parseOffsetFromTimeZoneName(parts.timeZoneName || ""),
+    min: parseInt(dateParts.minute, 10),
+    sec: parseInt(dateParts.second, 10),
+    offset: parseTimeZoneOffsetMinutes(dateParts.timeZoneName || ""),
   };
 };
 
 /**
  * Get date/time components for a given Date either in UTC or a specified timezone.
  *
- * @param {Date} d - The Date object to extract components from.
- * @param {string} [tz] - Optional IANA timezone identifier. If omitted or equal to "UTC", UTC components are returned.
+ * @param {Date} date - The Date object to extract components from.
+ * @param {string} [timeZone] - Optional IANA timezone identifier. If omitted or equal to "UTC", UTC components are returned.
  * @returns {Object} An object containing individual date/time components (e.g. year, month, day, hour, minute, second, millisecond). The exact shape may vary depending on whether UTC or timezone-specific helpers are used.
  */
-const getComponents = (d, tz) =>
-  !tz || tz === "UTC" ? getUtcComponents(d) : getTzComponents(d, tz);
+const getDateComponents = (date, timeZone) =>
+  !timeZone || timeZone === "UTC"
+    ? getUtcDateComponents(date)
+    : getTimeZoneDateComponents(date, timeZone);
 
 /**
  * Convert a timezone offset in minutes to an RFC-3339 style timezone string.
@@ -177,16 +181,16 @@ const getComponents = (d, tz) =>
  * @returns {string} "Z" for zero offset, otherwise a string in the form "+HH:MM" or "-HH:MM".
  * @example
  * ```JavaScript
- * offsetToStr(0);    // returns "Z"
- * offsetToStr(120);  // returns "+02:00"
- * offsetToStr(-330); // returns "-05:30"
+ * formatTimeZoneOffset(0);    // returns "Z"
+ * formatTimeZoneOffset(120);  // returns "+02:00"
+ * formatTimeZoneOffset(-330); // returns "-05:30"
  * ```
  */
-const offsetToStr = (offsetMin) => {
-  if (offsetMin === 0) return "Z";
-  const sign = offsetMin > 0 ? "+" : "-";
-  const abs = Math.abs(offsetMin);
-  return `${sign}${pad2(Math.floor(abs / 60))}:${pad2(abs % 60)}`;
+const formatTimeZoneOffset = (offsetMinutes) => {
+  if (offsetMinutes === 0) return "Z";
+  const sign = offsetMinutes > 0 ? "+" : "-";
+  const absoluteOffset = Math.abs(offsetMinutes);
+  return `${sign}${padToTwoDigits(Math.floor(absoluteOffset / 60))}:${padToTwoDigits(absoluteOffset % 60)}`;
 };
 
 /**
@@ -196,93 +200,94 @@ const offsetToStr = (offsetMin) => {
  * string value computed from the provided date component object.
  *
  * Notes:
- * - `c.month` is treated as a zero-based month index (0 = January). Tokens "M"
+ * - `components.month` is treated as a zero-based month index (0 = January). Tokens "M"
  *   and "MM" add 1 to this index for human-readable month numbers.
  * - "yyyy" is the full year; "yy" is the last two digits of the year.
  * - "MMMM" / "MMM" use external MONTHS_FULL / MONTHS_ABBR arrays indexed by
- *   `c.month`.
+ *   `components.month`.
  * - "HH"/"H" are 24-hour hour representations; "hh"/"h" are 12-hour formats.
  *   For 12-hour tokens, midnight/noon is represented as 12 (i.e. uses `hour % 12 || 12`).
  * - "a" emits the meridiem in lowercase ("am" or "pm").
- * - Zero-padding for numeric tokens is performed by external helpers (`pad2`, `pad4`).
+ * - Zero-padding for numeric tokens is performed by external helpers (`padToTwoDigits`, `padToFourDigits`).
  *
- * @param {Object} c - Date/time components.
- * @param {number} c.year - Full year (e.g. 2026).
- * @param {number} c.month - Zero-based month index (0-11).
- * @param {number} c.day - Day of month (1-31).
- * @param {number} c.hour - Hour of day (0-23).
- * @param {number} c.min - Minutes (0-59).
- * @param {number} c.sec - Seconds (0-59).
+ * @param {Object} components - Date/time components.
+ * @param {number} components.year - Full year (e.g. 2026).
+ * @param {number} components.month - Zero-based month index (0-11).
+ * @param {number} components.day - Day of month (1-31).
+ * @param {number} components.hour - Hour of day (0-23).
+ * @param {number} components.min - Minutes (0-59).
+ * @param {number} components.sec - Seconds (0-59).
  * @returns {Array<{token: string, value: string}>} Array of token/value pairs used for formatting.
  */
-const buildTokenDefs = (c) => [
-  { token: "yyyy", value: pad4(c.year) },
-  { token: "yy", value: pad2(c.year % 100) },
-  { token: "MMMM", value: MONTHS_FULL[c.month] },
-  { token: "MMM", value: MONTHS_ABBR[c.month] },
-  { token: "MM", value: pad2(c.month + 1) },
-  { token: "M", value: String(c.month + 1) },
-  { token: "dd", value: pad2(c.day) },
-  { token: "d", value: String(c.day) },
-  { token: "HH", value: pad2(c.hour) },
-  { token: "H", value: String(c.hour) },
-  { token: "hh", value: pad2(c.hour % 12 || 12) },
-  { token: "h", value: String(c.hour % 12 || 12) },
-  { token: "mm", value: pad2(c.min) },
-  { token: "m", value: String(c.min) },
-  { token: "ss", value: pad2(c.sec) },
-  { token: "s", value: String(c.sec) },
-  { token: "a", value: c.hour < 12 ? "am" : "pm" },
+const createTokenDefinitions = (components) => [
+  { token: "yyyy", value: padToFourDigits(components.year) },
+  { token: "yy", value: padToTwoDigits(components.year % 100) },
+  { token: "MMMM", value: MONTHS_FULL[components.month] },
+  { token: "MMM", value: MONTHS_ABBR[components.month] },
+  { token: "MM", value: padToTwoDigits(components.month + 1) },
+  { token: "M", value: String(components.month + 1) },
+  { token: "dd", value: padToTwoDigits(components.day) },
+  { token: "d", value: String(components.day) },
+  { token: "HH", value: padToTwoDigits(components.hour) },
+  { token: "H", value: String(components.hour) },
+  { token: "hh", value: padToTwoDigits(components.hour % 12 || 12) },
+  { token: "h", value: String(components.hour % 12 || 12) },
+  { token: "mm", value: padToTwoDigits(components.min) },
+  { token: "m", value: String(components.min) },
+  { token: "ss", value: padToTwoDigits(components.sec) },
+  { token: "s", value: String(components.sec) },
+  { token: "a", value: components.hour < 12 ? "am" : "pm" },
 ];
 
 /**
- * Format a Date into a string according to the provided output specification and timezone.
+ * Format a Date into a string according to the provided output format and timezone.
  *
  * Behavior:
- * - If outputSpec === "epoch": returns seconds since Unix epoch as a string.
- * - If outputSpec === "epochMillis": returns milliseconds since Unix epoch as a string.
- * - If outputSpec === "iso8601": returns an ISO 8601 representation (YYYY-MM-DDTHH:mm:ss±HH:mm) using components and offset derived for the resolved timezone.
- * - Otherwise: treats outputSpec as a tokenized format string. Token definitions are built from the date components (via buildTokenDefs(getComponents(...))). The formatter scans the format string left-to-right, replacing the first matching token from the token definitions; any character sequences that do not match a token are copied verbatim.
+ * - If outputFormat === "epoch": returns seconds since Unix epoch as a string.
+ * - If outputFormat === "epochMillis": returns milliseconds since Unix epoch as a string.
+ * - If outputFormat === "iso8601": returns an ISO 8601 representation (YYYY-MM-DDTHH:mm:ss±HH:mm) using components and offset derived for the resolved timezone.
+ * - Otherwise: treats outputFormat as a tokenized format string. Token definitions are built from the date components (via createTokenDefinitions(getDateComponents(...))). The formatter scans the format string left-to-right, replacing the first matching token from the token definitions; any character sequences that do not match a token are copied verbatim.
  *
  * Notes:
- * - The timezone argument defaults to "UTC" when not provided and is passed to getComponents to compute year/month/day/hour/min/sec/offset.
- * - The function relies on helper utilities such as getComponents, buildTokenDefs, pad2, pad4, and offsetToStr for component extraction and formatting.
+ * - The timezone argument defaults to "UTC" when not provided and is passed to getDateComponents to compute year/month/day/hour/min/sec/offset.
+ * - The function relies on helper utilities such as getDateComponents, createTokenDefinitions, padToTwoDigits, padToFourDigits, and formatTimeZoneOffset for component extraction and formatting.
  *
  * @param {Date} date - The Date instance to format.
- * @param {string} [outputSpec] - Output format specifier: "epoch", "epochMillis", "iso8601", or a custom tokenized format string. If falsy, an empty string is returned.
- * @param {string} [timezone="UTC"] - Timezone identifier used when extracting date components.
+ * @param {string} [outputFormat] - Output format specifier: "epoch", "epochMillis", "iso8601", or a custom tokenized format string. If falsy, an empty string is returned.
+ * @param {string} [timeZone="UTC"] - Timezone identifier used when extracting date components.
  * @returns {string} The formatted date string.
  */
-export default function formatDateInternal(date, outputSpec, timezone) {
-  if (outputSpec === "epoch") return String(Math.floor(date.getTime() / 1000));
-  if (outputSpec === "epochMillis") return String(date.getTime());
+export default function formatDate(date, outputFormat, timeZone) {
+  if (outputFormat === "epoch")
+    return String(Math.floor(date.getTime() / 1000));
+  if (outputFormat === "epochMillis") return String(date.getTime());
 
-  const c = getComponents(date, timezone || "UTC");
+  const components = getDateComponents(date, timeZone || "UTC");
 
-  if (outputSpec === "iso8601") {
-    return `${pad4(c.year)}-${pad2(c.month + 1)}-${pad2(c.day)}T${pad2(c.hour)}:${pad2(c.min)}:${pad2(c.sec)}${offsetToStr(c.offset)}`;
+  if (outputFormat === "iso8601") {
+    return `${padToFourDigits(components.year)}-${padToTwoDigits(components.month + 1)}-${padToTwoDigits(components.day)}T${padToTwoDigits(components.hour)}:${padToTwoDigits(components.min)}:${padToTwoDigits(components.sec)}${formatTimeZoneOffset(components.offset)}`;
   }
 
-  const tokenDefs = buildTokenDefs(c);
+  const tokenDefinitions = createTokenDefinitions(components);
 
-  let result = "";
-  let remaining = outputSpec || "";
+  let formattedOutput = "";
+  let remainingFormat = outputFormat || "";
 
-  while (remaining.length > 0) {
+  while (remainingFormat.length > 0) {
     let matched = false;
-    for (const def of tokenDefs) {
-      if (remaining.startsWith(def.token)) {
-        result += def.value;
-        remaining = remaining.slice(def.token.length);
+    for (const tokenDefinition of tokenDefinitions) {
+      if (remainingFormat.startsWith(tokenDefinition.token)) {
+        formattedOutput += tokenDefinition.value;
+        remainingFormat = remainingFormat.slice(tokenDefinition.token.length);
         matched = true;
         break;
       }
     }
     if (!matched) {
-      result += remaining[0];
-      remaining = remaining.slice(1);
+      formattedOutput += remainingFormat[0];
+      remainingFormat = remainingFormat.slice(1);
     }
   }
 
-  return result;
+  return formattedOutput;
 }
