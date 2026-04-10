@@ -1,5 +1,6 @@
 open Test
 open Assertions
+open TestHelpers
 open FieldTypes
 
 test("OptionsParser.parseTextOptions parses all keys", () => {
@@ -93,4 +94,88 @@ test("OptionsParser.parseListOptions parses attr itemType", () => {
   isOptionEqualTo(Some("^a"), opts.filter, ~eq=(a, b) => a == b)
   isOptionEqualTo(Some(3), opts.limit, ~eq=(a, b) => a == b)
   isOptionEqualTo(Some(","), opts.join, ~eq=(a, b) => a == b)
+})
+
+test("OptionsParser.parseTableOptions returns Error when tableOptions is missing", () => {
+  let field = TestHelpers.objectFromJsonString("{}")
+  switch OptionsParser.parseTableOptions(field) {
+  | Ok(_) => failWith("Expected Error for missing tableOptions")
+  | Error(msg) => stringContains(msg, "tableOptions")->isTruthy
+  }
+})
+
+test("OptionsParser.parseTableOptions returns Error when columns is missing", () => {
+  let field = TestHelpers.objectFromJsonString("{\"tableOptions\":{}}")
+  switch OptionsParser.parseTableOptions(field) {
+  | Ok(_) => failWith("Expected Error for missing columns")
+  | Error(msg) => stringContains(msg, "columns")->isTruthy
+  }
+})
+
+test("OptionsParser.parseTableOptions returns Error when columns is empty", () => {
+  let field = TestHelpers.objectFromJsonString("{\"tableOptions\":{\"columns\":[]}}")
+  switch OptionsParser.parseTableOptions(field) {
+  | Ok(_) => failWith("Expected Error for empty columns")
+  | Error(msg) => stringContains(msg, "at least one column")->isTruthy
+  }
+})
+
+test("OptionsParser.parseTableOptions returns Error for column missing name", () => {
+  let field = TestHelpers.objectFromJsonString(
+    "{\"tableOptions\":{\"columns\":[{\"selector\":\"td\"}]}}",
+  )
+  switch OptionsParser.parseTableOptions(field) {
+  | Ok(_) => failWith("Expected Error for column missing name")
+  | Error(msg) => stringContains(msg, "name")->isTruthy
+  }
+})
+
+test("OptionsParser.parseTableOptions returns Error for column missing selector", () => {
+  let field = TestHelpers.objectFromJsonString(
+    "{\"tableOptions\":{\"columns\":[{\"name\":\"cell\"}]}}",
+  )
+  switch OptionsParser.parseTableOptions(field) {
+  | Ok(_) => failWith("Expected Error for column missing selector")
+  | Error(msg) => stringContains(msg, "selector")->isTruthy
+  }
+})
+
+test("OptionsParser.parseTableOptions returns Error for unknown column type", () => {
+  let field = TestHelpers.objectFromJsonString(
+    "{\"tableOptions\":{\"columns\":[{\"name\":\"cell\",\"selector\":\"td\",\"type\":\"unknownType\"}]}}",
+  )
+  switch OptionsParser.parseTableOptions(field) {
+  | Ok(_) => failWith("Expected Error for unknown column type")
+  | Error(msg) => stringContains(msg, "Unknown column type")->isTruthy
+  }
+})
+
+test("OptionsParser.parseTableOptions returns Error for count column type", () => {
+  let field = TestHelpers.objectFromJsonString(
+    "{\"tableOptions\":{\"columns\":[{\"name\":\"cell\",\"selector\":\"td\",\"type\":\"count\"}]}}",
+  )
+  switch OptionsParser.parseTableOptions(field) {
+  | Ok(_) => failWith("Expected Error for count column type")
+  | Error(msg) => stringContains(msg, "count")->isTruthy
+  }
+})
+
+test("OptionsParser.parseTableOptions returns Error for nested table columns", () => {
+  let field = TestHelpers.objectFromJsonString(
+    "{\"tableOptions\":{\"columns\":[{\"name\":\"cell\",\"selector\":\"td\",\"type\":\"table\"}]}}",
+  )
+  switch OptionsParser.parseTableOptions(field) {
+  | Ok(_) => failWith("Expected Error for nested table type")
+  | Error(msg) => stringContains(msg, "nested table")->isTruthy
+  }
+})
+
+test("OptionsParser.parseTableOptions returns Error for attribute column without attribute key", () => {
+  let field = TestHelpers.objectFromJsonString(
+    "{\"tableOptions\":{\"columns\":[{\"name\":\"cell\",\"selector\":\"td\",\"type\":\"attribute\"}]}}",
+  )
+  switch OptionsParser.parseTableOptions(field) {
+  | Ok(_) => failWith("Expected Error for attribute without attribute key")
+  | Error(msg) => stringContains(msg, "attribute")->isTruthy
+  }
 })

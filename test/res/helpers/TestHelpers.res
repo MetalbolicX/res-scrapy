@@ -37,3 +37,12 @@ let objectFromJsonString: string => {..} = raw =>
   }
 
 let stringContains: (string, string) => bool = %raw(`(source, fragment) => source.includes(fragment)`)
+
+let arrayFromJsonString: string => array<JSON.t> = raw =>
+  switch NodeJsBinding.jsonParse(raw) {
+  | Some(v) => Obj.magic(v)
+  | None => {
+      failWith("Invalid JSON literal in test")
+      []
+    }
+  }

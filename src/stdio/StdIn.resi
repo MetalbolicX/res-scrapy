@@ -3,4 +3,5 @@ type stdInError =
   | EmptyContent(string)
   | ReadError(string)
 
+let hasStdinData: unit => bool
 let readFromStdin: unit => promise<Result.t<string, stdInError>>
