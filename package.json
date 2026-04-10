@@ -10,6 +10,7 @@
     }
   },
   "scripts": {
+    "res:test": "retest --with-dom ./test/res/*.res.mjs",
     "res:test": "retest ./test/res/*.res.mjs",
     "start": "node dist/main.mjs",
     "res:build": "rescript",
