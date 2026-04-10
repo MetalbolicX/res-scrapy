@@ -90,3 +90,39 @@ test("fixtures: other case", () => {
   | Error(_) => failWith("other fixture should parse")
   }
 })
+
+test("fixtures: row mode with default fallback on missing required", () => {
+  let html =
+    "<div class='row'><span class='name'>A</span><span class='price'>10</span></div>"
+    ++ "<div class='row'><span class='name'>B</span></div>"
+  let schema =
+    "{\"fields\":{"
+    ++ "\"name\":{\"selector\":\".name\",\"type\":\"text\"},"
+    ++ "\"price\":{\"selector\":\".price\",\"type\":\"number\",\"required\":true,\"default\":0}"
+    ++ "},\"config\":{\"rowSelector\":\".row\",\"ignoreErrors\":true}}"
+
+  switch runFixture(~html, ~schema) {
+  | Ok(value) => isTextEqualTo("[{\"name\":\"A\",\"price\":10},{\"name\":\"B\",\"price\":0}]", NodeJsBinding.jsonStringify(value))
+  | Error(_) => failWith("Expected row mode fallback output")
+  }
+})
+
+test("fixtures: zip mode aggregate + scalar behavior", () => {
+  let html =
+    "<h3>A</h3><h3>B</h3><span class='tag'>x</span><span class='tag'>y</span><span class='tag'>y</span>"
+  let schema =
+    "{\"fields\":{"
+    ++ "\"title\":{\"selector\":\"h3\",\"type\":\"text\"},"
+    ++ "\"tagCount\":{\"selector\":\".tag\",\"type\":\"count\"},"
+    ++ "\"tags\":{\"selector\":\".tag\",\"type\":\"list\",\"listOptions\":{\"itemType\":\"text\",\"unique\":true}}"
+    ++ "}}"
+
+  switch runFixture(~html, ~schema) {
+  | Ok(value) =>
+    isTextEqualTo(
+      "[{\"title\":\"A\",\"tagCount\":3,\"tags\":[\"x\",\"y\"]},{\"title\":\"B\",\"tagCount\":3,\"tags\":[\"x\",\"y\"]}]",
+      NodeJsBinding.jsonStringify(value),
+    )
+  | Error(_) => failWith("Expected zip aggregate behavior")
+  }
+})

@@ -24,3 +24,17 @@ test("SchemaV2.applySchema integrates parse and execute", () => {
   | Error(_) => failWith("Expected loadSchema to succeed")
   }
 })
+
+test("SchemaV2.loadSchema returns InvalidJson for malformed inline schema", () => {
+  switch SchemaV2.loadSchema(~isInline=true, "{\"fields\":") {
+  | Error(InvalidJson(_)) => passWith("invalid json detected")
+  | _ => failWith("Expected InvalidJson error")
+  }
+})
+
+test("SchemaV2.loadSchema returns FileReadError for missing schema path", () => {
+  switch SchemaV2.loadSchema(~isInline=false, "/tmp/definitely-missing-schema.json") {
+  | Error(FileReadError(_)) => passWith("file read error detected")
+  | _ => failWith("Expected FileReadError")
+  }
+})
