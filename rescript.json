@@ -1,6 +1,7 @@
 {
   "name": "res-scrapy",
   "sources": [
+    { "dir": "test/res", "subdirs": true, "type": "dev" },
     { "dir": "src", "subdirs": true }
   ],
   "package-specs": {
@@ -8,6 +9,7 @@
     "in-source": true
   },
   "suffix": ".res.mjs",
+  "dev-dependencies": ["rescript-test"],
   "dependencies": [],
   "compiler-flags": []
 }

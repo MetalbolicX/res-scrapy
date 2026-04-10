@@ -10,6 +10,7 @@
     }
   },
   "scripts": {
+    "res:test": "retest ./test/res/*.res.mjs",
     "start": "node dist/main.mjs",
     "res:build": "rescript",
     "res:dev": "rescript watch",
@@ -43,6 +44,7 @@
     "node": ">=22.0.0"
   },
   "devDependencies": {
+    "rescript-test": "^8.0.0",
     "rolldown": "1.0.0-rc.13",
     "rollup-plugin-esbuild": "^6.2.1"
   },
