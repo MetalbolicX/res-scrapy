@@ -17,7 +17,7 @@ let extractPattern: (string, string) => option<string> = (text, pattern) => {
   try {
     RegExp.fromString(pattern)
     ->RegExp.exec(text)
-    ->Option.flatMap(res => res->RegExp.Result.matches->Array.get(1))
+    ->Option.flatMap(res => res->RegExp.Result.matches->Array.get(0))
     ->Option.flatMap(v => v)
   } catch {
   | _ => None
