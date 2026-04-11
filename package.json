@@ -11,10 +11,12 @@
   },
   "scripts": {
     "date:build": "tsc -p tsconfig.date.json",
+    "date:check": "pnpm run date:build && git diff --exit-code -- src/schema/v2/utils/date/*.mjs",
     "res:test": "retest ./test/res/*.res.mjs",
     "start": "node dist/main.mjs",
     "res:build": "rescript",
     "res:dev": "rescript watch",
+    "prebundle": "pnpm run date:build",
     "res:clean": "rescript clean",
     "docs": "docsify serve docs",
     "bundle": "rolldown -c"
