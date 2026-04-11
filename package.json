@@ -10,6 +10,7 @@
     }
   },
   "scripts": {
+    "date:build": "tsc -p tsconfig.date.json",
     "res:test": "retest ./test/res/*.res.mjs",
     "start": "node dist/main.mjs",
     "res:build": "rescript",
@@ -46,7 +47,8 @@
   "devDependencies": {
     "rescript-test": "^8.0.0",
     "rolldown": "1.0.0-rc.13",
-    "rollup-plugin-esbuild": "^6.2.1"
+    "rollup-plugin-esbuild": "^6.2.1",
+    "typescript": "^6.0.2"
   },
   "peerDependencies": {
     "node-html-parser": "^7.1.0"
