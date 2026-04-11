@@ -18,9 +18,10 @@ let extractPattern: (string, string) => option<string> = (text, pattern) => {
     let result: option<string> = %raw(`
       (text, pattern) => {
         const match = new RegExp(pattern).exec(text);
-        if (match && match[0]) return match[0];
+        const [firstGroup] = match ?? [];
+        if (firstGroup) return firstGroup;
         return undefined;
-      })
+      }
     `)(text, pattern)->Obj.magic
     result
   } catch {
