@@ -16,7 +16,7 @@
     "res:dev": "rescript watch",
     "res:clean": "rescript clean",
     "docs": "docsify serve docs",
-    "build": "rolldown -c"
+    "bundle": "rolldown -c"
   },
   "bin": {
     "res-scrapy": "dist/main.mjs"
