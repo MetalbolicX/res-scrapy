@@ -137,7 +137,7 @@ const buildRegexFromFormat = (format) => {
   );
   let remaining = format;
   let pattern = "";
-  const groupNames = [];
+  let groupNames = [];
 
   while (remaining.length > 0) {
     const matchedToken = sortedTokens.find(({ token }) =>
@@ -145,7 +145,7 @@ const buildRegexFromFormat = (format) => {
     );
     if (matchedToken) {
       pattern += matchedToken.regex;
-      groupNames.push(matchedToken.group);
+      groupNames = [...groupNames, matchedToken.group];
       remaining = remaining.slice(matchedToken.token.length);
       continue;
     }
