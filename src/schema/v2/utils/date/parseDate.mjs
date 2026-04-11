@@ -182,19 +182,22 @@ const escapeRegexCharacter = (text) =>
 /**
  * Create an object mapping capture group names to their corresponding values from a regex match array.
  *
- * @param {string[]} groups - Ordered list of capture group names (must align with the regex capture order).
- * @param {Array<string|undefined>} matchArray - Regex match array (e.g., result of RegExp#exec or String#match). Index 0 is the full match; capture groups start at index 1.
+ * @param {string[]} groupNames - Ordered list of capture group names (must align with the regex capture order).
+ * @param {Array<string|undefined>} matches - Regex match array (e.g., result of RegExp#exec or String#match). Index 0 is the full match; capture groups start at index 1.
  * @returns {{[groupName: string]: string|undefined}} Object mapping each group name to the matched string or undefined if that capture was not present.
  *
  * @example
  * ```JavaScript
- * const groups = ["year", "month"];
- * const matchArray = ["2024-06", "2024", "06"];
- * mapMatchToGroupValues(groupNames, matchArray); // returns { year: "2024", month: "06" }
+ * const groupNames = ["year", "month"];
+ * const matches = ["2024-06", "2024", "06"];
+ * mapMatchToGroupValues(groupNames, matches); // returns { year: "2024", month: "06" }
  * ```
  */
-const mapMatchToGroupValues = (groupNames, matchArray) =>
-  groupNames.reduce((acc, g, i) => ((acc[g] = matchArray[i + 1]), acc), {});
+const mapMatchToGroupValues = (groupNames, matches) =>
+  groupNames.reduce(
+    (mapper, groupName, i) => ((mapper[groupName] = matches[i + 1]), mapper),
+    {},
+  );
 
 /**
  * Parses a value as a base-10 integer.
