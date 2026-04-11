@@ -140,12 +140,11 @@ const getTimeZoneDateComponents = (date, timeZone) => {
     timeZoneName: "shortOffset",
   });
 
-  const dateParts = dateTimeFormatter
-    .formatToParts(date)
-    .reduce((accumulator, part) => {
-      accumulator[part.type] = part.value;
-      return accumulator;
-    }, {});
+  const dateParts = Object.fromEntries(
+    dateTimeFormatter
+      .formatToParts(date)
+      .map(({ type, value }) => [type, value]),
+  );
 
   let hour = parseInt(dateParts.hour, 10);
   if (hour === 24) hour = 0;

@@ -31,11 +31,14 @@ const parseISO = (input) => {
  * @returns {Date|undefined} A Date representing the given epoch seconds, or undefined on invalid input.
  */
 const parseEpochSeconds = (secondsInput) => {
-  const seconds = parseInt(secondsInput, 10);
+  const seconds =
+    typeof secondsInput === "number"
+      ? Math.trunc(secondsInput)
+      : parseInt(String(secondsInput), 10);
   if (Number.isNaN(seconds)) return undefined;
   const milliseconds = seconds * 1000;
-  const date = new Date(milliseconds);
-  return Number.isNaN(date.getTime()) ? undefined : date;
+  const parsedDate = new Date(milliseconds);
+  return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
 };
 
 /**
@@ -47,12 +50,18 @@ const parseEpochSeconds = (secondsInput) => {
  * @param {string|number} millisInput - Epoch milliseconds as a string or number (parsed with parseInt(millisInput, 10)).
  * @returns {Date|undefined} A Date constructed from the parsed milliseconds, or undefined if parsing fails or the Date is invalid.
  */
-const parseEpochMillis = (millisInput) => {
-  const milliseconds = parseInt(millisInput, 10);
+const parseEpochMilliseconds = (millisInput) => {
+  const milliseconds =
+    typeof millisInput === "number"
+      ? Math.trunc(millisInput)
+      : parseInt(String(millisInput), 10);
   if (Number.isNaN(milliseconds)) return undefined;
   const parsedDate = new Date(milliseconds);
   return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
 };
+
+// backward-compatible alias for existing references
+const parseEpochMillis = (millisInput) => parseEpochMilliseconds(millisInput);
 
 /* --- constants --- */
 const MONTHS_FULL = [
