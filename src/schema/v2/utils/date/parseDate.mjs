@@ -378,7 +378,7 @@ const invalidDateParts = () => ({
  *   returned unless the resulting date is invalid, in which case undefined
  *   is returned.
  *
- * @param {string|undefined|null} dateStr - The input date/time string to parse.
+ * @param {string|undefined|null} datetime - The input date/time string to parse.
  * @param {string|undefined|null} format - A format identifier or custom format string.
  *                                       Supported quick values: "ISO", "epoch", "epochMillis".
  * @returns {Date|undefined} The parsed Date in UTC, or undefined if parsing failed or input invalid.
@@ -392,19 +392,19 @@ const invalidDateParts = () => ({
  * tryParseWithFormat("2024-06-01T12:34:56Z", "unknownFormat"); // returns undefined
  * ```
  */
-export default function tryParseWithFormat(dateStr, format) {
-  if (!dateStr) return undefined;
+export default function tryParseWithFormat(datetime, format) {
+  if (!datetime) return undefined;
 
   // quick modes
-  if (format === "ISO") return parseISO(dateStr);
-  if (format === "epoch") return parseEpochSeconds(dateStr);
-  if (format === "epochMillis") return parseEpochMillis(dateStr);
+  if (format === "ISO") return parseISO(datetime);
+  if (format === "epoch") return parseEpochSeconds(datetime);
+  if (format === "epochMillis") return parseEpochMillis(datetime);
   if (typeof format !== "string") return undefined;
 
   const { regex, groupNames } = buildRegexFromFormat(format);
   if (!regex) return undefined;
 
-  const matchResult = dateStr.match(regex);
+  const matchResult = datetime.match(regex);
   if (!matchResult) return undefined;
 
   const tokenMap = mapMatchToGroupValues(groupNames, matchResult);
