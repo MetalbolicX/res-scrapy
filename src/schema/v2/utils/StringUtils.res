@@ -16,8 +16,8 @@ let toUpper: string => string = text => String.toUpperCase(text)
 let extractPattern: (string, string) => option<string> = (text, pattern) => {
   try {
     let result: option<string> = %raw(`
-      (function(text, pattern) {
-        var match = new RegExp(pattern).exec(text);
+      (text, pattern) => {
+        const match = new RegExp(pattern).exec(text);
         if (match && match[0]) return match[0];
         return undefined;
       })
