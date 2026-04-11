@@ -64,3 +64,50 @@ test("TextExtractor returns None when pattern has no match", () => {
   let el = getElement(doc, ".t")
   isOptionEqualTo(None, TextExtractor.extract(el, Some({pattern: "([0-9]+\\.[0-9]+)"})), ~eq=(a, b) => a == b)
 })
+
+test("TextExtractor.extractJoined joins multiple elements with separator", () => {
+  let doc = HtmlFixture.parse(`<div class='items'><span>Apple</span><span>Banana</span><span>Cherry</span></div>`)
+  let els = HtmlFixture.selectAll(doc, "span")
+  isIntEqualTo(3, Array.length(els))
+  let result = TextExtractor.extractJoined(els, ", ", None)
+  isOptionEqualTo(Some("Apple, Banana, Cherry"), result, ~eq=(a, b) => a == b)
+})
+
+test("TextExtractor.extractJoined applies options to each element", () => {
+  let doc = HtmlFixture.parse(`<div class='items'><span>APPLE</span><span>banana</span></div>`)
+  let els = HtmlFixture.selectAll(doc, "span")
+  let result = TextExtractor.extractJoined(els, " | ", Some({lowercase: true}))
+  isOptionEqualTo(Some("apple | banana"), result, ~eq=(a, b) => a == b)
+})
+
+test("TextExtractor.extractJoined with single element", () => {
+  let doc = HtmlFixture.parse(`<div class='item'><span>Solo</span></div>`)
+  let els = HtmlFixture.selectAll(doc, "span")
+  isIntEqualTo(1, Array.length(els))
+  let result = TextExtractor.extractJoined(els, ", ", None)
+  isOptionEqualTo(Some("Solo"), result, ~eq=(a, b) => a == b)
+})
+
+test("TextExtractor.extractJoined returns None for empty array", () => {
+  let doc = HtmlFixture.parse(`<div class='empty'></div>`)
+  let els = HtmlFixture.selectAll(doc, "span")
+  isIntEqualTo(0, Array.length(els))
+  let result = TextExtractor.extractJoined(els, ", ", None)
+  isOptionEqualTo(None, result, ~eq=(a, b) => a == b)
+})
+
+test("TextExtractor.extractJoined pattern extracts from each matching element", () => {
+  let doc = HtmlFixture.parse(`<div class='items'><span>Valid</span><span class='pattern'>no-match</span><span>AlsoValid</span></div>`)
+  let els = HtmlFixture.selectAll(doc, "span")
+  isIntEqualTo(3, Array.length(els))
+  let opts: option<textOptions> = Some({pattern: "Valid"})
+  let result = TextExtractor.extractJoined(els, " | ", opts)
+  isOptionEqualTo(Some("Valid | Valid"), result, ~eq=(a, b) => a == b)
+})
+
+test("TextExtractor.extractJoined with empty string separator", () => {
+  let doc = HtmlFixture.parse(`<div class='chars'><span>A</span><span>B</span><span>C</span></div>`)
+  let els = HtmlFixture.selectAll(doc, "span")
+  let result = TextExtractor.extractJoined(els, "", None)
+  isOptionEqualTo(Some("ABC"), result, ~eq=(a, b) => a == b)
+})

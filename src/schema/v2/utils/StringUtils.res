@@ -15,10 +15,14 @@ let toUpper: string => string = text => String.toUpperCase(text)
 /** Extract first capture group of a regex pattern. Returns None when no match. */
 let extractPattern: (string, string) => option<string> = (text, pattern) => {
   try {
-    RegExp.fromString(pattern)
-    ->RegExp.exec(text)
-    ->Option.flatMap(res => res->RegExp.Result.matches->Array.get(0))
-    ->Option.flatMap(v => v)
+    let result: option<string> = %raw(`
+      (function(text, pattern) {
+        var match = new RegExp(pattern).exec(text);
+        if (match && match[0]) return match[0];
+        return undefined;
+      })
+    `)(text, pattern)->Obj.magic
+    result
   } catch {
   | _ => None
   }

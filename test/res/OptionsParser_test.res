@@ -63,6 +63,87 @@ test("OptionsParser.parseNumberOptions and parseErrorPolicy", () => {
   }
 })
 
+test("OptionsParser.parseHtmlOptions parses mode and strip flags", () => {
+  let field = TestHelpers.objectFromJsonString(
+    "{\"htmlOptions\":{\"mode\":\"outer\",\"stripScripts\":true,\"stripStyles\":false}}",
+  )
+  switch OptionsParser.parseHtmlOptions(field) {
+  | Some(opts) => {
+      isTruthy(opts.mode == Some(Outer))
+      isOptionEqualTo(Some(true), opts.stripScripts, ~eq=(a, b) => a == b)
+      isOptionEqualTo(Some(false), opts.stripStyles, ~eq=(a, b) => a == b)
+    }
+  | None => failWith("Expected html options")
+  }
+})
+
+test("OptionsParser.parseCountOptions parses min and max", () => {
+  let field = TestHelpers.objectFromJsonString("{\"countOptions\":{\"min\":1,\"max\":3}}")
+  switch OptionsParser.parseCountOptions(field) {
+  | Some(opts) => {
+      isOptionEqualTo(Some(1), opts.min, ~eq=(a, b) => a == b)
+      isOptionEqualTo(Some(3), opts.max, ~eq=(a, b) => a == b)
+    }
+  | None => failWith("Expected count options")
+  }
+})
+
+test("OptionsParser.parseUrlOptions parses all keys", () => {
+  let field = TestHelpers.objectFromJsonString(
+    "{\"urlOptions\":{\"base\":\"https://example.com\",\"resolve\":true,\"validate\":true,\"protocol\":\"https\",\"stripQuery\":true,\"stripHash\":true,\"attribute\":\"data-url\"}}",
+  )
+  switch OptionsParser.parseUrlOptions(field) {
+  | Some(opts) => {
+      isOptionEqualTo(Some("https://example.com"), opts.base, ~eq=(a, b) => a == b)
+      isOptionEqualTo(Some(true), opts.resolve, ~eq=(a, b) => a == b)
+      isOptionEqualTo(Some(true), opts.validate, ~eq=(a, b) => a == b)
+      isOptionEqualTo(Some("https"), opts.protocol, ~eq=(a, b) => a == b)
+      isOptionEqualTo(Some(true), opts.stripQuery, ~eq=(a, b) => a == b)
+      isOptionEqualTo(Some(true), opts.stripHash, ~eq=(a, b) => a == b)
+      isOptionEqualTo(Some("data-url"), opts.attribute, ~eq=(a, b) => a == b)
+    }
+  | None => failWith("Expected url options")
+  }
+})
+
+test("OptionsParser.parseJsonOptions parses source path and onError", () => {
+  let field = TestHelpers.objectFromJsonString(
+    "{\"jsonOptions\":{\"source\":\"attribute\",\"attribute\":\"data-json\",\"path\":\"item.price\",\"onError\":\"returnText\"}}",
+  )
+  switch OptionsParser.parseJsonOptions(field) {
+  | Some(opts) => {
+      isOptionEqualTo(Some("attribute"), opts.source, ~eq=(a, b) => a == b)
+      isOptionEqualTo(Some("data-json"), opts.attribute, ~eq=(a, b) => a == b)
+      isOptionEqualTo(Some("item.price"), opts.path, ~eq=(a, b) => a == b)
+      isTruthy(opts.onError == Some(ReturnText))
+    }
+  | None => failWith("Expected json options")
+  }
+})
+
+test("OptionsParser.parseDateOptions parses output strict source and attribute", () => {
+  let field = TestHelpers.objectFromJsonString(
+    "{\"dateOptions\":{\"formats\":[\"yyyy-MM-dd\",\"ISO\"],\"timezone\":\"UTC\",\"output\":\"custom\",\"outputFormat\":\"MM/dd/yyyy\",\"strict\":true,\"source\":\"attribute\",\"attribute\":\"datetime\"}}",
+  )
+  switch OptionsParser.parseDateOptions(field) {
+  | Some(opts) => {
+      isOptionEqualTo(Some("UTC"), opts.timezone, ~eq=(a, b) => a == b)
+      isOptionEqualTo(Some(true), opts.strict, ~eq=(a, b) => a == b)
+      isOptionEqualTo(Some("attribute"), opts.source, ~eq=(a, b) => a == b)
+      isOptionEqualTo(Some("datetime"), opts.attribute, ~eq=(a, b) => a == b)
+      switch opts.output {
+      | Some(Custom(fmt)) => isTextEqualTo("MM/dd/yyyy", fmt)
+      | _ => failWith("Expected Custom output")
+      }
+      let formats: array<string> = opts.formats->Option.getOr([])
+      isIntEqualTo(2, formats->Array.length)
+      isTextEqualTo("yyyy-MM-dd", formats->Array.get(0)->Option.getOr(""))
+      isTextEqualTo("ISO", formats->Array.get(1)->Option.getOr(""))
+    }
+  | None => failWith("Expected date options")
+  }
+})
+
 test("OptionsParser.parseBooleanOptions and unknown policy", () => {
   isTruthy(OptionsParser.parseBooleanUnknownPolicy("null") == UnknownNull)
   isTruthy(OptionsParser.parseBooleanUnknownPolicy("error") == UnknownError)
