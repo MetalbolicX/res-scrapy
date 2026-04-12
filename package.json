@@ -48,7 +48,7 @@
   },
   "devDependencies": {
     "rescript-test": "^8.0.0",
-    "rolldown": "1.0.0-rc.13",
+    "rolldown": "1.0.0-rc.15",
     "rollup-plugin-esbuild": "^6.2.1",
     "typescript": "^6.0.2"
   },
