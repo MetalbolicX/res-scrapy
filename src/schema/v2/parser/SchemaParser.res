@@ -10,17 +10,13 @@ open JsonUtils
   * - Array format:  `[{"name": "title", "selector": ".title"}, ...]` (v1 legacy)
   */
 let toFieldsObject: 'a => {..} = %raw(`
-  function(rawFields) {
+  (rawFields) => {
     if (Array.isArray(rawFields)) {
-      var obj = {};
-      rawFields.forEach(function(f) {
-        if (f && typeof f.name === 'string') {
-          var copy = Object.assign({}, f);
-          delete copy.name;
-          obj[f.name] = copy;
-        }
-      });
-      return obj;
+      return Object.fromEntries(
+        rawFields
+          .filter(f => f && typeof f === 'object' && typeof f.name === 'string')
+          .map(({ name, ...rest }) => [name, rest])
+      );
     }
     return rawFields;
   }
@@ -29,7 +25,7 @@ let toFieldsObject: 'a => {..} = %raw(`
 /** Convert the `fields` object (keys → field defs) into a sorted array. */
 let normalizeFields: {..} => result<array<(string, schemaField)>, schemaError> = fieldsObj => {
   // Collect all own keys then parse each field
-  let keys: array<string> = %raw(`function(obj) { return Object.keys(obj); }`)(fieldsObj)
+  let keys: array<string> = %raw(`(obj) => Object.keys(obj)`)(fieldsObj)
   let acc = ref([])
   let err = ref(None)
   keys->Array.forEach(key => {

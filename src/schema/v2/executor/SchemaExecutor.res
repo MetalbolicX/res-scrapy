@@ -1,7 +1,6 @@
 /** Schema executor: dispatches to RowExtractor or ZipExtractor
   * depending on whether schema.config.rowSelector is set.
   */
-
 open FieldTypes
 
 module RowStrategy = RowExtractor.Strategy

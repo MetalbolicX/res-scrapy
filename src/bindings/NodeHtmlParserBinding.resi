@@ -5,14 +5,7 @@ type htmlElement = {
   tagName: string,
 }
 
-@module("node-html-parser")
-external parse: string => htmlElement = "parse"
-
-@send
-external querySelectorAll: (htmlElement, string) => array<htmlElement> = "querySelectorAll"
-
-@send
-external querySelector: (htmlElement, string) => Nullable.t<htmlElement> = "querySelector"
-
-@send
-external getAttribute: (htmlElement, string) => Nullable.t<string> = "getAttribute"
+let parse: string => htmlElement
+let querySelectorAll: (htmlElement, string) => array<htmlElement>
+let querySelector: (htmlElement, string) => Nullable.t<htmlElement>
+let getAttribute: (htmlElement, string) => Nullable.t<string>
