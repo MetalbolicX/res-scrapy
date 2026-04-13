@@ -8,25 +8,34 @@ If you are updating docs, edit this file first. Other schema docs will be archiv
 
 ## CLI Cheat-sheet
 
-Quick reference for the flags you will use most often:
+Quick reference for the flags at your disposal:
 
-- `--schema` or `-c`: pass a schema as an inline JSON string (good for quick tests)
-- `--schemaPath` or `-p`: path to a JSON schema file (recommended for production)
-- `--table` or `-t`: extract HTML tables into JSON arrays (no schema needed)
-- `--selector` or `-s`: (table mode) CSS selector to pick a specific table
-- `--limit`: limit number of rows emitted (schema `config.limit` also available)
-- `--pretty`: pretty-print JSON output
+- `-s` (`--selector`) — CSS selector to target element(s).
+- `-m` (`--mode`) — multiple mode: when present the extractor returns all matches (otherwise single).
+- `-e` (`--extract`) — what to extract: `outerHtml`, `innerHtml`, `text`, or `attr:<name>` (e.g. `attr:href`).
+- `-c` (`--schema`) — inline JSON schema for structured extraction.
+- `-p` (`--schemaPath`) — path to a JSON schema file for structured extraction.
+- `-t` (`--table`) — extract an HTML `<table>` as a JSON array of row objects.
+
+> [!Note] The CLI reads HTML from stdin and writes JSON to stdout. Many examples below use `echo`/`printf` or file redirection to demonstrate usage.
 
 Examples:
 
-```bash
-# Inline schema (quick test)
+1. Inline schema (quick test):
+
+```sh
 echo '<html>...</html>' | res-scrapy --schema '{"fields": {"title": {"selector": "h1", "type": "text"}}}'
+```
 
-# Schema from file (recommended)
+2. Schema from file (recommended)
+
+```sh
 res-scrapy --schemaPath product-schema.json < page.html
+```
 
-# Table extraction (targeted)
+3. Table extraction (targeted)
+
+```sh
 cat page.html | res-scrapy --table --selector '#products'
 ```
 
@@ -37,12 +46,15 @@ cat page.html | res-scrapy --table --selector '#products'
 ```json
 {
   "fields": {
-    "title": { "selector": "h1", "type": "text" }
+    "title": {
+      "selector": "h1",
+      "type": "text"
+    }
   }
 }
 ```
 
-Note: the CLI reads HTML from stdin unless you pass a filename to the tool wrapper. Use `--schema` for quick experiments and `--schemaPath` for production schemas.
+> [!Tip] Use `--schema` for quick experiments and `--schemaPath` for production schemas.
 
 ---
 
@@ -176,7 +188,7 @@ Schema (product-schema.json):
 
 Command:
 
-```bash
+```sh
 echo '<article class="product-card">...</article>' | res-scrapy --schemaPath product-schema.json
 ```
 
@@ -227,7 +239,7 @@ Sample HTML:
 
 Command:
 
-```bash
+```sh
 cat page.html | res-scrapy --table --selector '#products'
 ```
 
@@ -535,14 +547,3 @@ Schema-level validation errors include: invalid JSON, missing `fields`, invalid 
   }
 }
 ```
-
----
-
-## Next steps I can take now (choose what you want me to do next):
-
-1. Update `docs/_sidebar.md` to point at this consolidated guide and the other canonical pages (Getting Started, Examples).
-2. Move or archive the older duplicate schema pages into `docs/archive/` (`schema-reference.md`, `schema-specification.md`, `schema-quickstart.md`, `schema-examples.md`) so the site is unambiguous.
-3. Run a local docsify preview to verify tabs and code fences render correctly.
-4. Run the CLI examples from `docs/examples.md` against fixtures in `examples/` to confirm outputs match the docs.
-
-Tell me which of the numbered steps above you'd like me to perform now (I recommend doing 1 then 2, then 3 and 4), or tell me to stop if you want to review this change first.

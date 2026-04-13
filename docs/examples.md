@@ -2,17 +2,6 @@
 
 This page collects practical, runnable examples showing how to use the res-scrapy CLI. Each case includes a short description, a sample HTML snippet (when useful), the CLI command, and the expected JSON output.
 
-## Quick CLI Reference
-
-- `-s` (`--selector`) — CSS selector to target element(s)
-- `-m` (`--mode`) — multiple mode: when present the extractor returns all matches (otherwise single)
-- `-e` (`--extract`) — what to extract: `outerHtml`, `innerHtml`, `text`, or `attr:<name>` (e.g. `attr:href`)
-- `-c` (`--schema`) — inline JSON schema for structured extraction
-- `-p` (`--schemaPath`) — path to a JSON schema file for structured extraction
-- `-t` (`--table`) — extract an HTML `<table>` as a JSON array of row objects
-
-> [!Note] The CLI reads HTML from stdin and writes JSON to stdout. Many examples below use `echo`/`printf` or file redirection to demonstrate usage.
-
 ## 1. Simple Selector Extraction (no schema)
 
 1. Extract text from the first match
@@ -25,7 +14,7 @@ Sample HTML:
 
 Command:
 
-```bash
+```sh
 echo '<h1>Hello World</h1>' | res-scrapy -s 'h1' -e text
 ```
 
@@ -45,7 +34,7 @@ Sample HTML:
 
 Command:
 
-```bash
+```sh
 echo '<a href="/page1">Link 1</a><a href="/page2">Link 2</a>' | res-scrapy -s 'a' -m -e 'attr:href'
 ```
 
@@ -65,7 +54,7 @@ Sample HTML:
 
 Commands:
 
-```bash
+```sh
 # inner HTML
 echo '<div class="content"><p>Paragraph</p></div>' | res-scrapy -s '.content' -e innerHtml
 
@@ -110,7 +99,7 @@ Sample HTML:
 
 Command:
 
-```bash
+```sh
 echo '<table>...</table>' | res-scrapy -t
 ```
 
@@ -124,7 +113,7 @@ Expected output:
 
 Command:
 
-```bash
+```sh
 cat examples/sample.html | res-scrapy -t -s '#prices'
 ```
 
@@ -142,7 +131,7 @@ The repository includes `examples/schema-product.json` and `examples/sample.html
 
 Command:
 
-```bash
+```sh
 res-scrapy --schemaPath examples/schema-product.json < examples/sample.html
 ```
 
@@ -181,7 +170,7 @@ Sample HTML:
 
 Command (inline schema):
 
-```bash
+```sh
 echo '<div class="product"><h1>Awesome Product</h1><span class="price">$29.99</span><div class="in-stock">In Stock</div></div>' \
   | res-scrapy --schema '{"fields": {"name": {"selector": "h1","type": "text"}, "price": {"selector": ".price","type": "number","numberOptions": {"stripNonNumeric": true}}, "inStock": {"selector": ".in-stock","type": "boolean","booleanOptions": {"trueValues": ["in stock"]}}}}'
 ```
@@ -211,7 +200,7 @@ Inline schema example:
 
 Command (inline):
 
-```bash
+```sh
 cat jobs-page.html | res-scrapy --schema '{...}'
 ```
 
@@ -327,7 +316,7 @@ With `ignoreErrors: true` the extractor will attempt to continue and fill missin
 
 2. Load schema from a file (reusable)
 
-```bash
+```sh
 res-scrapy --schemaPath examples/schema-product.json < examples/sample.html
 ```
 
