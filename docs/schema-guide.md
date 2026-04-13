@@ -2,8 +2,6 @@
 
 This is the canonical, consolidated schema guide for res-scrapy. It is intended to be the single authoritative page for schema-driven extraction: CLI cheat-sheet, top-level concepts, practical examples (HTML + schema + CLI + expected JSON), and a compact but complete per-type reference.
 
-If you are updating docs, edit this file first. Other schema docs will be archived after consolidation.
-
 ---
 
 ## CLI Cheat-sheet
@@ -278,10 +276,16 @@ res-scrapy supports these field types: text, attribute, html, number, boolean, d
 
 Below are concise summaries with the most-used options and a short example for each type.
 
-1. Text
+### 1. Text
 
-- Purpose: extract textContent
-- Key options: `trim` (default true), `normalizeWhitespace`, `pattern` (regex capture), `multiple` (return array)
+Purpose: extract textContent.
+
+Key options:
+
+- `trim` (default true).
+- `normalizeWhitespace`.
+- `pattern` (regex capture).
+- `multiple` (return array).
 
 Example:
 
@@ -297,10 +301,16 @@ Example:
 }
 ```
 
-2. Attribute
+### 2. Attribute
 
-- Purpose: extract attributes (href/src/data-\*)
-- Key options: `attribute` (legacy single), `attributes` (array), `attrMode` (`first`, `firstNonEmpty` (default), `all`, `join`), `attrJoin`
+Purpose: extract attributes (href/src/data-\*).
+
+Key options:
+
+- `attribute` (legacy single).
+- `attributes` (array).
+- `attrMode` (`first`, `firstNonEmpty` (default), `all`, `join`).
+- `attrJoin`.
 
 Example (lazy image):
 
@@ -315,10 +325,15 @@ Example (lazy image):
 }
 ```
 
-3. HTML
+### 3. HTML
 
-- Purpose: extract markup
-- Key options: `htmlOptions.mode` (`inner` default, `outer`), `stripScripts`, `stripStyles`
+Purpose: extract markup.
+
+Key options:
+
+- `htmlOptions.mode` (`inner` `default`, `outer`).
+- `stripScripts`.
+- `stripStyles`.
 
 Example:
 
@@ -335,10 +350,19 @@ Example:
 }
 ```
 
-4. Number
+### 4. Number
 
-- Purpose: parse numeric values (currency, percent, locales)
-- Key options: `stripNonNumeric` (default true), `pattern` (regex capture), `thousandsSeparator`, `decimalSeparator`, `locale`, `precision`, `onError` (`null` default)
+Purpose: parse numeric values (currency, percent, locales).
+
+Key options:
+
+- `stripNonNumeric` (default true).
+- `pattern` (regex capture).
+- `thousandsSeparator`.
+- `decimalSeparator`.
+- `locale`.
+- `precision`.
+- `onError` (`null` default).
 
 Example:
 
@@ -356,11 +380,18 @@ Example:
 }
 ```
 
-5. Boolean
+### 5. Boolean
 
-- Purpose: interpret truthy/falsey values
-- Modes: `mapping` (default), `presence`, `attribute`
-- Key options: `trueValues`, `falseValues`, `attribute`, `pattern`, `onUnknown` (`false` default)
+Purpose: interpret truthy/falsey values.
+
+Key options:
+
+- `mode` (`mapping` default, `presence`, `attribute`).
+- `trueValues`.
+- `falseValues`.
+- `attribute`.
+- `pattern`.
+- `onUnknown` (`false` default).
 
 Example (presence):
 
@@ -376,10 +407,19 @@ Example (presence):
 }
 ```
 
-6. DateTime
+### 6. DateTime
 
-- Purpose: parse dates and normalize output
-- Key options: `formats` (array), `timezone`, `output` (`iso8601` default), `outputFormat`, `strict`, `locale`, `source` (`text`/`attribute`)
+Purpose: parse dates and normalize output.
+
+Key options:
+
+- `formats` (array).
+- `timezone`.
+- `output` (`iso8601` default).
+- `outputFormat`.
+- `strict`.
+- `locale`.
+- `source` (`text`/`attribute`).
 
 Example:
 
@@ -398,10 +438,14 @@ Example:
 }
 ```
 
-7. Count
+### 7. Count
 
-- Purpose: return integer count of matched elements
-- Key options: `min`, `max` (validation)
+Purpose: return integer count of matched elements.
+
+Key options:
+
+- `min`.
+- `max` (validation).
 
 Example:
 
@@ -414,10 +458,19 @@ Example:
 }
 ```
 
-8. URL
+### 8. URL
 
-- Purpose: extract and normalize URLs
-- Key options: `base`, `resolve` (default true), `validate` (default true), `protocol` (`http`/`https`/`any`), `stripQuery`, `stripHash`, `attribute`
+Purpose: extract and normalize URLs.
+
+Key options:
+
+- `base`.
+- `resolve` (default true).
+- `validate` (default true).
+- `protocol` (`http`/`https`/`any`).
+- `stripQuery`.
+- `stripHash`.
+- `attribute`.
 
 Example:
 
@@ -434,10 +487,17 @@ Example:
 }
 ```
 
-9. JSON
+### 9. JSON
 
-- Purpose: extract and parse embedded JSON (script[type=application/ld+json] or data- attributes)
-- Key options: `source` (`text`/`attribute`), `attribute`, `path` (JSONPath), `validate`, `onError`
+Purpose: extract and parse embedded JSON (script[type=application/ld+json] or data- attributes).
+
+Key options:
+
+- `source` (`text`/`attribute`).
+- `attribute`.
+- `path` (JSONPath).
+- `validate`.
+- `onError`.
 
 Example:
 
@@ -453,10 +513,18 @@ Example:
 }
 ```
 
-10. List
+### 10. List
 
-- Purpose: collect multiple matches into an array of typed items
-- Key options: `itemType` (`text` default), `attribute` (for attribute items), `unique`, `filter` (regex), `limit`, `join` (return string)
+Purpose: collect multiple matches into an array of typed items.
+
+Key options:
+
+- `itemType` (`text` default).
+- `attribute` (for attribute items).
+- `unique`.
+- `filter` (regex).
+- `limit`.
+- `join` (return string).
 
 Example:
 
