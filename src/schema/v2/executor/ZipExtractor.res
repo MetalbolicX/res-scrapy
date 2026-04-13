@@ -112,3 +112,9 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
   | Ok(arr) => Ok(JSON.Encode.array(arr))
   }
 }
+
+module Strategy = ExtractionStrategy.Make({
+  let name = "zip"
+  let canHandle = (_schema: schema) => true
+  let run = run
+})

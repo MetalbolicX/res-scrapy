@@ -4,12 +4,18 @@
 
 open FieldTypes
 
+module RowStrategy = RowExtractor.Strategy
+module ZipStrategy = ZipExtractor.Strategy
+
 let applySchema: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaError> = (
   document,
   schema,
 ) => {
-  switch schema.config.rowSelector {
-  | Some(_) => RowExtractor.run(document, schema)
-  | None => ZipExtractor.run(document, schema)
+  if RowStrategy.canHandle(schema) {
+    RowStrategy.execute(document, schema)
+  } else if ZipStrategy.canHandle(schema) {
+    ZipStrategy.execute(document, schema)
+  } else {
+    Error(ExtractionError("No extraction strategy matched schema"))
   }
 }

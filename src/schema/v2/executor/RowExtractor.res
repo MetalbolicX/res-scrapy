@@ -101,3 +101,9 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
   | Ok(arr) => Ok(JSON.Encode.array(arr))
   }
 }
+
+module Strategy = ExtractionStrategy.Make({
+  let name = "row"
+  let canHandle = (schema: schema) => schema.config.rowSelector->Option.isSome
+  let run = run
+})

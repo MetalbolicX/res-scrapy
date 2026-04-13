@@ -1,146 +1,105 @@
-/**
-  * Entry point for the res-scrapy CLI.
-  *
-  * Flow:
-  * 1. Parse and validate CLI flags via `Cli` and `ParseCli`.
-  * 2. Read HTML from stdin via `StdIn`.
-  * 3a. When `--table`/`-t` is provided: extract the matching `<table>` as a JSON
-  *     array of row objects via `TableExtractor`.
-  * 3b. When `--schema`/`--schemaPath` is provided: load and apply the schema via
-  *     `Schema`, outputting a JSON array of row objects.
-  * 3c. Otherwise: extract elements matching `--selector` in `--mode single|multiple`,
-  *     returning output per `--extract`.
-  * 4. Write the JSON result to stdout; exit with code 1 on any error.
- */
-let main: unit => promise<unit> = async () => {
-  let config = Cli.parse()
-  switch ParseCli.runArgsValidation(config) {
-  | Error(MissingSelector(msg)) => {
-      Console.error(msg)
-      NodeJsBinding.Process.exit(1)
+let exitWithError = (ctx: AppContext.appContext, err: AppError.appError) => {
+  ctx.io.err(AppError.toMessage(err))
+  ctx.io.exit(1)
+}
+
+let hasOnlyAggregateFields = (schema: Schema.schema) =>
+  schema.fields->Array.every(((_, field)) =>
+    switch field.fieldType {
+    | Count(_) | List(_) => true
+    | _ => false
     }
-  | Error(ParseError({message: msg})) => {
-      Console.error(msg)
-      NodeJsBinding.Process.exit(1)
+  )
+
+let warnIfZipAggregateOnly = (ctx: AppContext.appContext, schema: Schema.schema) => {
+  let isZipMode = switch schema.config.rowSelector {
+  | None => true
+  | Some(_) => false
+  }
+  if isZipMode && hasOnlyAggregateFields(schema) {
+    ctx.io.warn(
+      "Warning: schema uses zip mode (no config.rowSelector) with only aggregate fields (count/list), so no rows can be produced. Add config.rowSelector for row-based extraction.",
+    )
+  }
+}
+
+let loadSchema = (ctx: AppContext.appContext, source: ParseCli.schemaSource) =>
+  switch source {
+  | InlineJson(raw) => ctx.deps.loadSchema(~isInline=true, raw)
+  | FilePath(path) => ctx.deps.loadSchema(~isInline=false, path)
+  | TableSelector(_) => Error(FieldTypes.ExtractionError("Unreachable: table mode schema load"))
+  }
+
+let runSchemaMode = (
+  ctx: AppContext.appContext,
+  document: Document.document,
+  source: ParseCli.schemaSource,
+) => {
+  switch loadSchema(ctx, source)->ResultX.mapError(AppError.mapSchemaError) {
+  | Error(err) => exitWithError(ctx, err)
+  | Ok(schema) => {
+      warnIfZipAggregateOnly(ctx, schema)
+      switch ctx.deps.applySchema(document, schema)->ResultX.mapError(AppError.mapSchemaError) {
+      | Error(err) => exitWithError(ctx, err)
+      | Ok(json) => ctx.io.out(ctx.deps.stringifyJson(json))
+      }
     }
-  | Error(NoMatches({message: msg})) => {
-      Console.error(msg)
-      NodeJsBinding.Process.exit(1)
+  }
+}
+
+let runTableMode = (
+  ctx: AppContext.appContext,
+  document: Document.document,
+  selector: string,
+) => {
+  switch ctx.deps.extractTable(document, selector) {
+  | Error(msg) => exitWithError(ctx, AppError.ExtractionError(msg))
+  | Ok(rows) => ctx.io.out(ctx.deps.stringifyTableRows(rows))
+  }
+}
+
+let runSelectorMode = (
+  ctx: AppContext.appContext,
+  document: Document.document,
+  ~selector: string,
+  ~extractMode: ParseCli.extractMode,
+  ~mode: ParseCli.mode,
+) => {
+  let extract = (el: Document.element) =>
+    switch extractMode {
+    | OuterHtml => Document.outerHTML(ctx.deps.documentOps, el)
+    | InnerHtml => Document.innerHTML(ctx.deps.documentOps, el)
+    | Text => Document.textContent(ctx.deps.documentOps, el)
+    | Attribute(name) =>
+      Document.getAttribute(ctx.deps.documentOps, el, name)->Option.getOr("")
     }
+  let contents: array<string> = switch mode {
+  | Single =>
+    switch Document.querySelector(ctx.deps.documentOps, document, selector) {
+    | None => []
+    | Some(el) => [extract(el)]
+    }
+  | Multiple =>
+    Document.querySelectorAll(ctx.deps.documentOps, document, selector)->Array.map(el => extract(el))
+  }
+  ctx.io.out(ctx.deps.stringifyStrings(contents))
+}
+
+let mainWithContext: AppContext.appContext => promise<unit> = async ctx => {
+  let parsed = ctx.deps.parseCli()->ctx.deps.validateArgs->ResultX.mapError(AppError.mapParseError)
+  switch parsed {
+  | Error(err) => exitWithError(ctx, err)
   | Ok(options) => {
-      let stdinResult = await StdIn.readFromStdin()
-      switch stdinResult {
-      | Error(NoInput(msg)) | Error(EmptyContent(msg)) | Error(ReadError(msg)) => {
-          Console.error(msg)
-          NodeJsBinding.Process.exit(1)
-        }
+      let stdinResult = await ctx.deps.readStdin()
+      switch stdinResult->ResultX.mapError(AppError.mapStdInError) {
+      | Error(err) => exitWithError(ctx, err)
       | Ok(html) => {
-          let document = NodeHtmlParserBinding.parse(html)
-          switch options.schemaSource {
-          // -----------------------------------------------------------------
-          // Table extraction  (--table / -t)
-          // -----------------------------------------------------------------
-          | Some(TableSelector(selector)) =>
-            switch TableExtractor.extract(document, selector) {
-            | Error(msg) => {
-                Console.error(msg)
-                NodeJsBinding.Process.exit(1)
-              }
-            | Ok(rows) => Console.log(NodeJsBinding.jsonStringify(rows))
-            }
-          // -----------------------------------------------------------------
-          // Schema-driven structured extraction
-          // -----------------------------------------------------------------
-          | Some(schemaSource) => {
-              let schemaResult = switch schemaSource {
-              | InlineJson(raw) => Schema.loadSchema(~isInline=true, raw)
-              | FilePath(path) => Schema.loadSchema(~isInline=false, path)
-              | TableSelector(_) => Error(ExtractionError("Unreachable: TableSelector handled above"))
-              }
-              switch schemaResult {
-              | Error(InvalidJson(msg))
-              | Error(MissingFields(msg))
-              | Error(FileReadError(msg))
-              | Error(AttributeMissingKey(msg))
-              | Error(ExtractionError(msg))
-              | Error(RequiredFieldMissing({fieldName: msg, selector: _})) => {
-                  Console.error(msg)
-                  NodeJsBinding.Process.exit(1)
-                }
-              | Error(InvalidFieldType({field, got})) => {
-                  Console.error(`Invalid field type "${got}" for field "${field}"`)
-                  NodeJsBinding.Process.exit(1)
-                }
-              | Ok(schema) => {
-                let hasOnlyAggregateFields = schema.fields->Array.every(((_, field)) =>
-                  switch field.fieldType {
-                  | Count(_) | List(_) => true
-                  | _ => false
-                  }
-                )
-                let isZipMode = switch schema.config.rowSelector {
-                | None => true
-                | Some(_) => false
-                }
-                if isZipMode && hasOnlyAggregateFields {
-                  Console.error(
-                    "Warning: schema uses zip mode (no config.rowSelector) with only aggregate fields (count/list), so no rows can be produced. Add config.rowSelector for row-based extraction.",
-                  )
-                }
-                switch Schema.applySchema(document, schema) {
-                | Error(RequiredFieldMissing({fieldName, selector})) => {
-                    Console.error(
-                      `Required field "${fieldName}" not found for selector "${selector}"`,
-                    )
-                    NodeJsBinding.Process.exit(1)
-                  }
-                | Error(InvalidJson(msg))
-                | Error(MissingFields(msg))
-                | Error(FileReadError(msg))
-                | Error(AttributeMissingKey(msg)) => {
-                    Console.error(msg)
-                    NodeJsBinding.Process.exit(1)
-                  }
-                | Error(ExtractionError(msg)) => {
-                    Console.error(msg)
-                    NodeJsBinding.Process.exit(1)
-                  }
-                | Error(InvalidFieldType({field, got})) => {
-                  Console.error(`Invalid field type "${got}" for field "${field}"`)
-                  NodeJsBinding.Process.exit(1)
-                  }
-                | Ok(json) => Console.log(NodeJsBinding.jsonStringify(json))
-                }
-              }
-              }
-            }
-          // -----------------------------------------------------------------
-          // Selector-driven simple extraction
-          // -----------------------------------------------------------------
-          | None => {
-              let extract = (el: NodeHtmlParserBinding.htmlElement) =>
-                switch options.extract {
-                | OuterHtml => el.outerHTML
-                | InnerHtml => el.innerHTML
-                | Text => el.textContent
-                | Attribute(name) =>
-                  el->NodeHtmlParserBinding.getAttribute(name)->Nullable.toOption->Option.getOr("")
-                }
-              let contents: array<string> = switch options.mode {
-              | Single =>
-                switch document
-                ->NodeHtmlParserBinding.querySelector(options.selector)
-                ->Nullable.toOption {
-                | None => []
-                | Some(el) => [extract(el)]
-                }
-              | Multiple =>
-                document
-                ->NodeHtmlParserBinding.querySelectorAll(options.selector)
-                ->Array.map(el => extract(el))
-              }
-              Console.log(contents->NodeJsBinding.jsonStringify)
-            }
+          let document = Document.parse(ctx.deps.documentOps, html)
+          switch ExtractionMode.fromOptions(options) {
+          | TableMode(selector) => runTableMode(ctx, document, selector)
+          | SchemaMode(source) => runSchemaMode(ctx, document, source)
+          | SelectorMode({selector, extract, mode}) =>
+            runSelectorMode(ctx, document, ~selector, ~extractMode=extract, ~mode)
           }
         }
       }
@@ -148,4 +107,22 @@ let main: unit => promise<unit> = async () => {
   }
 }
 
-await main()
+let main: unit => promise<unit> = () => mainWithContext(AppContext.production)
+
+let isExecutedAsScript: unit => bool =
+  %raw(`() => {
+    try {
+      if (typeof process === "undefined" || !process.argv || process.argv.length < 2) {
+        return false;
+      }
+      const currentPath = new URL(import.meta.url).pathname;
+      const invokedPath = process.argv[1];
+      return currentPath === invokedPath || decodeURIComponent(currentPath) === invokedPath;
+    } catch {
+      return false;
+    }
+  }`)
+
+if isExecutedAsScript() {
+  await main()
+}

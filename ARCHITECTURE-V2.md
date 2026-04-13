@@ -19,11 +19,8 @@ This document defines the folder structure, module responsibilities, and impleme
 res-scrapy/
 ├── src/
 │   └── schema/
-│       ├── Schema.res                    # Public router (v1/v2)
+│       ├── Schema.res                    # Public entrypoint (v2)
 │       ├── Schema.resi
-│       ├── v1/
-│       │   ├── SchemaV1.res              # Current implementation (migrated)
-│       │   └── SchemaV1.resi
 │       └── v2/                           # v2.0 implementation
 │           ├── SchemaV2.res              # v2 public entrypoint
 │           ├── SchemaV2.resi
@@ -84,7 +81,7 @@ res-scrapy/
 
 ## Module Responsibilities
 
-- `src/schema/Schema.res` — public router: detects schema version and delegates to `v1` or `v2` implementation.
+- `src/schema/Schema.res` — public entrypoint: provides schema loading and application functions.
 
 - `src/schema/v2/types/*` — ReScript types for schema, fields, options and config. Keep types narrow and composable.
 
@@ -110,7 +107,7 @@ res-scrapy/
 
 1. Row-based extraction (`rowSelector`) is the default recommended model — far more robust than zip-by-first-field.
 2. Field-level options are explicit and opt-in; sensible global defaults live under `config.defaults`.
-3. Keep v1 implementation intact under `v1/` and provide a version router to enable gradual migration.
+3. All schemas use v2 implementation; v1 support has been removed.
 4. Extractors are pure functions (no side effects) returning `Result` types to simplify error handling.
 5. Cache compiled regexes and reuse parsing helpers to reduce overhead on repeated extractions.
 
@@ -151,7 +148,6 @@ Registry maps `fieldType` → extractor function; executor calls registry for ea
 Phase 1 — Foundation & critical fixes (Week 1):
 
 - Create folder skeleton and types
-- Move current implementation into `v1/`
 - Implement `numberOptions.stripNonNumeric`, `numberOptions.pattern`
 - Implement `booleanOptions.trueValues` and `presence` mode
 - Implement multi-attribute `attributes` + `firstNonEmpty` attrMode
@@ -173,7 +169,7 @@ Phase 3 — Additional extractors & polish (Week 2–4):
 
 - Unit tests: one test file per module with edge cases and option permutations.
 - Integration tests: parse → execute flows using real sample HTML fixtures.
-- Compatibility tests: ensure `v1` schemas continue to produce identical output.
+- Regression tests: ensure existing schemas continue to produce identical output.
 
 Example test commands (to add to `scripts/`):
 
@@ -202,9 +198,8 @@ npm run test:unit
 ## Next Steps
 
 1. Create the directory structure (scripts or `mkdir -p`).
-2. Copy existing `src/schema/Schema.res` → `src/schema/v1/SchemaV1.res`.
-3. Add the v2 type skeleton under `src/schema/v2/types` and a minimal `SchemaV2.res` wrapper.
-4. Implement Phase 1 extractors and parser pieces, with unit tests.
+2. Add the v2 type skeleton under `src/schema/v2/types` and a minimal `SchemaV2.res` wrapper.
+3. Implement Phase 1 extractors and parser pieces, with unit tests.
 
 ---
 

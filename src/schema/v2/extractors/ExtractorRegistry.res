@@ -9,6 +9,81 @@
   */
 open FieldTypes
 
+module type ScalarExtractor = {
+  type options
+  type output
+
+  let extract: (NodeHtmlParserBinding.htmlElement, option<options>) => option<output>
+  let toJson: output => JSON.t
+}
+
+module MakeScalar = (Impl: ScalarExtractor) => {
+  let run = (el, opts) => {
+    switch Impl.extract(el, opts) {
+    | Some(value) => Ok(Impl.toJson(value))
+    | None => Ok(JSON.Encode.null)
+    }
+  }
+}
+
+module TextScalar = MakeScalar({
+  type options = textOptions
+  type output = string
+
+  let extract = TextExtractor.extract
+  let toJson = JSON.Encode.string
+})
+
+module HtmlScalar = MakeScalar({
+  type options = htmlOptions
+  type output = string
+
+  let extract = HtmlExtractor.extract
+  let toJson = JSON.Encode.string
+})
+
+module NumberScalar = MakeScalar({
+  type options = numberOptions
+  type output = float
+
+  let extract = NumberExtractor.extract
+  let toJson = JSON.Encode.float
+})
+
+module AttributeScalar = {
+  let run = (el, cfg) => {
+    switch AttributeExtractor.extract(el, cfg) {
+    | Some(value) => Ok(JSON.Encode.string(value))
+    | None => Ok(JSON.Encode.null)
+    }
+  }
+}
+
+module UrlScalar = MakeScalar({
+  type options = urlOptions
+  type output = string
+
+  let extract = UrlExtractor.extract
+  let toJson = JSON.Encode.string
+})
+
+module JsonScalar = {
+  let run = (el, opts) => {
+    switch JsonExtractor.extract(el, opts) {
+    | Some(value) => Ok(value)
+    | None => Ok(JSON.Encode.null)
+    }
+  }
+}
+
+module DateTimeScalar = MakeScalar({
+  type options = dateOptions
+  type output = string
+
+  let extract = DateTimeExtractor.extract
+  let toJson = JSON.Encode.string
+})
+
 let columnTypeToFieldType: columnFieldType => fieldType = columnType =>
   switch columnType {
   | ColumnText(opts) => Text(opts)
@@ -257,47 +332,19 @@ let rec extractValue: (
   bool,
 ) => result<JSON.t, schemaError> = (el, ft, defaults, ignoreErrors) => {
   switch resolveDefaults(defaults, ft) {
-  | Text(opts) =>
-    switch TextExtractor.extract(el, opts) {
-    | Some(s) => Ok(JSON.Encode.string(s))
-    | None => Ok(JSON.Encode.null)
-    }
-  | Html(opts) =>
-    switch HtmlExtractor.extract(el, opts) {
-    | Some(s) => Ok(JSON.Encode.string(s))
-    | None => Ok(JSON.Encode.null)
-    }
-  | Attribute(cfg) =>
-    switch AttributeExtractor.extract(el, cfg) {
-    | Some(s) => Ok(JSON.Encode.string(s))
-    | None => Ok(JSON.Encode.null)
-    }
-  | Number(opts) =>
-    switch NumberExtractor.extract(el, opts) {
-    | Some(n) => Ok(JSON.Encode.float(n))
-    | None => Ok(JSON.Encode.null)
-    }
+  | Text(opts) => TextScalar.run(el, opts)
+  | Html(opts) => HtmlScalar.run(el, opts)
+  | Attribute(cfg) => AttributeScalar.run(el, cfg)
+  | Number(opts) => NumberScalar.run(el, opts)
   | Boolean(opts) =>
     switch BooleanExtractor.extract(el, opts) {
     | Ok(Some(b)) => Ok(JSON.Encode.bool(b))
     | Ok(None) => Ok(JSON.Encode.null)
     | Error(e) => Error(e)
     }
-  | Url(opts) =>
-    switch UrlExtractor.extract(el, opts) {
-    | Some(s) => Ok(JSON.Encode.string(s))
-    | None => Ok(JSON.Encode.null)
-    }
-  | Json(opts) =>
-    switch JsonExtractor.extract(el, opts) {
-    | Some(json) => Ok(json)
-    | None => Ok(JSON.Encode.null)
-    }
-  | DateTime(opts) =>
-    switch DateTimeExtractor.extract(el, opts) {
-    | Some(s) => Ok(JSON.Encode.string(s))
-    | None => Ok(JSON.Encode.null)
-    }
+  | Url(opts) => UrlScalar.run(el, opts)
+  | Json(opts) => JsonScalar.run(el, opts)
+  | DateTime(opts) => DateTimeScalar.run(el, opts)
   | Count(_) =>
     // Count requires the full element array; callers must use extractValueList.
     // If somehow routed here, return 1 (the element itself was found).
