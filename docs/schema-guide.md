@@ -90,19 +90,41 @@ Example (legacy, do not use for repeated items):
 - Price parsing (strip currency and parse number):
 
 ```json
-{"price": {"selector": ".price", "type": "number", "numberOptions": {"stripNonNumeric": true, "precision": 2}}}
+{
+  "price": {
+    "selector": ".price",
+    "type": "number",
+    "numberOptions": {
+      "stripNonNumeric": true,
+      "precision": 2
+    }
+  }
+}
 ```
 
 - Lazy image fallback (try data-src then src):
 
 ```json
-{"image": {"selector": "img", "type": "attribute", "attributes": ["data-src","src"], "attrMode": "firstNonEmpty"}}
+{
+  "image": {
+    "selector": "img",
+    "type": "attribute",
+    "attributes": ["data-src", "src"],
+    "attrMode": "firstNonEmpty"
+  }
+}
 ```
 
 - Badge presence (boolean by presence):
 
 ```json
-{"hasBadge": {"selector": ".badge", "type": "boolean", "booleanOptions": {"mode": "presence"}}}
+{
+  "hasBadge": {
+    "selector": ".badge",
+    "type": "boolean",
+    "booleanOptions": { "mode": "presence" }
+  }
+}
 ```
 
 ---
@@ -129,9 +151,25 @@ Schema (product-schema.json):
   "config": { "rowSelector": ".product-card" },
   "fields": {
     "name": { "selector": "h2", "type": "text" },
-    "price": { "selector": ".price", "type": "number", "numberOptions": { "stripNonNumeric": true, "precision": 2 } },
-    "imageUrl": { "selector": "img", "type": "attribute", "attributes": ["data-src", "src"], "attrMode": "firstNonEmpty" },
-    "inStock": { "selector": ".stock-status", "type": "boolean", "booleanOptions": { "mode": "mapping", "trueValues": ["in stock", "available", "yes"] } }
+    "price": {
+      "selector": ".price",
+      "type": "number",
+      "numberOptions": { "stripNonNumeric": true, "precision": 2 }
+    },
+    "imageUrl": {
+      "selector": "img",
+      "type": "attribute",
+      "attributes": ["data-src", "src"],
+      "attrMode": "firstNonEmpty"
+    },
+    "inStock": {
+      "selector": ".stock-status",
+      "type": "boolean",
+      "booleanOptions": {
+        "mode": "mapping",
+        "trueValues": ["in stock", "available", "yes"]
+      }
+    }
   }
 }
 ```
@@ -166,11 +204,23 @@ Sample HTML:
 ```html
 <table id="products">
   <thead>
-    <tr><th>Product</th><th>Price</th><th>In Stock</th></tr>
+    <tr>
+      <th>Product</th>
+      <th>Price</th>
+      <th>In Stock</th>
+    </tr>
   </thead>
   <tbody>
-    <tr><td>Widget A</td><td>$9.99</td><td>Yes</td></tr>
-    <tr><td>Widget B</td><td>$14.99</td><td>No</td></tr>
+    <tr>
+      <td>Widget A</td>
+      <td>$9.99</td>
+      <td>Yes</td>
+    </tr>
+    <tr>
+      <td>Widget B</td>
+      <td>$14.99</td>
+      <td>No</td>
+    </tr>
   </tbody>
 </table>
 ```
@@ -216,7 +266,7 @@ res-scrapy supports these field types: text, attribute, html, number, boolean, d
 
 Below are concise summaries with the most-used options and a short example for each type.
 
-1) Text
+1. Text
 
 - Purpose: extract textContent
 - Key options: `trim` (default true), `normalizeWhitespace`, `pattern` (regex capture), `multiple` (return array)
@@ -224,21 +274,36 @@ Below are concise summaries with the most-used options and a short example for e
 Example:
 
 ```json
-{ "title": { "selector": "h1", "type": "text", "textOptions": { "trim": true } } }
+{
+  "title": {
+    "selector": "h1",
+    "type": "text",
+    "textOptions": {
+      "trim": true
+    }
+  }
+}
 ```
 
-2) Attribute
+2. Attribute
 
-- Purpose: extract attributes (href/src/data-*)
+- Purpose: extract attributes (href/src/data-\*)
 - Key options: `attribute` (legacy single), `attributes` (array), `attrMode` (`first`, `firstNonEmpty` (default), `all`, `join`), `attrJoin`
 
 Example (lazy image):
 
 ```json
-{ "image": { "selector": "img", "type": "attribute", "attributes": ["data-src","src"], "attrMode": "firstNonEmpty" } }
+{
+  "image": {
+    "selector": "img",
+    "type": "attribute",
+    "attributes": ["data-src", "src"],
+    "attrMode": "firstNonEmpty"
+  }
+}
 ```
 
-3) HTML
+3. HTML
 
 - Purpose: extract markup
 - Key options: `htmlOptions.mode` (`inner` default, `outer`), `stripScripts`, `stripStyles`
@@ -246,10 +311,19 @@ Example (lazy image):
 Example:
 
 ```json
-{ "description": { "selector": ".description", "type": "html", "htmlOptions": { "mode": "inner", "stripScripts": true } } }
+{
+  "description": {
+    "selector": ".description",
+    "type": "html",
+    "htmlOptions": {
+      "mode": "inner",
+      "stripScripts": true
+    }
+  }
+}
 ```
 
-4) Number
+4. Number
 
 - Purpose: parse numeric values (currency, percent, locales)
 - Key options: `stripNonNumeric` (default true), `pattern` (regex capture), `thousandsSeparator`, `decimalSeparator`, `locale`, `precision`, `onError` (`null` default)
@@ -257,10 +331,20 @@ Example:
 Example:
 
 ```json
-{ "price": { "selector": ".price", "type": "number", "numberOptions": { "stripNonNumeric": true, "pattern": "\\$?([0-9,\\.]+)", "precision": 2 } } }
+{
+  "price": {
+    "selector": ".price",
+    "type": "number",
+    "numberOptions": {
+      "stripNonNumeric": true,
+      "pattern": "\\$?([0-9,\\.]+)",
+      "precision": 2
+    }
+  }
+}
 ```
 
-5) Boolean
+5. Boolean
 
 - Purpose: interpret truthy/falsey values
 - Modes: `mapping` (default), `presence`, `attribute`
@@ -269,10 +353,18 @@ Example:
 Example (presence):
 
 ```json
-{ "hasDiscount": { "selector": ".discount-badge", "type": "boolean", "booleanOptions": { "mode": "presence" } } }
+{
+  "hasDiscount": {
+    "selector": ".discount-badge",
+    "type": "boolean",
+    "booleanOptions": {
+      "mode": "presence"
+    }
+  }
+}
 ```
 
-6) DateTime
+6. DateTime
 
 - Purpose: parse dates and normalize output
 - Key options: `formats` (array), `timezone`, `output` (`iso8601` default), `outputFormat`, `strict`, `locale`, `source` (`text`/`attribute`)
@@ -280,10 +372,21 @@ Example (presence):
 Example:
 
 ```json
-{ "publishedAt": { "selector": "time", "type": "datetime", "dateOptions": { "source": "attribute", "attribute": "datetime", "formats": ["ISO"], "output": "iso8601" } } }
+{
+  "publishedAt": {
+    "selector": "time",
+    "type": "datetime",
+    "dateOptions": {
+      "source": "attribute",
+      "attribute": "datetime",
+      "formats": ["ISO"],
+      "output": "iso8601"
+    }
+  }
+}
 ```
 
-7) Count
+7. Count
 
 - Purpose: return integer count of matched elements
 - Key options: `min`, `max` (validation)
@@ -291,10 +394,15 @@ Example:
 Example:
 
 ```json
-{ "reviewCount": { "selector": ".review", "type": "count" } }
+{
+  "reviewCount": {
+    "selector": ".review",
+    "type": "count"
+  }
+}
 ```
 
-8) URL
+8. URL
 
 - Purpose: extract and normalize URLs
 - Key options: `base`, `resolve` (default true), `validate` (default true), `protocol` (`http`/`https`/`any`), `stripQuery`, `stripHash`, `attribute`
@@ -302,10 +410,19 @@ Example:
 Example:
 
 ```json
-{ "productUrl": { "selector": "a.product-link", "type": "url", "urlOptions": { "base": "https://example.com", "resolve": true } } }
+{
+  "productUrl": {
+    "selector": "a.product-link",
+    "type": "url",
+    "urlOptions": {
+      "base": "https://example.com",
+      "resolve": true
+    }
+  }
+}
 ```
 
-9) JSON
+9. JSON
 
 - Purpose: extract and parse embedded JSON (script[type=application/ld+json] or data- attributes)
 - Key options: `source` (`text`/`attribute`), `attribute`, `path` (JSONPath), `validate`, `onError`
@@ -313,10 +430,18 @@ Example:
 Example:
 
 ```json
-{ "ld": { "selector": "script[type=\"application/ld+json\"]", "type": "json", "jsonOptions": { "path": "$.offers.price" } } }
+{
+  "ld": {
+    "selector": "script[type=\"application/ld+json\"]",
+    "type": "json",
+    "jsonOptions": {
+      "path": "$.offers.price"
+    }
+  }
+}
 ```
 
-10) List
+10. List
 
 - Purpose: collect multiple matches into an array of typed items
 - Key options: `itemType` (`text` default), `attribute` (for attribute items), `unique`, `filter` (regex), `limit`, `join` (return string)
@@ -324,7 +449,16 @@ Example:
 Example:
 
 ```json
-{ "categories": { "selector": ".category", "type": "list", "listOptions": { "itemType": "text", "unique": true } } }
+{
+  "categories": {
+    "selector": ".category",
+    "type": "list",
+    "listOptions": {
+      "itemType": "text",
+      "unique": true
+    }
+  }
+}
 ```
 
 ---
@@ -373,14 +507,30 @@ Schema-level validation errors include: invalid JSON, missing `fields`, invalid 
     "limit": 0,
     "ignoreErrors": false,
     "defaults": {
-      "number": { "stripNonNumeric": true, "thousandsSeparator": ",", "precision": 2 },
-      "boolean": { "trueValues": ["in stock","available","yes"], "falseValues": ["out of stock","no"] }
+      "number": {
+        "stripNonNumeric": true,
+        "thousandsSeparator": ",",
+        "precision": 2
+      },
+      "boolean": {
+        "trueValues": ["in stock", "available", "yes"],
+        "falseValues": ["out of stock", "no"]
+      }
     }
   },
   "fields": {
     "name": { "selector": "h2.product-name", "type": "text", "required": true },
-    "price": { "selector": ".current-price", "type": "number", "numberOptions": { "pattern": "\\$?([0-9,\\.]+)" } },
-    "imageUrl": { "selector": "img.product-image", "type": "attribute", "attributes": ["data-src","src"], "attrMode": "firstNonEmpty" },
+    "price": {
+      "selector": ".current-price",
+      "type": "number",
+      "numberOptions": { "pattern": "\\$?([0-9,\\.]+)" }
+    },
+    "imageUrl": {
+      "selector": "img.product-image",
+      "type": "attribute",
+      "attributes": ["data-src", "src"],
+      "attrMode": "firstNonEmpty"
+    },
     "inStock": { "selector": ".stock-status", "type": "boolean" }
   }
 }
