@@ -1,4 +1,5 @@
 - [Home](/)
-- [Getting Started](/getting-started)
-- [API Reference](/api-reference)
-- [Examples](/examples)
+- [Getting Started](getting-started)
+- [Schema Reference](schema-reference)
+- [Examples](examples)
+- [API Reference](api-reference)
