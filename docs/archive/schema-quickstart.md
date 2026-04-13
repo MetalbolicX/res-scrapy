@@ -441,7 +441,7 @@ node src/Main.res.mjs --schemaPath schema.json < input.html
 | `#id`                 | Element with ID         |
 | `tag`                 | All elements of type    |
 | `[attr]`              | Elements with attribute |
-| `[attr="value"]`      | Exact attribute match   |
+| `[attr="value"]`    | Exact attribute match   |
 | `parent > child`      | Direct children         |
 | `ancestor descendant` | All descendants         |
 | `:first-child`        | First child element     |
@@ -508,7 +508,7 @@ node src/Main.res.mjs --schemaPath schema.json < input.html
       "numberOptions": { "precision": 1 }
     },
     "reviewCount": {
-      "selector": ".review",
+      "selector": ".review-item",
       "type": "count"
     },
     "imageUrl": {
