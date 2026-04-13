@@ -19,7 +19,8 @@
     "prebundle": "pnpm run date:build",
     "res:clean": "rescript clean",
     "docs": "docsify serve docs",
-    "bundle": "rolldown -c"
+    "bundle": "rolldown -c",
+    "prepare": "pnpm run bundle && node ./scripts/ensure-cli.mjs"
   },
   "bin": {
     "res-scrapy": "dist/main.mjs"
@@ -51,8 +52,5 @@
     "rolldown": "1.0.0-rc.15",
     "rollup-plugin-esbuild": "^6.2.1",
     "typescript": "^6.0.2"
-  },
-  "peerDependencies": {
-    "node-html-parser": "^7.1.0"
   }
 }

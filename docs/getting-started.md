@@ -58,44 +58,42 @@ deno init
 
 <!-- tabs:end -->
 
-### Install Dependencies
+### Install the CLI
 
-Install `res-scrapy` using your preferred package manager:
+To use the command-line tool, install the published package and then run the `res-scrapy` command.
 
-<!-- tabs:start -->
-
-#### **npm**
+Recommended (global install):
 
 ```sh
-npm install res-scrapy
+npm install -g res-scrapy
+res-scrapy -h
 ```
 
-
-#### **pnpm**
+One-off (no global install):
 
 ```sh
-pnpm add res-scrapy
+npx res-scrapy -h          # npm
+pnpm dlx res-scrapy -h     # pnpm
+yarn dlx res-scrapy -h     # yarn
+bunx res-scrapy -h         # bun
 ```
 
-
-#### **yarn**
+Local development (from repo root):
 
 ```sh
-yarn add res-scrapy
+npm link
+res-scrapy -h
 ```
 
-
-#### **bun**
+Install from a packed tarball:
 
 ```sh
-bun add res-scrapy
+npm pack
+npm install -g ./res-scrapy-<version>.tgz
+res-scrapy -h
 ```
 
+Notes:
 
-#### **deno**
-
-```sh
-deno add --npm res-scrapy
-```
-
-<!-- tabs:end -->
+- Ensure you have Node.js v22.0.0 or later (`node -v`).
+- If global installs require elevated permissions, use a node version manager (nvm, fnm, asdf) or prefer the `npx`/`dlx` one-off commands.
