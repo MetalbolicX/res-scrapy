@@ -335,13 +335,3 @@ res-scrapy --schemaPath examples/schema-product.json < examples/sample.html
 
 - When a schema produces no rows, check if `config.rowSelector` is set correctly. Without `rowSelector` the extractor zips fields by index (legacy behavior).
 - Use `--mode -s '<selector>' -e attr:name` to quickly probe which elements match and what attributes they expose.
-
----
-
-## Where to go next
-
-- See `/SCHEMA-SPEC.md` for the full schema reference and all type options.
-- See `/SCHEMA-EXAMPLES.md` for more complete schema examples (e-commerce, blogs, dates, tables, nested data).
-- Use the `examples/cases/` fixtures in the repository to test specific behaviors (dates, attributes, inner/outer HTML, lists, JSON-LD).
-
-If you want, I can also add runnable example files under `docs/examples/` or wire copy buttons for each command — tell me which examples you'd like to make executable in the repo.

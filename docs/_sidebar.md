@@ -1,5 +1,7 @@
 - [Home](/)
 - [Getting Started](getting-started)
+- [Schema Quickstart](schema-quickstart)
 - [Schema Reference](schema-reference)
+- [Schema Specification](schema-specification)
 - [Examples](examples)
-- [API Reference](api-reference)
+- [Schema Examples](schema-examples)

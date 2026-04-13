@@ -10,11 +10,11 @@ Complete reference for the res-scrapy schema system. This guide covers everythin
 
 Two main modes support structured extraction:
 
-| Flag | Short | Description |
-|------|-------|-------------|
-| `--schema` | `-c` | Pass a schema as inline JSON string |
-| `--schemaPath` | `-p` | Path to a `.json` schema file |
-| `--table` | `-t` | Extract an HTML table as JSON array |
+| Flag           | Short | Description                         |
+| -------------- | ----- | ----------------------------------- |
+| `--schema`     | `-c`  | Pass a schema as inline JSON string |
+| `--schemaPath` | `-p`  | Path to a `.json` schema file       |
+| `--table`      | `-t`  | Extract an HTML table as JSON array |
 
 **Basic usage patterns:**
 
@@ -43,8 +43,12 @@ A schema is a JSON object with this structure:
 {
   "name": "Product Schema",
   "description": "Extract product information",
-  "config": { /* global settings */ },
-  "fields": { /* field definitions */ }
+  "config": {
+    /* global settings */
+  },
+  "fields": {
+    /* field definitions */
+  }
 }
 ```
 
@@ -97,7 +101,7 @@ Here's a real-world product extraction schema:
 <article class="product-card">
   <h2>Premium Widget</h2>
   <span class="price">$49.99</span>
-  <img data-src="https://cdn.example.com/widget.jpg" src="/fallback.jpg">
+  <img data-src="https://cdn.example.com/widget.jpg" src="/fallback.jpg" />
   <span class="stock-status">In Stock</span>
 </article>
 ```
@@ -166,8 +170,8 @@ echo '<table>...</table>' | res-scrapy --table
 
 ```json
 [
-  {"Product": "Widget A", "Price": "$9.99", "In Stock": "Yes"},
-  {"Product": "Widget B", "Price": "$14.99", "In Stock": "No"}
+  { "Product": "Widget A", "Price": "$9.99", "In Stock": "Yes" },
+  { "Product": "Widget B", "Price": "$14.99", "In Stock": "No" }
 ]
 ```
 
@@ -215,10 +219,14 @@ curl -s 'https://example.com/comparison' | res-scrapy -t -s '#comparison-table'
 
 ```json
 {
-  "config": {"rowSelector": ".product"},
+  "config": { "rowSelector": ".product" },
   "fields": {
-    "price": {"selector": ".price", "type": "number", "numberOptions": {"stripNonNumeric": true}},
-    "available": {"selector": ".stock", "type": "boolean"}
+    "price": {
+      "selector": ".price",
+      "type": "number",
+      "numberOptions": { "stripNonNumeric": true }
+    },
+    "available": { "selector": ".stock", "type": "boolean" }
   }
 }
 ```
@@ -237,14 +245,14 @@ Extracts text content from elements. Most common type for headlines, description
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `trim` | boolean | `true` | Remove leading/trailing whitespace |
-| `normalizeWhitespace` | boolean | `false` | Collapse multiple spaces/newlines |
-| `lowercase` | boolean | `false` | Convert to lowercase |
-| `uppercase` | boolean | `false` | Convert to uppercase |
-| `pattern` | string | — | Regex pattern to extract (uses capture group 1) |
-| `join` | string | — | When `multiple: true`, join array with this separator |
+| Option                | Type    | Default | Description                                           |
+| --------------------- | ------- | ------- | ----------------------------------------------------- |
+| `trim`                | boolean | `true`  | Remove leading/trailing whitespace                    |
+| `normalizeWhitespace` | boolean | `false` | Collapse multiple spaces/newlines                     |
+| `lowercase`           | boolean | `false` | Convert to lowercase                                  |
+| `uppercase`           | boolean | `false` | Convert to uppercase                                  |
+| `pattern`             | string  | —       | Regex pattern to extract (uses capture group 1)       |
+| `join`                | string  | —       | When `multiple: true`, join array with this separator |
 
 **Example:**
 
@@ -272,7 +280,7 @@ Extracts text content from elements. Most common type for headlines, description
 **HTML:**
 
 ```html
-<h1>  Breaking News Story  </h1>
+<h1>Breaking News Story</h1>
 <span class="tag">Tech</span>
 <span class="tag">AI</span>
 ```
@@ -280,7 +288,7 @@ Extracts text content from elements. Most common type for headlines, description
 **Output:**
 
 ```json
-{"title": "Breaking News Story", "tags": "Tech, AI"}
+{ "title": "Breaking News Story", "tags": "Tech, AI" }
 ```
 
 ---
@@ -291,12 +299,12 @@ Extracts HTML attribute values. Essential for links (`href`), images (`src`), an
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `attribute` | string | — | Single attribute name (legacy) |
-| `attributes` | string[] | — | Array of attribute names to try |
-| `attrMode` | string | `"firstNonEmpty"` | `"first"`, `"firstNonEmpty"`, `"all"`, `"join"` |
-| `attrJoin` | string | — | Separator when `attrMode: "join"` |
+| Option       | Type     | Default           | Description                                     |
+| ------------ | -------- | ----------------- | ----------------------------------------------- |
+| `attribute`  | string   | —                 | Single attribute name (legacy)                  |
+| `attributes` | string[] | —                 | Array of attribute names to try                 |
+| `attrMode`   | string   | `"firstNonEmpty"` | `"first"`, `"firstNonEmpty"`, `"all"`, `"join"` |
+| `attrJoin`   | string   | —                 | Separator when `attrMode: "join"`               |
 
 **Modes:**
 
@@ -320,13 +328,17 @@ Returns the first non-empty attribute value. Perfect for lazy-loaded images.
 **HTML:**
 
 ```html
-<img data-lazy="" data-src="https://cdn.example.com/img.jpg" src="/fallback.jpg">
+<img
+  data-lazy=""
+  data-src="https://cdn.example.com/img.jpg"
+  src="/fallback.jpg"
+/>
 ```
 
 **Output:**
 
 ```json
-{"imageUrl": "https://cdn.example.com/img.jpg"}
+{ "imageUrl": "https://cdn.example.com/img.jpg" }
 ```
 
 #### **all**
@@ -353,7 +365,7 @@ Returns an object with all requested attributes.
 **Output:**
 
 ```json
-{"linkAttrs": {"href": "/page", "title": "Click here", "rel": "noopener"}}
+{ "linkAttrs": { "href": "/page", "title": "Click here", "rel": "noopener" } }
 ```
 
 #### **join**
@@ -381,7 +393,7 @@ Concatenates multiple attributes with a separator.
 **Output:**
 
 ```json
-{"classes": "card highlighted"}
+{ "classes": "card highlighted" }
 ```
 
 <!-- tabs:end -->
@@ -394,11 +406,11 @@ Extracts raw HTML markup. Useful when you need to preserve formatting or extract
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `mode` | string | `"inner"` | `"inner"` or `"outer"` |
-| `stripScripts` | boolean | `false` | Remove `<script>` tags |
-| `stripStyles` | boolean | `false` | Remove `<style>` tags |
+| Option         | Type    | Default   | Description            |
+| -------------- | ------- | --------- | ---------------------- |
+| `mode`         | string  | `"inner"` | `"inner"` or `"outer"` |
+| `stripScripts` | boolean | `false`   | Remove `<script>` tags |
+| `stripStyles`  | boolean | `false`   | Remove `<style>` tags  |
 
 **Modes:**
 
@@ -426,14 +438,16 @@ Extracts the inner HTML (content only).
 ```html
 <div class="article">
   <p>Paragraph</p>
-  <script>alert('xss')</script>
+  <script>
+    alert("xss");
+  </script>
 </div>
 ```
 
 **Output:**
 
 ```json
-{"content": "<p>Paragraph</p>"}
+{ "content": "<p>Paragraph</p>" }
 ```
 
 #### **outer**
@@ -445,7 +459,7 @@ Extracts the outer HTML (includes the element itself).
   "card": {
     "selector": ".card",
     "type": "html",
-    "htmlOptions": {"mode": "outer"}
+    "htmlOptions": { "mode": "outer" }
   }
 }
 ```
@@ -459,7 +473,7 @@ Extracts the outer HTML (includes the element itself).
 **Output:**
 
 ```json
-{"card": "<div class=\"card\" data-id=\"123\"><p>Content</p></div>"}
+{ "card": "<div class=\"card\" data-id=\"123\"><p>Content</p></div>" }
 ```
 
 <!-- tabs:end -->
@@ -472,15 +486,15 @@ Parses numeric values from text. Handles currency, percentages, and locale-speci
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `stripNonNumeric` | boolean | `true` | Remove non-digit chars except `.` and `-` |
-| `pattern` | string | — | Regex to extract number (uses capture group 1) |
-| `thousandsSeparator` | string | `","` | Character to strip as thousands separator |
-| `decimalSeparator` | string | `"."` | Decimal point character |
-| `locale` | string | — | Locale-aware parsing (e.g., `"de-DE"`) |
-| `precision` | number | — | Round to N decimal places |
-| `onError` | string | `"null"` | `"null"`, `"text"`, `"default"`, or `"error"` |
+| Option               | Type    | Default  | Description                                    |
+| -------------------- | ------- | -------- | ---------------------------------------------- |
+| `stripNonNumeric`    | boolean | `true`   | Remove non-digit chars except `.` and `-`      |
+| `pattern`            | string  | —        | Regex to extract number (uses capture group 1) |
+| `thousandsSeparator` | string  | `","`    | Character to strip as thousands separator      |
+| `decimalSeparator`   | string  | `"."`    | Decimal point character                        |
+| `locale`             | string  | —        | Locale-aware parsing (e.g., `"de-DE"`)         |
+| `precision`          | number  | —        | Round to N decimal places                      |
+| `onError`            | string  | `"null"` | `"null"`, `"text"`, `"default"`, or `"error"`  |
 
 **Parsing priority:**
 
@@ -519,7 +533,7 @@ Parses numeric values from text. Handles currency, percentages, and locale-speci
 **Output:**
 
 ```json
-{"price": 1234.56}
+{ "price": 1234.56 }
 ```
 
 #### **Percentage**
@@ -545,7 +559,7 @@ Parses numeric values from text. Handles currency, percentages, and locale-speci
 **Output:**
 
 ```json
-{"discount": 25.5}
+{ "discount": 25.5 }
 ```
 
 #### **European Format**
@@ -573,7 +587,7 @@ Parses numeric values from text. Handles currency, percentages, and locale-speci
 **Output:**
 
 ```json
-{"price": 1234.56}
+{ "price": 1234.56 }
 ```
 
 <!-- tabs:end -->
@@ -586,14 +600,14 @@ Extracts and interprets boolean values from text, element presence, or attribute
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `mode` | string | `"mapping"` | `"mapping"`, `"presence"`, or `"attribute"` |
-| `trueValues` | string[] | `["true", "yes", "1"]` | Strings that map to `true` |
-| `falseValues` | string[] | `["false", "no", "0"]` | Strings that map to `false` |
-| `attribute` | string | — | For `mode: "attribute"`, which attr to check |
-| `pattern` | string | — | Regex pattern (match = true) |
-| `onUnknown` | string | `"false"` | `"false"`, `"null"`, or `"error"` |
+| Option        | Type     | Default                | Description                                  |
+| ------------- | -------- | ---------------------- | -------------------------------------------- |
+| `mode`        | string   | `"mapping"`            | `"mapping"`, `"presence"`, or `"attribute"`  |
+| `trueValues`  | string[] | `["true", "yes", "1"]` | Strings that map to `true`                   |
+| `falseValues` | string[] | `["false", "no", "0"]` | Strings that map to `false`                  |
+| `attribute`   | string   | —                      | For `mode: "attribute"`, which attr to check |
+| `pattern`     | string   | —                      | Regex pattern (match = true)                 |
+| `onUnknown`   | string   | `"false"`              | `"false"`, `"null"`, or `"error"`            |
 
 **Modes:**
 
@@ -626,7 +640,7 @@ Compares text content against true/false value lists.
 **Output:**
 
 ```json
-{"inStock": true}
+{ "inStock": true }
 ```
 
 #### **presence**
@@ -638,7 +652,7 @@ Returns `true` if the selector matches any element, `false` otherwise. Great for
   "hasDiscount": {
     "selector": ".discount-badge",
     "type": "boolean",
-    "booleanOptions": {"mode": "presence"}
+    "booleanOptions": { "mode": "presence" }
   }
 }
 ```
@@ -687,13 +701,13 @@ Checks if an attribute exists and has a truthy value.
 **HTML:**
 
 ```html
-<input type="checkbox" checked>
+<input type="checkbox" checked />
 ```
 
 **Output:**
 
 ```json
-{"isChecked": true}
+{ "isChecked": true }
 ```
 
 <!-- tabs:end -->
@@ -706,28 +720,28 @@ Parses dates from various formats and converts to standardized output.
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `formats` | string[] | — | Parsing format patterns (tried in order) |
-| `timezone` | string | `"UTC"` | IANA timezone for output |
-| `output` | string | `"iso8601"` | `"iso8601"`, `"epoch"`, `"epochMillis"`, `"custom"` |
-| `outputFormat` | string | — | Custom format when `output: "custom"` |
-| `strict` | boolean | `false` | Require strict parsing |
-| `locale` | string | — | Locale for month/day names |
-| `source` | string | `"text"` | `"text"` or `"attribute"` |
-| `attribute` | string | — | When `source: "attribute"` |
+| Option         | Type     | Default     | Description                                         |
+| -------------- | -------- | ----------- | --------------------------------------------------- |
+| `formats`      | string[] | —           | Parsing format patterns (tried in order)            |
+| `timezone`     | string   | `"UTC"`     | IANA timezone for output                            |
+| `output`       | string   | `"iso8601"` | `"iso8601"`, `"epoch"`, `"epochMillis"`, `"custom"` |
+| `outputFormat` | string   | —           | Custom format when `output: "custom"`               |
+| `strict`       | boolean  | `false`     | Require strict parsing                              |
+| `locale`       | string   | —           | Locale for month/day names                          |
+| `source`       | string   | `"text"`    | `"text"` or `"attribute"`                           |
+| `attribute`    | string   | —           | When `source: "attribute"`                          |
 
 **Format tokens:**
 
-| Token | Meaning |
-|-------|---------|
-| `yyyy` | 4-digit year |
-| `yy` | 2-digit year |
-| `MM` | 2-digit month |
-| `dd` | 2-digit day |
-| `HH` | 24-hour |
-| `mm` | Minutes |
-| `ss` | Seconds |
+| Token  | Meaning       |
+| ------ | ------------- |
+| `yyyy` | 4-digit year  |
+| `yy`   | 2-digit year  |
+| `MM`   | 2-digit month |
+| `dd`   | 2-digit day   |
+| `HH`   | 24-hour       |
+| `mm`   | Minutes       |
+| `ss`   | Seconds       |
 
 **Special format values:** `"ISO"`, `"epoch"`, `"epochMillis"`
 
@@ -761,7 +775,7 @@ Parses dates from various formats and converts to standardized output.
 **Output:**
 
 ```json
-{"publishedAt": "2024-03-15T10:30:00.000Z"}
+{ "publishedAt": "2024-03-15T10:30:00.000Z" }
 ```
 
 #### **Multiple human formats**
@@ -790,7 +804,7 @@ Parses dates from various formats and converts to standardized output.
 **Output:**
 
 ```json
-{"date": "2024-03-15T00:00:00.000Z"}
+{ "date": "2024-03-15T00:00:00.000Z" }
 ```
 
 <!-- tabs:end -->
@@ -803,10 +817,10 @@ Returns the number of elements matching a selector. Useful for "number of review
 
 **Options:**
 
-| Option | Type | Description |
-|--------|------|-------------|
-| `min` | number | Minimum expected count (validation warning) |
-| `max` | number | Maximum expected count (validation warning) |
+| Option | Type   | Description                                 |
+| ------ | ------ | ------------------------------------------- |
+| `min`  | number | Minimum expected count (validation warning) |
+| `max`  | number | Maximum expected count (validation warning) |
 
 **Example:**
 
@@ -835,14 +849,14 @@ Returns the number of elements matching a selector. Useful for "number of review
   <div class="review">Review 2</div>
   <div class="review">Review 3</div>
 </div>
-<img class="gallery" src="1.jpg">
-<img class="gallery" src="2.jpg">
+<img class="gallery" src="1.jpg" />
+<img class="gallery" src="2.jpg" />
 ```
 
 **Output:**
 
 ```json
-{"reviewCount": 3, "imageCount": 2}
+{ "reviewCount": 3, "imageCount": 2 }
 ```
 
 ---
@@ -853,15 +867,15 @@ Extracts and normalizes URLs. Resolves relative URLs and validates format.
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `base` | string | — | Base URL for resolving relative URLs |
-| `resolve` | boolean | `true` | Resolve relative to base |
-| `validate` | boolean | `true` | Validate URL format |
-| `protocol` | string | `"any"` | `"http"`, `"https"`, or `"any"` |
-| `stripQuery` | boolean | `false` | Remove query string |
-| `stripHash` | boolean | `false` | Remove fragment |
-| `attribute` | string | `"href"` / `"src"` | Attribute to extract |
+| Option       | Type    | Default            | Description                          |
+| ------------ | ------- | ------------------ | ------------------------------------ |
+| `base`       | string  | —                  | Base URL for resolving relative URLs |
+| `resolve`    | boolean | `true`             | Resolve relative to base             |
+| `validate`   | boolean | `true`             | Validate URL format                  |
+| `protocol`   | string  | `"any"`            | `"http"`, `"https"`, or `"any"`      |
+| `stripQuery` | boolean | `false`            | Remove query string                  |
+| `stripHash`  | boolean | `false`            | Remove fragment                      |
+| `attribute`  | string  | `"href"` / `"src"` | Attribute to extract                 |
 
 **Example:**
 
@@ -890,9 +904,9 @@ Extracts and normalizes URLs. Resolves relative URLs and validates format.
 **HTML:**
 
 ```html
-<base href="https://example.com">
+<base href="https://example.com" />
 <a class="product-link" href="/product/123">Product</a>
-<link rel="canonical" href="https://example.com/page?id=123">
+<link rel="canonical" href="https://example.com/page?id=123" />
 ```
 
 **Output:**
@@ -912,13 +926,13 @@ Extracts and parses embedded JSON content. Perfect for JSON-LD structured data o
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `source` | string | `"text"` | `"text"` or `"attribute"` |
-| `attribute` | string | — | When `source: "attribute"` |
-| `path` | string | — | JSONPath to extract subset |
-| `validate` | boolean | `true` | Validate JSON format |
-| `onError` | string | `"null"` | `"null"`, `"text"`, or `"error"` |
+| Option      | Type    | Default  | Description                      |
+| ----------- | ------- | -------- | -------------------------------- |
+| `source`    | string  | `"text"` | `"text"` or `"attribute"`        |
+| `attribute` | string  | —        | When `source: "attribute"`       |
+| `path`      | string  | —        | JSONPath to extract subset       |
+| `validate`  | boolean | `true`   | Validate JSON format             |
+| `onError`   | string  | `"null"` | `"null"`, `"text"`, or `"error"` |
 
 **Examples:**
 
@@ -942,21 +956,21 @@ Extracts and parses embedded JSON content. Perfect for JSON-LD structured data o
 
 ```html
 <script type="application/ld+json">
-{
-  "@type": "Product",
-  "name": "Widget",
-  "offers": {
-    "price": "29.99",
-    "priceCurrency": "USD"
+  {
+    "@type": "Product",
+    "name": "Widget",
+    "offers": {
+      "price": "29.99",
+      "priceCurrency": "USD"
+    }
   }
-}
 </script>
 ```
 
 **Output:**
 
 ```json
-{"productData": {"price": "29.99", "priceCurrency": "USD"}}
+{ "productData": { "price": "29.99", "priceCurrency": "USD" } }
 ```
 
 #### **Data attribute JSON**
@@ -983,7 +997,7 @@ Extracts and parses embedded JSON content. Perfect for JSON-LD structured data o
 **Output:**
 
 ```json
-{"config": {"theme": "dark", "autoplay": true}}
+{ "config": { "theme": "dark", "autoplay": true } }
 ```
 
 <!-- tabs:end -->
@@ -996,14 +1010,14 @@ Collects multiple matches into a typed array. Similar to `multiple: true` but wi
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `itemType` | string | `"text"` | `"text"`, `"html"`, `"attribute"`, or `"url"` |
-| `attribute` | string | — | When `itemType: "attribute"` |
-| `unique` | boolean | `false` | Remove duplicates |
-| `filter` | string | — | Regex pattern to filter items |
-| `limit` | number | — | Max items to collect |
-| `join` | string | — | Join into string instead of array |
+| Option      | Type    | Default  | Description                                   |
+| ----------- | ------- | -------- | --------------------------------------------- |
+| `itemType`  | string  | `"text"` | `"text"`, `"html"`, `"attribute"`, or `"url"` |
+| `attribute` | string  | —        | When `itemType: "attribute"`                  |
+| `unique`    | boolean | `false`  | Remove duplicates                             |
+| `filter`    | string  | —        | Regex pattern to filter items                 |
+| `limit`     | number  | —        | Max items to collect                          |
+| `join`      | string  | —        | Join into string instead of array             |
 
 **Example:**
 
@@ -1036,9 +1050,9 @@ Collects multiple matches into a typed array. Similar to `multiple: true` but wi
 <span class="category">Tech</span>
 <span class="category">AI</span>
 <span class="category">Tech</span>
-<img src="1.jpg">
-<img src="2.jpg">
-<img src="3.jpg">
+<img src="1.jpg" />
+<img src="2.jpg" />
+<img src="3.jpg" />
 ```
 
 **Output:**
@@ -1058,13 +1072,13 @@ The `config` section sets defaults that apply to all fields in the schema.
 
 ### Config Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `rowSelector` | string | — | CSS selector for row containers |
-| `ignoreErrors` | boolean | `false` | Continue extraction on field errors |
-| `limit` | number | `0` (unlimited) | Max rows to extract |
-| `defaults` | object | — | Default options per type |
-| `output` | object | — | Output formatting options |
+| Option         | Type    | Default         | Description                         |
+| -------------- | ------- | --------------- | ----------------------------------- |
+| `rowSelector`  | string  | —               | CSS selector for row containers     |
+| `ignoreErrors` | boolean | `false`         | Continue extraction on field errors |
+| `limit`        | number  | `0` (unlimited) | Max rows to extract                 |
+| `defaults`     | object  | —               | Default options per type            |
+| `output`       | object  | —               | Output formatting options           |
 
 ### Row Selector (Most Important)
 
@@ -1077,13 +1091,14 @@ The `config` section sets defaults that apply to all fields in the schema.
 ```json
 {
   "fields": {
-    "name": {"selector": ".product h2", "type": "text"},
-    "price": {"selector": ".product .price", "type": "number"}
+    "name": { "selector": ".product h2", "type": "text" },
+    "price": { "selector": ".product .price", "type": "number" }
   }
 }
 ```
 
 **Behavior:**
+
 - Each selector runs against the entire document
 - Rows created by zipping results by index
 - Row count = length of first field's results
@@ -1093,15 +1108,16 @@ The `config` section sets defaults that apply to all fields in the schema.
 
 ```json
 {
-  "config": {"rowSelector": ".product-card"},
+  "config": { "rowSelector": ".product-card" },
   "fields": {
-    "name": {"selector": "h2", "type": "text"},
-    "price": {"selector": ".price", "type": "number"}
+    "name": { "selector": "h2", "type": "text" },
+    "price": { "selector": ".price", "type": "number" }
   }
 }
 ```
 
 **Behavior:**
+
 - `querySelectorAll(rowSelector)` finds row elements
 - Each field selector runs **relative to** its row
 - Row count = number of elements matching `rowSelector`
@@ -1132,7 +1148,8 @@ When `ignoreErrors: true`, field extraction failures don't abort the entire extr
 
 ```html
 <div class="product">
-  <span class="price">invalid</span>  <!-- parse fails -->
+  <span class="price">invalid</span>
+  <!-- parse fails -->
 </div>
 <div class="product">
   <!-- No price element -->
@@ -1142,10 +1159,7 @@ When `ignoreErrors: true`, field extraction failures don't abort the entire extr
 **Output:**
 
 ```json
-[
-  {"price": null},
-  {"price": null}
-]
+[{ "price": null }, { "price": null }]
 ```
 
 Without `ignoreErrors`, either case would cause the CLI to exit with an error.
@@ -1169,9 +1183,9 @@ Set default options for all fields of a given type:
     }
   },
   "fields": {
-    "price1": {"selector": ".price1", "type": "number"},
-    "price2": {"selector": ".price2", "type": "number"},
-    "inStock": {"selector": ".stock", "type": "boolean"}
+    "price1": { "selector": ".price1", "type": "number" },
+    "price2": { "selector": ".price2", "type": "number" },
+    "inStock": { "selector": ".stock", "type": "boolean" }
   }
 }
 ```
@@ -1184,13 +1198,13 @@ Field-level options override global defaults.
 
 These options work with any field type:
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `selector` | string | **required** | CSS selector to match elements |
-| `type` | string | **required** | Field type (text, number, boolean, etc.) |
-| `required` | boolean | `false` | Abort if element not found (unless `ignoreErrors`) |
-| `default` | any | — | Value when element not found or parse fails |
-| `multiple` | boolean | `false` | Return array of all matches |
+| Option     | Type    | Default      | Description                                        |
+| ---------- | ------- | ------------ | -------------------------------------------------- |
+| `selector` | string  | **required** | CSS selector to match elements                     |
+| `type`     | string  | **required** | Field type (text, number, boolean, etc.)           |
+| `required` | boolean | `false`      | Abort if element not found (unless `ignoreErrors`) |
+| `default`  | any     | —            | Value when element not found or parse fails        |
+| `multiple` | boolean | `false`      | Return array of all matches                        |
 
 ### Multiple Mode
 
@@ -1217,7 +1231,7 @@ When `multiple: true`, the field returns an array instead of a single value:
 **Output:**
 
 ```json
-{"tags": ["Red", "Blue", "Green"]}
+{ "tags": ["Red", "Blue", "Green"] }
 ```
 
 **Note:** For typed arrays with more control, use `type: "list"` instead.
@@ -1264,6 +1278,7 @@ When a field extraction fails, behavior depends on configuration:
 ```
 
 Follows the type's `onError` policy:
+
 - `"null"` → Returns `null`
 - `"text"` → Returns original text
 - `"default"` → Uses field's `default` value
@@ -1273,7 +1288,7 @@ Follows the type's `onError` policy:
 
 ```json
 {
-  "config": {"ignoreErrors": true},
+  "config": { "ignoreErrors": true },
   "fields": {
     "price": {
       "selector": ".price",
@@ -1290,12 +1305,12 @@ When extraction fails: `{"price": 0}`
 
 These errors always cause CLI exit (cannot be ignored):
 
-| Error | Cause |
-|-------|-------|
-| `InvalidJson` | Schema file is not valid JSON |
-| `MissingFields` | No `fields` key in schema |
-| `InvalidFieldType` | Unknown field type specified |
-| `InvalidSelector` | CSS selector syntax error |
+| Error              | Cause                         |
+| ------------------ | ----------------------------- |
+| `InvalidJson`      | Schema file is not valid JSON |
+| `MissingFields`    | No `fields` key in schema     |
+| `InvalidFieldType` | Unknown field type specified  |
+| `InvalidSelector`  | CSS selector syntax error     |
 
 ---
 
@@ -1354,18 +1369,18 @@ If you have existing v1.0 schemas, here are the key changes:
 
 ## Quick Reference Table
 
-| Type | What it extracts | Key options | Common use case |
-|------|------------------|-------------|-----------------|
-| `text` | Text content | `trim`, `pattern`, `join` | Headlines, descriptions |
-| `attribute` | HTML attributes | `attributes[]`, `attrMode` | Links, images, data attrs |
-| `html` | Raw markup | `mode`, `stripScripts` | Preserving formatting |
-| `number` | Numeric values | `stripNonNumeric`, `pattern`, `precision` | Prices, ratings, counts |
-| `boolean` | True/false | `mode`, `trueValues` | Availability, status flags |
-| `datetime` | Dates/times | `formats`, `output` | Published dates, events |
-| `count` | Element count | `min`, `max` | Review counts, image counts |
-| `url` | URLs | `base`, `resolve`, `stripQuery` | Links, canonical URLs |
-| `json` | Embedded JSON | `path`, `source` | JSON-LD, data attributes |
-| `list` | Typed arrays | `itemType`, `unique`, `limit` | Tags, categories, galleries |
+| Type        | What it extracts | Key options                               | Common use case             |
+| ----------- | ---------------- | ----------------------------------------- | --------------------------- |
+| `text`      | Text content     | `trim`, `pattern`, `join`                 | Headlines, descriptions     |
+| `attribute` | HTML attributes  | `attributes[]`, `attrMode`                | Links, images, data attrs   |
+| `html`      | Raw markup       | `mode`, `stripScripts`                    | Preserving formatting       |
+| `number`    | Numeric values   | `stripNonNumeric`, `pattern`, `precision` | Prices, ratings, counts     |
+| `boolean`   | True/false       | `mode`, `trueValues`                      | Availability, status flags  |
+| `datetime`  | Dates/times      | `formats`, `output`                       | Published dates, events     |
+| `count`     | Element count    | `min`, `max`                              | Review counts, image counts |
+| `url`       | URLs             | `base`, `resolve`, `stripQuery`           | Links, canonical URLs       |
+| `json`      | Embedded JSON    | `path`, `source`                          | JSON-LD, data attributes    |
+| `list`      | Typed arrays     | `itemType`, `unique`, `limit`             | Tags, categories, galleries |
 
 ---
 
@@ -1379,17 +1394,21 @@ If you have existing v1.0 schemas, here are the key changes:
   "config": {
     "rowSelector": ".product",
     "defaults": {
-      "number": {"stripNonNumeric": true, "precision": 2}
+      "number": { "stripNonNumeric": true, "precision": 2 }
     }
   },
   "fields": {
-    "name": {"selector": "h1", "type": "text", "required": true},
-    "price": {"selector": ".price", "type": "number", "required": true},
-    "originalPrice": {"selector": ".original-price", "type": "number", "default": null},
+    "name": { "selector": "h1", "type": "text", "required": true },
+    "price": { "selector": ".price", "type": "number", "required": true },
+    "originalPrice": {
+      "selector": ".original-price",
+      "type": "number",
+      "default": null
+    },
     "inStock": {
       "selector": ".stock",
       "type": "boolean",
-      "booleanOptions": {"trueValues": ["in stock", "available"]}
+      "booleanOptions": { "trueValues": ["in stock", "available"] }
     },
     "image": {
       "selector": "img",
@@ -1399,7 +1418,7 @@ If you have existing v1.0 schemas, here are the key changes:
     "category": {
       "selector": ".category",
       "type": "list",
-      "listOptions": {"itemType": "text", "unique": true}
+      "listOptions": { "itemType": "text", "unique": true }
     }
   }
 }
@@ -1410,10 +1429,10 @@ If you have existing v1.0 schemas, here are the key changes:
 ```json
 {
   "name": "Article Schema",
-  "config": {"rowSelector": "article"},
+  "config": { "rowSelector": "article" },
   "fields": {
-    "headline": {"selector": "h1", "type": "text", "required": true},
-    "author": {"selector": ".author", "type": "text"},
+    "headline": { "selector": "h1", "type": "text", "required": true },
+    "author": { "selector": ".author", "type": "text" },
     "publishedAt": {
       "selector": "time",
       "type": "datetime",
@@ -1425,12 +1444,12 @@ If you have existing v1.0 schemas, here are the key changes:
     "content": {
       "selector": ".article-body",
       "type": "html",
-      "htmlOptions": {"stripScripts": true}
+      "htmlOptions": { "stripScripts": true }
     },
     "tags": {
       "selector": ".tag",
       "type": "list",
-      "listOptions": {"itemType": "text"}
+      "listOptions": { "itemType": "text" }
     }
   }
 }
@@ -1441,25 +1460,25 @@ If you have existing v1.0 schemas, here are the key changes:
 ```json
 {
   "name": "Job Schema",
-  "config": {"rowSelector": ".job-card"},
+  "config": { "rowSelector": ".job-card" },
   "fields": {
-    "title": {"selector": "h2", "type": "text", "required": true},
-    "company": {"selector": ".company", "type": "text"},
-    "location": {"selector": ".location", "type": "text"},
+    "title": { "selector": "h2", "type": "text", "required": true },
+    "company": { "selector": ".company", "type": "text" },
+    "location": { "selector": ".location", "type": "text" },
     "salary": {
       "selector": ".salary",
       "type": "number",
-      "numberOptions": {"pattern": "\\$?([0-9,]+)"}
+      "numberOptions": { "pattern": "\\$?([0-9,]+)" }
     },
     "postedAt": {
       "selector": ".posted",
       "type": "datetime",
-      "dateOptions": {"formats": ["MMMM dd, yyyy"]}
+      "dateOptions": { "formats": ["MMMM dd, yyyy"] }
     },
     "url": {
       "selector": "a",
       "type": "url",
-      "urlOptions": {"attribute": "href"}
+      "urlOptions": { "attribute": "href" }
     }
   }
 }
@@ -1488,13 +1507,3 @@ A: No, they're separate extraction modes. Use table mode for quick `<table>` ext
 **Q: Does res-scrapy work with JavaScript-rendered content?**
 
 A: No, it only parses static HTML. For SPAs, use a headless browser (Puppeteer, Playwright) to render first, then pipe to res-scrapy.
-
----
-
-## Where to Go Next
-
-- **[Examples](/examples)** — Runnable CLI use cases with commands and outputs
-- **[Getting Started](/getting-started)** — Installation and basic usage
-- `SCHEMA-SPEC.md` — Complete technical specification (for advanced users)
-- `SCHEMA-EXAMPLES.md` — Domain-specific schemas (e-commerce, blogs, etc.)
-- `examples/cases/` — Test fixtures for each field type

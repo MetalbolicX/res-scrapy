@@ -6,7 +6,7 @@ This document defines the complete specification for res-scrapy schema files. A 
 
 ## Schema Structure
 
-```typescript
+```rescript
 {
   name?: string;                    // Optional human-readable schema name
   description?: string;             // Optional schema description
@@ -54,7 +54,7 @@ Fields can be defined in **two formats**:
 
 Each field has the following base structure:
 
-```typescript
+```rescript
 {
   selector: string;                 // Required: CSS selector (relative to rowSelector if set)
   type: FieldType;                  // Required: extraction type
@@ -73,7 +73,7 @@ Each field has the following base structure:
 
 Extract text content from elements.
 
-```typescript
+```rescript
 {
   type: "text";
   textOptions?: {
@@ -122,7 +122,7 @@ Extract text content from elements.
 
 Extract attribute values from elements.
 
-```typescript
+```rescript
 {
   type: "attribute";
   attribute?: string;               // Single attribute name (legacy)
@@ -175,7 +175,7 @@ Extract attribute values from elements.
 
 Extract HTML markup from elements.
 
-```typescript
+```rescript
 {
   type: "html";
   htmlOptions?: {
@@ -218,7 +218,7 @@ Extract HTML markup from elements.
 
 Extract and parse numeric values.
 
-```typescript
+```rescript
 {
   type: "number";
   numberOptions?: {
@@ -288,7 +288,7 @@ Extract and parse numeric values.
 
 Extract and parse boolean values.
 
-```typescript
+```rescript
 {
   type: "boolean";
   booleanOptions?: {
@@ -360,7 +360,7 @@ Extract and parse boolean values.
 
 Extract and parse date/time values.
 
-```typescript
+```rescript
 {
   type: "datetime";
   dateOptions?: {
@@ -440,7 +440,7 @@ Extract and parse date/time values.
 
 Count the number of matched elements.
 
-```typescript
+```rescript
 {
   type: "count";
   countOptions?: {
@@ -480,7 +480,7 @@ Count the number of matched elements.
 
 Extract and normalize URLs.
 
-```typescript
+```rescript
 {
   type: "url";
   urlOptions?: {
@@ -525,7 +525,7 @@ Extract and normalize URLs.
 
 Extract and parse embedded JSON.
 
-```typescript
+```rescript
 {
   type: "json";
   jsonOptions?: {
@@ -566,7 +566,7 @@ Extract and parse embedded JSON.
 
 Collect multiple matches into a typed array.
 
-```typescript
+```rescript
 {
   type: "list";
   listOptions?: {
@@ -609,7 +609,7 @@ Collect multiple matches into a typed array.
 
 ## Global Config
 
-```typescript
+```rescript
 {
   config?: {
     ignoreErrors?: boolean;         // Default: false - swallow field extraction errors
@@ -862,50 +862,6 @@ When a field extraction fails:
 
 ---
 
-## Migration from v1.0
-
-**Breaking changes:**
-
-- `type: "attribute"` now supports `attributes` array (plural)
-- Default `number` parsing now strips non-numeric characters by default
-- `boolean` type no longer treats all non-"true" values as `false`
-
-**Backwards compatibility:**
-
-- Old `attribute` (singular) syntax still supported
-- Legacy zip-by-first-field behavior when `rowSelector` not specified
-- Array format for fields still supported
-
-**Migration guide:**
-
-```json
-// v1.0 (still works)
-{
-  "fields": {
-    "url": {
-      "selector": "a",
-      "type": "attribute",
-      "attribute": "href"
-    }
-  }
-}
-
-// v2.0 (recommended)
-{
-  "fields": {
-    "url": {
-      "selector": "a",
-      "type": "url",
-      "urlOptions": {
-        "resolve": true
-      }
-    }
-  }
-}
-```
-
----
-
 ## Implementation Notes
 
 **For implementors:**
@@ -936,8 +892,3 @@ Schemas should include a version field for forward compatibility:
   "name": "My Schema"
 }
 ```
-
-Version detection logic:
-
-- No `version` field → v1.0 (legacy)
-- `"version": "2.0"` or higher → use v2.0 features

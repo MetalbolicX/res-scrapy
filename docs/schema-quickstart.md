@@ -533,25 +533,3 @@ node src/Main.res.mjs --schemaPath schema.json < input.html
   }
 }
 ```
-
----
-
-## Print-Friendly Version
-
-Save this file and print for desk reference!
-
-```bash
-# Convert to PDF (requires pandoc or similar)
-pandoc SCHEMA-QUICK-REF.md -o schema-quick-ref.pdf
-
-# Or print from browser
-# Open in VSCode → Right-click → Open Preview → Print
-```
-
----
-
-**For full documentation, see:**
-
-- [SCHEMA-SPEC.md](SCHEMA-SPEC.md) - Complete specification
-- [SCHEMA-EXAMPLES.md](SCHEMA-EXAMPLES.md) - Real-world examples
-- [IMPLEMENTATION-ROADMAP.md](IMPLEMENTATION-ROADMAP.md) - Development guide
