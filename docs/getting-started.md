@@ -1,6 +1,6 @@
 # Getting Started
 
-**res-scrapy** can work in any JavaScript environment, including Node.js, Deno, Bun and browsers. To get started, you need to install the library and import it into your project.
+**res-scrapy** can work in any JavaScript environment, including Node.js, Deno, Bun and browsers. To get started, you need to install the CLI tool.
 
 ## For Node.js
 

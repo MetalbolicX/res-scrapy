@@ -1,153 +1,185 @@
 # res-scrapy
 
-> HTML CLI Scraper that extracts the content you need.
-
-Command-line HTML scraper written in ReScript offers a flexible configuration for extracting content from HTML documents using CSS selectors. It supports both single and multiple results, as well as schema-driven structured extraction for more specific data needs.
-
-**Supported Versions:**
-
+[![npm version](https://img.shields.io/npm/v/res-scrapy.svg)](https://www.npmjs.com/package/res-scrapy)
 ![Node.js](https://img.shields.io/badge/node->=22.0.0-blue)
-![ReScript](https://img.shields.io/badge/rescript->=12.0.0-red)
-![node-html-parser](https://img.shields.io/badge/node--html--parser->=7.1.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
 
-## Features
+> **The CLI tool that turns HTML into structured JSON with zero code.**
 
-- Read HTML from `stdin` and extract content using CSS selectors.
-- Extract `outerHtml`, `innerHtml`, `text`, or an element attribute (`attr:name`).
-- Exttract tables as JSON arrays of objects.
-- Support for single or multiple results (`--mode` / `-m`).
-- Schema-driven structured extraction via `--schema` (inline JSON) or
-  `--schemaPath` (path to a `.json` schema file).
-- Outputs JSON to `stdout`, prints errors to `stderr` and exits non-zero on failure.
+Extract data from any HTML source—websites, files, or API responses—using simple CSS selectors or powerful JSON schemas. Built with ReScript for reliability and speed.
 
-## Install & Build
+## Why res-scrapy?
 
-Clone the repo and install dependencies:
+- **Zero-code data extraction** – No programming required, just CSS selectors
+- **10 built-in field types** – Text, numbers, booleans, dates, URLs, JSON, lists, and more
+- **Smart row-based extraction** – Perfect for product listings, search results, tables
+- **Table mode** – Convert HTML tables to JSON instantly
+- **Schema-driven** – Reusable, version-controlled extraction configs
+- **Pipe-friendly** – Works seamlessly with `curl`, `cat`, and other CLI tools
 
-```sh
-git clone https://github.com/MetalbolicX/res-scrapy.git
-cd res-scrapy
-pnpm install
+## Installation
+
+Install globally (recommended):
+
+```bash
+npm install -g res-scrapy
 ```
 
-Compile the ReScript sources:
+Or use without installing:
 
-```sh
-pnpm run res:build
+```bash
+npx res-scrapy -h
 ```
 
-During development you can watch ReScript sources:
+**Requirements:** Node.js >= 22.0.0
 
-```sh
-pnpm run res:dev
+## Quick Start Examples
+
+### 1. Extract text with a CSS selector
+
+```bash
+curl -s https://example.com | res-scrapy -s 'h1' -e text
+# ["Welcome to Example"]
 ```
 
-The package exposes a `bin` entry (`res-scrapy`) and the built CLI is
-`dist/main.mjs`.
+### 2. Extract all links from a page
 
-## Usage
-
-The CLI reads HTML from `stdin` and writes a JSON array (or object) to
-`stdout`.
-
-Basic help (built-in):
-
-```sh
-Usage: res-scrapy command [options]
-  -h, --help        Display this help message
-  -s, --selector    Specify a CSS selector to extract data
-  -m, --mode        Extract multiple results (single by default)
-  -e, --extract     What to extract: outerHtml (default), innerHtml, text, or attr:<name>
-  -c, --schema      Specify the schema to use
-  -p, --schemaPath  Specify the path to the schema
-  -t, --table       Extract a table as JSON: pair with --selector to target a specific table (default to "table")
+```bash
+curl -s https://example.com | res-scrapy -s 'a' -m -e 'attr:href'
+# ["/about", "/contact", "/products"]
 ```
 
-### Examples:
+### 3. Convert an HTML table to JSON
 
-1. Extract the text of the first matching element.
-
-```sh
-cat examples/sample.html | res-scrapy -s '.product-title' -e text
+```bash
+curl -s https://example.com/products | res-scrapy -t -s '#price-table'
+# [{"Product": "Widget A", "Price": "$9.99"}, {"Product": "Widget B", "Price": "$14.99"}]
 ```
 
-2. Extract all links (attribute) from a document.
+### 4. Schema-driven extraction (row-based)
 
-```sh
-curl -s 'https://example.com' | res-scrapy -s 'a.article-link' -m -e 'attr:href'
-```
-
-## Schema-driven extraction
-
-When `--schema` (inline JSON) or `--schemaPath` (file) is provided, the
-tool attempts structured extraction according to the schema.
-
-Note: in zip mode (no `config.rowSelector`), if every field is aggregate-only
-(`count`/`list`), no rows can be produced and the output is `[]`. Use
-`config.rowSelector` for row-based extraction in that case.
-
-**Schema format:**
+Create `product-schema.json`:
 
 ```json
 {
-  "name": "Schema name (optional)",
-  "description": "Schema description (optional)",
+  "config": { "rowSelector": ".product-card" },
   "fields": {
-    "fieldName": {
-      "selector": "CSS selector",
-      "type": "text|attribute|html|number|boolean",
-      "required": true|false,
-      "default": "default value"
+    "name": { "selector": "h2", "type": "text" },
+    "price": {
+      "selector": ".price",
+      "type": "number",
+      "numberOptions": { "stripNonNumeric": true }
+    },
+    "inStock": {
+      "selector": ".stock-status",
+      "type": "boolean",
+      "booleanOptions": {
+        "trueValues": ["in stock", "available"]
+      }
     }
-  },
-  "config": {
-    "ignoreErrors": true|false,
-    "limit": number
   }
 }
 ```
 
-**Field Types:**
+Run it:
 
-- `text`: Extract the text content of the element.
-- `attribute`: Extract a specific attribute (e.g. `attr:href`).
-- `html`: Extract the inner HTML of the element.
-- `number`: Extract and parse as a number.
-- `boolean`: Extract and parse as a boolean (e.g. "true"/"false").
-
-### Example schema:
-
-1. Inline JSON schema:
-
-```sh
-echo '<div class="product">
-  <h1>Awesome Product</h1>
-  <span class="price">$29.99</span>
-  <span class="original-price">$39.99</span>
-  <div class="in-stock">In Stock</div>
-</div>' | res-scrapy --schema '{
-  "fields": {
-    "name": {"selector": "h1", "type": "text"},
-    "price": {"selector": ".price", "type": "number"},
-    "originalPrice": {"selector": ".original-price", "type": "number"},
-    "inStock": {"selector": ".in-stock", "type": "boolean", "trueValue": "In Stock"}
-  }
-}'
+```bash
+curl -s https://shop.example.com | res-scrapy --schemaPath product-schema.json
+# Result: [{"name": "Premium Widget", "price": 49.99, "inStock": true}, ...]
 ```
 
-**Output:**
+## CLI Reference
+
+```
+Usage: res-scrapy [options]
+
+Options:
+  -h, --help         Display help message
+  -s, --selector     CSS selector to target element(s)
+  -m, --mode         Extract multiple results (single by default)
+  -e, --extract      What to extract: outerHtml, innerHtml, text, or attr:<name>
+  -c, --schema       Inline JSON schema for structured extraction
+  -p, --schemaPath   Path to JSON schema file
+  -t, --table        Extract HTML table as JSON array
+```
+
+The CLI reads HTML from **stdin** and outputs JSON to **stdout**.
+
+## Key Features
+
+### 10 Field Types for Structured Data
+
+| Type        | Purpose                   | Example Use Case               |
+| ----------- | ------------------------- | ------------------------------ |
+| `text`      | Extract text content      | Product names, descriptions    |
+| `attribute` | Extract HTML attributes   | `href`, `src`, `data-*`        |
+| `html`      | Extract raw HTML markup   | Preserving formatting          |
+| `number`    | Parse numeric values      | Prices with currency stripping |
+| `boolean`   | Convert to true/false     | Stock status, availability     |
+| `datetime`  | Parse and normalize dates | Published dates, timestamps    |
+| `url`       | Extract and resolve URLs  | Absolute links from relative   |
+| `json`      | Parse embedded JSON-LD    | Schema.org data                |
+| `list`      | Collect multiple values   | Tags, categories               |
+| `count`     | Count matching elements   | Review counts, item totals     |
+
+### Row-Based Extraction (Recommended)
+
+Use `config.rowSelector` to extract repeating items like product cards or search results. Each row becomes a JSON object with fields evaluated relative to that row.
 
 ```json
-[
-  {
-    "name": "Awesome Product",
-    "price": 29.99,
-    "originalPrice": 39.99,
-    "inStock": true
+{
+  "config": { "rowSelector": ".job-card" },
+  "fields": {
+    "title": { "selector": "h2", "type": "text" },
+    "company": { "selector": ".company", "type": "text" }
   }
-]
+}
+```
+
+### Table Mode
+
+Quickly convert HTML tables to JSON without writing schemas:
+
+```bash
+cat page.html | res-scrapy --table --selector '#data-table'
+```
+
+### Error Handling
+
+- `config.ignoreErrors: true` – Continue extraction when fields fail
+- Field-level `default` values for missing data
+- `onError` policies per field: `null`, `text`, `default`, or `error`
+
+## Documentation
+
+📖 **Full documentation is available on [GitHub Pages](https://metalbolicx.github.io/res-scrapy/)**
+
+- [Getting Started Guide](https://metalbolicx.github.io/res-scrapy/#/getting-started) – Installation and first steps
+- [Schema Guide](https://metalbolicx.github.io/res-scrapy/#/schema-guide) – Complete schema reference with examples
+- [Examples](https://metalbolicx.github.io/res-scrapy/#/examples) – Real-world use cases and patterns
+
+## Development
+
+Clone and build from source:
+
+```bash
+git clone https://github.com/MetalbolicX/res-scrapy.git
+cd res-scrapy
+pnpm install
+pnpm run res:build
+```
+
+Link locally for testing:
+
+```bash
+npm link
+res-scrapy -h
 ```
 
 ## License
 
 Released under [MIT](/LICENSE) by [@MetalbolicX](https://github.com/MetalbolicX).
+
+---
+
+**Built with** [ReScript](https://rescript-lang.org/) · **Powered by** [node-html-parser](https://github.com/taoqf/node-html-parser)
