@@ -133,5 +133,3 @@ Flexible output options:
 - 📊 **Type safety**: Automatic parsing and validation
 - ⚡ **Fast**: Built for speed with ReScript
 - 🛡️ **Reliable**: Proper error handling
-
----
