@@ -103,7 +103,8 @@ Options:
   -t, --table        Extract HTML table as JSON array
 ```
 
-> [!NOTE] The CLI reads HTML from **stdin** and outputs JSON to **stdout**.
+> [!NOTE]
+> The CLI reads HTML from **stdin** and outputs JSON to **stdout**.
 
 ## Key Features
 
