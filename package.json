@@ -38,6 +38,16 @@
   "files": [
     "dist"
   ],
+  "keywords": [
+    "rescript",
+    "html",
+    "scraper",
+    "web scraping",
+    "cli",
+    "json",
+    "data wrangling",
+    "node.js"
+  ],
   "license": "MIT",
   "dependencies": {
     "@rescript/runtime": "^12.2.0",
