@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <defs>
+    <!-- Gradient for the flag background -->
+    <linearGradient id="flagGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e3f2fd;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#bbdefb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#90caf9;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Gradient for HTML brackets -->
+    <linearGradient id="htmlGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#e65100;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#bf360c;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Gradient for JSON braces -->
+    <linearGradient id="jsonGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#7b1fa2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4a148c;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Shadow filter -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="2" dy="4" stdDeviation="3" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  
+  <!-- Flag pole -->
+  <rect x="40" y="20" width="8" height="260" rx="4" fill="#5d4037" filter="url(#shadow)"/>
+  <circle cx="44" cy="15" r="10" fill="#8d6e63"/>
+  
+  <!-- Flag banner background -->
+  <path d="M 48 30 
+           Q 200 20, 350 30 
+           L 350 180 
+           Q 200 200, 48 170 
+           Z" 
+        fill="url(#flagGradient)" 
+        filter="url(#shadow)"
+        stroke="#64b5f6"
+        stroke-width="2"/>
+  
+  <!-- Decorative flag ribbon ends -->
+  <path d="M 48 170 L 30 200 L 50 190 L 48 170" fill="#90caf9"/>
+  <path d="M 350 180 L 370 210 L 350 195 L 350 180" fill="#90caf9"/>
+  
+  <!-- HTML Opening Bracket < -->
+  <text x="90" y="120" 
+        font-family="Consolas, Monaco, 'Courier New', monospace" 
+        font-size="80" 
+        font-weight="bold"
+        fill="url(#htmlGradient)"
+        filter="url(#shadow)">&lt;</text>
+  
+  <!-- Arrow/transform symbol -->
+  <g transform="translate(165, 95)">
+    <path d="M 0 20 L 50 20 L 40 10 M 50 20 L 40 30" 
+          stroke="#4caf50" 
+          stroke-width="6" 
+          fill="none"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+    <circle cx="25" cy="20" r="18" fill="#4caf50" opacity="0.2"/>
+  </g>
+  
+  <!-- JSON Opening Brace { -->
+  <text x="240" y="120" 
+        font-family="Consolas, Monaco, 'Courier New', monospace" 
+        font-size="80" 
+        font-weight="bold"
+        fill="url(#jsonGradient)"
+        filter="url(#shadow)">{</text>
+  
+  <!-- Decorative dots representing data extraction -->
+  <circle cx="120" cy="155" r="4" fill="#e65100" opacity="0.6"/>
+  <circle cx="135" cy="155" r="4" fill="#f57c00" opacity="0.6"/>
+  <circle cx="150" cy="155" r="4" fill="#ff9800" opacity="0.6"/>
+  
+  <!-- Project name below -->
+  <text x="200" y="240" 
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        font-size="32" 
+        font-weight="700"
+        text-anchor="middle"
+        fill="#1565c0">res-scrapy</text>
+  
+  <!-- Tagline -->
+  <text x="200" y="265" 
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+        font-size="14" 
+        text-anchor="middle"
+        fill="#546e7a">HTML → JSON CLI Scraper</text>
+</svg>

@@ -2,3 +2,4 @@
 - [Getting Started](getting-started)
 - [Schema Guide](schema-guide)
 - [Examples](examples)
+- [Workflow](workflow)

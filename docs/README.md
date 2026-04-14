@@ -1,7 +1,5 @@
 # res-scrapy
 
-> **Turn messy HTML into clean, structured JSON—without writing a single line of code.**
-
 Hey there! 👋 If you've ever found yourself copy-pasting data from websites, writing fragile regex patterns, or maintaining Python scripts that break every time a site redesigns, you're in the right place. res-scrapy is here to make web scraping feel less like archaeology and more like... well, just asking for the data you want.
 
 ## What Problem Does `res-scrapy` Solve?

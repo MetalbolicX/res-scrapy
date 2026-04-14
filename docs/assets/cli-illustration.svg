@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400">
+  <defs>
+    <!-- Terminal gradient -->
+    <linearGradient id="terminalGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#263238;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1a1a2e;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- Glow effect -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    
+    <!-- Shadow -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+  
+  <!-- Background decoration -->
+  <rect x="0" y="0" width="600" height="400" fill="#f5f5f5" rx="0"/>
+  <circle cx="300" cy="200" r="180" fill="#e3f2fd" opacity="0.5"/>
+  
+  <!-- Terminal Window -->
+  <g transform="translate(100, 50)" filter="url(#shadow)">
+    <!-- Terminal frame -->
+    <rect x="0" y="0" width="400" height="300" rx="12" fill="url(#terminalGrad)"/>
+    
+    <!-- Title bar -->
+    <rect x="0" y="0" width="400" height="36" rx="12" fill="#37474f"/>
+    <rect x="0" y="24" width="400" height="12" fill="#37474f"/>
+    
+    <!-- Window controls -->
+    <circle cx="24" cy="18" r="6" fill="#ff5f56"/>
+    <circle cx="44" cy="18" r="6" fill="#ffbd2e"/>
+    <circle cx="64" cy="18" r="6" fill="#27ca40"/>
+    
+    <!-- Terminal content -->
+    <g transform="translate(20, 60)" font-family="'SF Mono', Monaco, Consolas, monospace" font-size="14">
+      <!-- Prompt -->
+      <text x="0" y="0" fill="#4caf50" font-weight="bold">$</text>
+      <text x="20" y="0" fill="#ffffff">curl -s https://example.com | res-scrapy \</text>
+      <text x="20" y="20" fill="#ffffff">  --schemaPath product-schema.json</text>
+      
+      <!-- Output -->
+      <g transform="translate(0, 60)">
+        <text x="0" y="0" fill="#ffd54f" font-weight="bold">[</text>
+        <g transform="translate(15, 0)">
+          <text x="0" y="0" fill="#81d4fa">{</text>
+          <g transform="translate(15, 0)">
+            <text x="0" y="0" fill="#ff8a65">"name"</text>
+            <text x="60" y="0" fill="#b0bec5">:</text>
+            <text x="75" y="0" fill="#c5e1a5">"Widget A"</text>
+            <text x="0" y="20" fill="#ff8a65">"price"</text>
+            <text x="60" y="20" fill="#b0bec5">:</text>
+            <text x="75" y="20" fill="#ffcc80">29.99</text>
+            <text x="0" y="40" fill="#ff8a65">"inStock"</text>
+            <text x="75" y="40" fill="#b0bec5">:</text>
+            <text x="90" y="40" fill="#4fc3f7">true</text>
+          </g>
+          <text x="0" y="40" fill="#81d4fa">}</text>
+        </g>
+        <text x="0" y="60" fill="#ffd54f" font-weight="bold">]</text>
+      </g>
+      
+      <!-- Cursor -->
+      <rect x="0" y="160" width="10" height="18" fill="#4caf50" opacity="0.8">
+        <animate attributeName="opacity" values="0.8;0;0.8" dur="1s" repeatCount="indefinite"/>
+      </rect>
+    </g>
+  </g>
+  
+  <!-- Abstract data flow indicators -->
+  <g opacity="0.3">
+    <circle cx="80" cy="150" r="3" fill="#e65100">
+      <animate attributeName="cx" values="80;520;80" dur="3s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;1;0" dur="3s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="80" cy="200" r="3" fill="#7b1fa2">
+      <animate attributeName="cx" values="520;80;520" dur="4s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0;1;0" dur="4s" repeatCount="indefinite"/>
+    </circle>
+  </g>
+  
+  <!-- HTML symbol (left side) -->
+  <g transform="translate(30, 180)" opacity="0.2">
+    <text x="0" y="0" font-family="monospace" font-size="48" fill="#e65100">&lt;/&gt;</text>
+  </g>
+  
+  <!-- JSON symbol (right side) -->
+  <g transform="translate(520, 180)" opacity="0.2">
+    <text x="0" y="0" font-family="monospace" font-size="48" fill="#7b1fa2">{}</text>
+  </g>
+</svg>

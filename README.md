@@ -1,5 +1,9 @@
 # res-scrapy
 
+<div align="center">
+  <img src="./docs/assets/logo.svg" alt="VanRS Logo" width="200" height="200" />
+</div>
+
 [![npm version](https://img.shields.io/npm/v/res-scrapy.svg)](https://www.npmjs.com/package/res-scrapy)
 ![Node.js](https://img.shields.io/badge/node->=22.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
