@@ -206,6 +206,45 @@ cat jobs-page.html | res-scrapy --schema '{...}'
 
 Expected output: one object per `.job-card` element with the declared fields.
 
+## 3.1 Save output to file
+
+1. Save output to a file (JSON)
+
+Sample input & command:
+
+```sh
+echo '<div class="product"><div class="product-item">Product A</div><div class="product-item">Product B</div></div>' \
+  | res-scrapy -s '.product-item' -m -e text -o results.json
+```
+
+Note: This writes a JSON array to `results.json`. When `--output` is used the CLI will not print the JSON array to stdout.
+
+Expected file contents (`results.json`):
+
+```json
+["Product A", "Product B"]
+```
+
+2. Save NDJSON (one JSON object per line)
+
+Sample input & command (schema that emits objects):
+
+```sh
+echo '<div class="product"><div class="product"><h2>Product A</h2></div><div class="product"><h2>Product B</h2></div></div>' \
+  | res-scrapy -s '.product' --schema '{"fields": {"title": {"selector": "h2","type": "text"}}}' -o results.ndjson -f ndjson
+```
+
+Note: `--format ndjson` only affects file output when `--output` is present. NDJSON writes one JSON object per line (no surrounding array). NDJSON requires the extraction result to be an array of objects; requesting NDJSON for a non-array result will produce a WriteError.
+
+Example `results.ndjson` contents:
+
+```json
+{"title":"Product A"}
+{"title":"Product B"}
+```
+
+Small note: If you pass `--format` without `--output`, the flag is ignored and the CLI still prints the JSON array to stdout.
+
 ---
 
 ## 4. Field-Type Patterns & Common Tasks

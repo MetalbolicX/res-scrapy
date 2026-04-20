@@ -15,8 +15,10 @@ Quick reference for the flags at your disposal:
 - `-c` (`--schema`) — inline JSON schema for structured extraction.
 - `-p` (`--schemaPath`) — path to a JSON schema file for structured extraction.
 - `-t` (`--table`) — extract an HTML `<table>` as a JSON array of row objects.
+ - `-o` (`--output`) — write results to a file instead of stdout.
+ - `-f` (`--format`) — output format when writing to a file: `json` (default) or `ndjson` (newline-delimited JSON).
 
-> [!Note] The CLI reads HTML from stdin and writes JSON to stdout. Many examples below use `echo`/`printf` or file redirection to demonstrate usage.
+> [!Note] The CLI reads HTML from stdin and writes JSON to stdout. Many examples below use `echo`/`printf` or file redirection to demonstrate usage. Use `--output/-o` to write results to a file; when writing to a file you can control the file format with `--format/-f` (`json` or `ndjson`). The `--format` flag is ignored when `--output` is not provided — stdout always uses the JSON array format.
 
 Examples:
 
@@ -36,6 +38,20 @@ res-scrapy --schemaPath product-schema.json < page.html
 
 ```sh
 cat page.html | res-scrapy --table --selector '#products'
+```
+
+4. Save output to a file (JSON)
+
+```sh
+echo '<html>...</html>' | res-scrapy -s '.product-title' -m -e text -o results.json
+# Writes a JSON array to results.json
+```
+
+5. Save NDJSON (newline-delimited JSON)
+
+```sh
+echo '<html>...</html>' | res-scrapy -s '.product-card' -m -e text -o results.ndjson -f ndjson
+# results.ndjson will contain one JSON object per line
 ```
 
 ---

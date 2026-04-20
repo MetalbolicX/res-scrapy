@@ -92,6 +92,22 @@ curl -s https://shop.example.com | res-scrapy --schemaPath product-schema.json
 # Result: [{"name": "Premium Widget", "price": 49.99, "inStock": true}, ...]
 ```
 
+### 5. Save output to a file (JSON)
+
+```bash
+curl -s https://example.com | res-scrapy -s '.product-title' -m -e text -o results.json
+# Writes a JSON array to results.json
+```
+
+### 6. Save NDJSON (one JSON object per line)
+
+NDJSON (newline-delimited JSON) is useful for streaming, appending, or line-by-line processing with tools like `jq`.
+
+```bash
+curl -s https://example.com | res-scrapy -s '.product-card' -m -e text -o results.ndjson -f ndjson
+# results.ndjson will contain one JSON object per line
+```
+
 ## CLI Reference
 
 ```
@@ -106,10 +122,12 @@ Options:
   -c, --schema       Inline JSON schema for structured extraction
   -p, --schemaPath   Path to JSON schema file
   -t, --table        Extract HTML table as JSON array
+  -o, --output       Write results to a file instead of stdout
+  -f, --format       Output format for file writes: json (default) or ndjson
 ```
 
 > [!NOTE]
-> The CLI reads HTML from **stdin** and outputs JSON to **stdout**.
+> The CLI reads HTML from **stdin** and outputs JSON to **stdout** by default. When `--output/-o` is provided, results are written to the specified file instead of stdout. File output defaults to a JSON array; pass `--format ndjson` to write newline-delimited JSON (one object per line). The `--format` flag only affects file writes; stdout always uses the JSON array format.
 
 ## Key Features
 

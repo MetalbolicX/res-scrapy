@@ -478,6 +478,55 @@ testAsync("output format is ignored on stdout when --output is absent", planned 
   ->ignore
 })
 
+testAsync("output file: permission denied returns error", planned => {
+  let tempDir = tempOutPath("readonly-dir")
+  let readOnlyFile = tempOutPath("readonly-file.json")
+  let _ = %raw(`(dir, file) => {
+    Nodefs.mkdirSync(dir, { recursive: true });
+    Nodefs.writeFileSync(file, '[]');
+    Nodefs.chmodSync(file, 0o000);
+  }`)(tempDir, readOnlyFile)
+  runCli(
+    ~args=["--selector", ".item", "--mode", "--extract", "text", "--output", readOnlyFile],
+    ~input=html,
+  )
+  ->Promise.then(result => {
+    isIntEqualTo(1, result.exitCode)
+    stringContains(result.stderr, "Failed to write output file")->isTruthy
+    planned(~planned=2, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("CLI execution failed")
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("output file: writing to directory returns error", planned => {
+  let dirPath = tempOutPath("output-dir")
+  let _ = %raw(`(dir) => {
+    Nodefs.mkdirSync(dir, { recursive: true });
+  }`)(dirPath)
+  runCli(
+    ~args=["--selector", ".item", "--mode", "--extract", "text", "--output", dirPath],
+    ~input=html,
+  )
+  ->Promise.then(result => {
+    isIntEqualTo(1, result.exitCode)
+    stringContains(result.stderr, "Failed to write output file")->isTruthy
+    planned(~planned=2, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("CLI execution failed")
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
 testAsync("output file: invalid format returns CLI error", planned => {
   let outPath = tempOutPath("output.data")
   runCli(
