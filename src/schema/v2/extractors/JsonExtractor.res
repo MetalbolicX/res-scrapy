@@ -33,18 +33,31 @@ let getJsonSource: (NodeHtmlParserBinding.htmlElement, option<jsonOptions>) => o
   }
 }
 
-let getPath: ('a, string) => option<'a> = %raw(`
-  (obj, path) => {
-    if (!path) return obj;
-    const keys = [...path.split(".")];
-    let current = obj;
-    for (const key of keys) {
-      if (current == null || typeof current !== "object") return undefined;
-      current = current[key];
-    }
-    return current;
+let getPath: ('a, string) => option<'a> = (obj, path) => {
+  if path == "" {
+    Some(obj)
+  } else {
+    let keys = String.split(path, ".")
+    let current = ref(Some(obj))
+    keys->Array.forEach(key => {
+      switch current.contents {
+      | Some(cur) =>
+        let val: option<'a> = JsonUtils.dictGet(cur, key)
+        switch val {
+        | Some(v) =>
+          if v == %raw("null") || v == %raw("undefined") {
+            current := None
+          } else {
+            current := Some(v)
+          }
+        | None => current := None
+        }
+      | None => ()
+      }
+    })
+    current.contents
   }
-`)
+}
 
 let extract: (NodeHtmlParserBinding.htmlElement, option<jsonOptions>) => option<JSON.t> = (
   el,

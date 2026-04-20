@@ -19,6 +19,7 @@
     "prebundle": "pnpm run date:build",
     "res:clean": "rescript clean",
     "docs": "docsify serve docs",
+    "release:check": "pnpm run res:build && pnpm run res:test && pnpm run bundle && pnpm run date:check",
     "bundle": "rolldown -c",
     "prepare": "pnpm run bundle && node ./scripts/ensure-cli.mjs"
   },
@@ -51,13 +52,13 @@
   "license": "MIT",
   "dependencies": {
     "@rescript/runtime": "^12.2.0",
-    "node-html-parser": "^7.1.0",
-    "rescript": "^12.2.0"
+    "node-html-parser": "^7.1.0"
   },
   "engines": {
     "node": ">=22.0.0"
   },
   "devDependencies": {
+    "rescript": "^12.2.0",
     "rescript-test": "^8.0.0",
     "rolldown": "1.0.0-rc.15",
     "rollup-plugin-esbuild": "^6.2.1",

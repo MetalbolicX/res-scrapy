@@ -1,42 +1,46 @@
 {
   "name": "product-schema",
   "description": "Schema for extracting product records",
-  "fields": [
-    {
-      "name": "title",
-      "selector": ".product .title",
+  "config": {
+    "rowSelector": ".product",
+    "ignoreErrors": false,
+    "limit": 0
+  },
+  "fields": {
+    "title": {
+      "selector": ".title",
       "type": "text",
       "required": true
     },
-    {
-      "name": "price",
-      "selector": ".product .price",
+    "price": {
+      "selector": ".price",
       "type": "number",
-      "required": false
+      "required": false,
+      "numberOptions": {
+        "stripNonNumeric": true,
+        "precision": 2
+      }
     },
-    {
-      "name": "description",
-      "selector": ".product .desc",
+    "description": {
+      "selector": ".desc",
       "type": "text",
       "required": false
     },
-    {
-      "name": "link",
-      "selector": ".product .buy",
+    "link": {
+      "selector": ".buy",
       "type": "attribute",
       "attribute": "href",
       "required": true
     },
-    {
-      "name": "inStock",
-      "selector": ".product .inStock",
+    "inStock": {
+      "selector": ".inStock",
       "type": "boolean",
-      "required": false
+      "required": false,
+      "booleanOptions": {
+        "mode": "mapping",
+        "trueValues": ["in stock", "available", "yes"],
+        "falseValues": ["out of stock", "no"]
+      }
     }
-  ],
-  "config": {
-    "limit": null,
-    "ignoreErrors": false,
-    "model": "zip"
   }
 }

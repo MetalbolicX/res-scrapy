@@ -1,9 +1,49 @@
 /**
   * CLI help message and argument parsing logic
  */
+@get_index external getObjectKey: ({..}, string) => option<'a> = ""
+
+let candidatePackagePaths: unit => array<string> = %raw(`() => {
+  try {
+    return [
+      decodeURIComponent(new URL('../package.json', import.meta.url).pathname),
+      decodeURIComponent(new URL('../../package.json', import.meta.url).pathname),
+    ];
+  } catch {
+    return [];
+  }
+}`)
+
+let parseVersionFromPath: string => option<string> = path => {
+  try {
+    let raw = NodeJsBinding.Fs.readFileSync(path)
+    switch NodeJsBinding.jsonParse(raw) {
+    | None => None
+    | Some(json) => {
+        let pkg: {..} = Obj.magic(json)
+        getObjectKey(pkg, "version")
+      }
+    }
+  } catch {
+  | _ => None
+  }
+}
+
+let getCliVersion: unit => string = () => {
+  let paths = candidatePackagePaths()
+  let found: ref<option<string>> = ref(None)
+  paths->Array.forEach(path => {
+    if found.contents->Option.isNone {
+      found := parseVersionFromPath(path)
+    }
+  })
+  found.contents->Option.getOr("unknown")
+}
+
 let showHelp: unit => unit = () => {
   Console.log(`
-  Usage: res-scrapy command [options]
+  Usage: res-scrapy [options]
+    -v, --version     Display CLI version
     -h, --help        Display this help message
     -s, --selector    Specify a CSS selector to extract data
     -m, --mode        Extract multiple results (single by default)
@@ -30,6 +70,7 @@ let showHelp: unit => unit = () => {
 let parse: unit => NodeJsBinding.Util.cliValues = () => {
   open NodeJsBinding.Util
   let options = Dict.fromArray([
+    ("version", {type_: "boolean", short: "v", default: Bool(false)}),
     ("mode", {type_: "boolean", short: "m", default: Bool(false)}),
     ("selector", {type_: "string", short: "s"}),
     ("extract", {type_: "string", short: "e", default: String("outerHtml")}),
@@ -50,6 +91,14 @@ let parse: unit => NodeJsBinding.Util.cliValues = () => {
 
   switch values.help {
   | Some(true) => showHelp()
+  | _ => ()
+  }
+
+  switch values.version {
+  | Some(true) => {
+      Console.log(getCliVersion())
+      NodeJsBinding.Process.exit(0)
+    }
   | _ => ()
   }
 

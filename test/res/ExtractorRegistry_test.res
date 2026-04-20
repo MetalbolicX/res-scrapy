@@ -36,7 +36,7 @@ test("ExtractorRegistry field options override schema defaults", () => {
 test("ExtractorRegistry extractValueList handles Count", () => {
   let doc = HtmlFixture.parse("<ul><li>A</li><li>B</li><li>C</li></ul>")
   let els = HtmlFixture.selectAll(doc, "li")
-  switch ExtractorRegistry.extractValueList(els, Count(None), None, false) {
+  switch ExtractorRegistry.extractValueList(els, Count(None), None, false, false, "count", "li") {
   | Ok(value) => isTextEqualTo("3", NodeJsBinding.jsonStringify(value))
   | Error(_) => failWith("Expected Count extraction success")
   }
@@ -46,7 +46,7 @@ test("ExtractorRegistry extractValueList handles List", () => {
   let doc = HtmlFixture.parse("<ul><li>A</li><li>B</li></ul>")
   let els = HtmlFixture.selectAll(doc, "li")
   let opts: listOptions = {itemType: ListText}
-  switch ExtractorRegistry.extractValueList(els, List(opts), None, false) {
+  switch ExtractorRegistry.extractValueList(els, List(opts), None, false, false, "items", "li") {
   | Ok(value) => isTextEqualTo("[\"A\",\"B\"]", NodeJsBinding.jsonStringify(value))
   | Error(_) => failWith("Expected List extraction success")
   }
@@ -55,9 +55,40 @@ test("ExtractorRegistry extractValueList handles List", () => {
 test("ExtractorRegistry extractValueList scalar fallback uses first element", () => {
   let doc = HtmlFixture.parse("<h2>A</h2><h2>B</h2>")
   let els = HtmlFixture.selectAll(doc, "h2")
-  switch ExtractorRegistry.extractValueList(els, Text(None), None, false) {
+  switch ExtractorRegistry.extractValueList(els, Text(None), None, false, false, "title", "h2") {
   | Ok(value) => isTextEqualTo("\"A\"", NodeJsBinding.jsonStringify(value))
   | Error(_) => failWith("Expected scalar fallback extraction success")
+  }
+})
+
+test("ExtractorRegistry extractValueList returns RequiredFieldMissing for required Count with empty elements", () => {
+  let els = []
+  switch ExtractorRegistry.extractValueList(els, Count(None), None, false, true, "items", ".item") {
+  | Error(RequiredFieldMissing({fieldName, selector})) => {
+      isTextEqualTo("items", fieldName)
+      isTextEqualTo(".item", selector)
+    }
+  | _ => failWith("Expected RequiredFieldMissing for required Count with empty elements")
+  }
+})
+
+test("ExtractorRegistry extractValueList returns RequiredFieldMissing for required List with empty elements", () => {
+  let els = []
+  let opts: listOptions = {itemType: ListText}
+  switch ExtractorRegistry.extractValueList(els, List(opts), None, false, true, "tags", ".tag") {
+  | Error(RequiredFieldMissing({fieldName, selector})) => {
+      isTextEqualTo("tags", fieldName)
+      isTextEqualTo(".tag", selector)
+    }
+  | _ => failWith("Expected RequiredFieldMissing for required List with empty elements")
+  }
+})
+
+test("ExtractorRegistry extractValueList returns 0 for non-required Count with empty elements", () => {
+  let els = []
+  switch ExtractorRegistry.extractValueList(els, Count(None), None, false, false, "items", ".item") {
+  | Ok(value) => isTextEqualTo("0", NodeJsBinding.jsonStringify(value))
+  | Error(_) => failWith("Expected Count=0 for non-required field with empty elements")
   }
 })
 

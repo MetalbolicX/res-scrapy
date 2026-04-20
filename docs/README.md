@@ -66,5 +66,6 @@ Unlike **pup** (which requires Go knowledge) or **BeautifulSoup** (which needs P
 - 📖 **[Getting Started](getting-started.md)** — Installation and your first scrape
 - 📋 **[Schema Guide](schema-guide.md)** — Master the art of data extraction
 - 💡 **[Examples](examples.md)** — Real-world patterns and use cases
+- 🚀 **[Release Process](release-process.md)** — Versioning and publishing workflow
 
 Let's turn that HTML into something useful! 🚀

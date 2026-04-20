@@ -22,6 +22,7 @@ Recommended (global install):
 
 ```sh
 npm install -g res-scrapy
+res-scrapy -v
 res-scrapy -h
 ```
 

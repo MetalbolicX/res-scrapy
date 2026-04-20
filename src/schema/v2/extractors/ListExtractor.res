@@ -51,16 +51,42 @@ let extractItemValue: (NodeHtmlParserBinding.htmlElement, listItemType) => optio
   }
 }
 
-/** JS helper: test whether a string matches a regex pattern */
-let matchesPattern: (string, string) => bool = %raw(`
-(str, pattern) => {
+/** Compile and validate a user-provided regex filter.
+  * Guardrails:
+  *   - max length 200
+  *   - reject lookarounds and backreferences
+  *   - reject common catastrophic nested-quantifier forms
+  */
+let compileSafePattern: string => option<RegExp.t> = %raw(`
+pattern => {
+  if (!pattern || typeof pattern !== "string") return undefined;
+  if (pattern.length > 200) return undefined;
+
+  // Disallow backreferences: \1, \2, ...
+  if (/\\[1-9][0-9]*/.test(pattern)) return undefined;
+
+  // Disallow lookaheads/lookbehinds
+  if (/\(\?[:=!<]/.test(pattern)) return undefined;
+
+  // Disallow nested quantified groups (e.g. (a+)+, (a*)+, (a{1,3})*)
+  if (/\([^)]*[+*?][^)]*\)\s*[+*?]/.test(pattern)) return undefined;
+  if (/\([^)]*\{[^}]+\}[^)]*\)\s*[+*?]/.test(pattern)) return undefined;
+
+  // Disallow wide quantified alternation groups (often expensive)
+  if (/\((?:[^()]*\|){3,}[^()]*\)\s*[+*{]/.test(pattern)) return undefined;
+
+  // Disallow very large explicit quantifiers
+  if (/\{(?:\d{4,}|\d+,\d{4,}|\d{4,},)\}/.test(pattern)) return undefined;
+
   try {
-    return new RegExp(pattern).test(str);
-  } catch(e) {
-    return false;
+    return new RegExp(pattern);
+  } catch {
+    return undefined;
   }
 }
 `)
+
+let matchesCompiledPattern: (RegExp.t, string) => bool = %raw(`(re, str) => re.test(str)`)
 
 let extract: (array<NodeHtmlParserBinding.htmlElement>, listOptions) => option<JSON.t> = (
   els,
@@ -75,7 +101,11 @@ let extract: (array<NodeHtmlParserBinding.htmlElement>, listOptions) => option<J
   // 2. Filter by regex if provided
   let filtered = switch opts.filter {
   | None => values
-  | Some(pat) => values->Array.filter(v => matchesPattern(v, pat))
+  | Some(pat) =>
+    switch compileSafePattern(pat) {
+    | Some(re) => values->Array.filter(v => matchesCompiledPattern(re, v))
+    | None => []
+    }
   }
 
   // 3. Deduplicate (preserve first-occurrence order)

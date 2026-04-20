@@ -11,6 +11,7 @@ export default defineConfig({
     format: "es",
     file: join(dirname, "dist", "main.mjs"),
     banner: "#!/usr/bin/env node",
+    sourcemap: true,
   },
   platform: "node",
   plugins: [minify()],

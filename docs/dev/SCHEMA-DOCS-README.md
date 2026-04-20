@@ -4,7 +4,7 @@ This directory contains comprehensive documentation for the res-scrapy schema sy
 
 ## Documents Overview
 
-### 1. [SCHEMA-SPEC.md](SCHEMA-SPEC.md) 📋
+### 1. [Schema Guide](../schema-guide.md) 📋
 
 **Complete technical specification for schema v2.0**
 
@@ -29,7 +29,7 @@ This directory contains comprehensive documentation for the res-scrapy schema sy
 
 ---
 
-### 2. [SCHEMA-EXAMPLES.md](SCHEMA-EXAMPLES.md) 💡
+### 2. [Examples](../examples.md) 💡
 
 **Practical examples and real-world use cases**
 
@@ -64,7 +64,7 @@ This directory contains comprehensive documentation for the res-scrapy schema sy
 
 ---
 
-### 3. [IMPLEMENTATION-ROADMAP.md](IMPLEMENTATION-ROADMAP.md) 🗺️
+### 3. Implementation Notes 🗺️
 
 **Development plan from v1.0 (current) to v2.0 (proposed)**
 
@@ -102,9 +102,9 @@ This directory contains comprehensive documentation for the res-scrapy schema sy
 
 ### For Users
 
-1. **Start with examples:** Read [SCHEMA-EXAMPLES.md](SCHEMA-EXAMPLES.md) to find a similar use case
+1. **Start with examples:** Read [Examples](../examples.md) to find a similar use case
 2. **Copy and adapt:** Use the closest example as a template
-3. **Refer to spec:** Check [SCHEMA-SPEC.md](SCHEMA-SPEC.md) for detailed options
+3. **Refer to spec:** Check [Schema Guide](../schema-guide.md) for detailed options
 4. **Test incrementally:** Validate one field at a time
 
 ### For Implementors
@@ -205,12 +205,12 @@ echo '<div class="in-stock">In Stock</div>' | \
 | `text`      | ✅ Basic       | ✅ Enhanced | trim, normalize, pattern, join          |
 | `attribute` | ✅ Single      | ✅ Multiple | fallback order, modes                   |
 | `html`      | ✅ innerHTML   | ✅ Both     | inner/outer, strip scripts/styles       |
-| `number`    | ⚠️ Basic       | ✅ Robust   | strip chars, pattern, locale, precision |
+| `number`    | ⚠️ Basic       | ✅ Robust   | strip chars, pattern, separators, precision |
 | `boolean`   | ⚠️ "true" only | ✅ Flexible | mapping, presence, attribute modes      |
 | `datetime`  | ❌             | ✅ New      | multiple formats, timezone, output      |
 | `url`       | ❌             | ✅ New      | resolve, validate, strip query/hash     |
 | `count`     | ❌             | ✅ New      | min/max validation                      |
-| `json`      | ❌             | ✅ New      | JSONPath, validation                    |
+| `json`      | ❌             | ✅ New      | dot-path extraction, onError            |
 | `list`      | ❌             | ✅ New      | typed items, unique, filter             |
 
 ### Extraction Model
@@ -220,7 +220,6 @@ echo '<div class="in-stock">In Stock</div>' | \
 | Zip-by-first-field           | ✅   | ✅ (fallback)    |
 | Row-based with `rowSelector` | ❌   | ✅ (recommended) |
 | Relative selectors           | ❌   | ✅               |
-| Field-level `multiple`       | ❌   | ✅               |
 
 ### Configuration
 
@@ -446,7 +445,6 @@ Each command prints the extracted JSON for the schema. Use these as quick regres
   type: FieldType;
   required?: boolean;
   default?: any;
-  multiple?: boolean;
   [typeOptions]?: TypeOptions;
 }
 ```
@@ -474,21 +472,21 @@ Each command prints the extracted JSON for the schema. Use these as quick regres
 
 ### To Add Examples
 
-1. Edit [SCHEMA-EXAMPLES.md](SCHEMA-EXAMPLES.md)
+1. Edit [Examples](../examples.md)
 2. Add a new category or enhance existing
 3. Include working schema JSON
 4. Show expected input/output
 
 ### To Propose Features
 
-1. Check [SCHEMA-SPEC.md](SCHEMA-SPEC.md) to avoid duplicates
+1. Check [Schema Guide](../schema-guide.md) to avoid duplicates
 2. Open issue describing use case
 3. Reference similar implementations if known
 4. Consider backwards compatibility
 
 ### To Implement Features
 
-1. Follow [IMPLEMENTATION-ROADMAP.md](IMPLEMENTATION-ROADMAP.md) phases
+1. Follow the implementation phases in this document
 2. Start with Phase 1 (critical fixes)
 3. Write tests for each feature
 4. Update all three docs with changes
@@ -506,8 +504,8 @@ A: Use `"type": "text"` with `"textOptions": {"pattern": "..."}` to extract via 
 **Q: How do I extract from nested structures?**
 A: Use `rowSelector` to define the row container, then use relative selectors for fields within each row.
 
-**Q: Can I extract multiple values from one element?**
-A: Yes, use `"multiple": true` or `"type": "list"` with appropriate options.
+**Q: Can I extract multiple values from matching elements?**
+A: Yes, use `"type": "list"` with appropriate options.
 
 **Q: How do I handle errors gracefully?**
 A: Set `"config": {"ignoreErrors": true}` to skip failed fields, or use field-level `"required": false` with `"default"`.
@@ -521,7 +519,7 @@ A: No, res-scrapy works on static HTML. For dynamic content, render with a headl
 
 - [Main README](README.md) - Project overview and basic usage
 - [examples/](examples/) - Sample HTML and schema files
-- [src/schema/Schema.res](src/schema/Schema.res) - Current implementation
+- [src/schema/v2/SchemaV2.res](../../src/schema/v2/SchemaV2.res) - Current schema implementation entrypoint
 - [GitHub Issues](https://github.com/MetalbolicX/res-scrapy/issues) - Bug reports and feature requests
 
 ---

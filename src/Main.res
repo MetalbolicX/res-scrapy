@@ -3,6 +3,31 @@ let exitWithError = (ctx: AppContext.appContext, err: AppError.appError) => {
   ctx.io.exit(1)
 }
 
+let exnMessage = exn =>
+  switch exn->JsExn.fromException {
+  | Some(jsExn) => jsExn->JsExn.message->Option.getOr("Unknown error")
+  | None => "Unknown error"
+  }
+
+let parseCliSafely = (ctx: AppContext.appContext): result<ParseCli.parseOptions, AppError.appError> => {
+  try {
+    ctx.deps.parseCli()->ctx.deps.validateArgs->ResultX.mapError(AppError.mapParseError)
+  } catch {
+  | exn => Error(AppError.CliError(`Invalid CLI arguments: ${exnMessage(exn)}`))
+  }
+}
+
+let parseDocumentSafely = (
+  ctx: AppContext.appContext,
+  html: string,
+): result<Document.document, AppError.appError> => {
+  try {
+    Ok(Document.parse(ctx.deps.documentOps, html))
+  } catch {
+  | exn => Error(AppError.InputError(`Failed to parse HTML input: ${exnMessage(exn)}`))
+  }
+}
+
 let hasOnlyAggregateFields = (schema: Schema.schema) =>
   schema.fields->Array.every(((_, field)) =>
     switch field.fieldType {
@@ -86,24 +111,31 @@ let runSelectorMode = (
 }
 
 let mainWithContext: AppContext.appContext => promise<unit> = async ctx => {
-  let parsed = ctx.deps.parseCli()->ctx.deps.validateArgs->ResultX.mapError(AppError.mapParseError)
-  switch parsed {
-  | Error(err) => exitWithError(ctx, err)
-  | Ok(options) => {
-      let stdinResult = await ctx.deps.readStdin()
-      switch stdinResult->ResultX.mapError(AppError.mapStdInError) {
-      | Error(err) => exitWithError(ctx, err)
-      | Ok(html) => {
-          let document = Document.parse(ctx.deps.documentOps, html)
-          switch ExtractionMode.fromOptions(options) {
-          | TableMode(selector) => runTableMode(ctx, document, selector)
-          | SchemaMode(source) => runSchemaMode(ctx, document, source)
-          | SelectorMode({selector, extract, mode}) =>
-            runSelectorMode(ctx, document, ~selector, ~extractMode=extract, ~mode)
+  try {
+    let parsed = parseCliSafely(ctx)
+    switch parsed {
+    | Error(err) => exitWithError(ctx, err)
+    | Ok(options) => {
+        let stdinResult = await ctx.deps.readStdin()
+        switch stdinResult->ResultX.mapError(AppError.mapStdInError) {
+        | Error(err) => exitWithError(ctx, err)
+        | Ok(html) => {
+            switch parseDocumentSafely(ctx, html) {
+            | Error(err) => exitWithError(ctx, err)
+            | Ok(document) =>
+              switch ExtractionMode.fromOptions(options) {
+              | TableMode(selector) => runTableMode(ctx, document, selector)
+              | SchemaMode(source) => runSchemaMode(ctx, document, source)
+              | SelectorMode({selector, extract, mode}) =>
+                runSelectorMode(ctx, document, ~selector, ~extractMode=extract, ~mode)
+              }
+            }
           }
         }
       }
     }
+  } catch {
+  | exn => exitWithError(ctx, AppError.ExtractionError(`Unexpected error: ${exnMessage(exn)}`))
   }
 }
 
@@ -123,6 +155,45 @@ let isExecutedAsScript: unit => bool =
     }
   }`)
 
+let registerGlobalRuntimeHandlers: (string => unit, int => unit) => unit =
+  %raw(`(report, exitFn) => {
+    if (globalThis.__resScrapyRuntimeHandlersRegistered) {
+      return;
+    }
+    globalThis.__resScrapyRuntimeHandlersRegistered = true;
+
+    const formatError = (value) => {
+      if (value && typeof value === "object") {
+        if (typeof value.stack === "string") return value.stack;
+        if (typeof value.message === "string") return value.message;
+      }
+      return String(value);
+    };
+
+    process.on("uncaughtException", (err) => {
+      report("Unexpected runtime error:");
+      report(formatError(err));
+      exitFn(1);
+    });
+
+    process.on("unhandledRejection", (reason) => {
+      report("Unhandled promise rejection:");
+      report(formatError(reason));
+      exitFn(1);
+    });
+
+    process.on("SIGINT", () => {
+      report("Interrupted (SIGINT)");
+      exitFn(130);
+    });
+
+    process.on("SIGTERM", () => {
+      report("Terminated (SIGTERM)");
+      exitFn(143);
+    });
+  }`)
+
 if isExecutedAsScript() {
+  registerGlobalRuntimeHandlers(Console.error, NodeJsBinding.Process.setExitCode)
   await main()
 }

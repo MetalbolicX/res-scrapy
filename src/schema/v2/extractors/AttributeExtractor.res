@@ -24,15 +24,7 @@ let extract: (NodeHtmlParserBinding.htmlElement, attributeConfig) => option<stri
       | None => getAttr(el, name)
       }
     })
-  | All =>
-    let sep = cfg.joinSep->Option.getOr(" ")
-    let vals = cfg.names->Array.filterMap(name => getAttrRaw(el, name))
-    if Array.length(vals) === 0 {
-      None
-    } else {
-      Some(Array.join(vals, sep))
-    }
-  | Join =>
+  | All | Join =>
     let sep = cfg.joinSep->Option.getOr(" ")
     let vals = cfg.names->Array.filterMap(name => getAttrRaw(el, name))
     if Array.length(vals) === 0 {

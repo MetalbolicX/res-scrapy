@@ -98,6 +98,7 @@ curl -s https://shop.example.com | res-scrapy --schemaPath product-schema.json
 Usage: res-scrapy [options]
 
 Options:
+  -v, --version      Display CLI version
   -h, --help         Display help message
   -s, --selector     CSS selector to target element(s)
   -m, --mode         Extract multiple results (single by default)
@@ -153,7 +154,7 @@ cat page.html | res-scrapy --table --selector '#data-table'
 
 - `config.ignoreErrors: true` – Continue extraction when fields fail
 - Field-level `default` values for missing data
-- `onError` policies per field: `null`, `text`, `default`, or `error`
+- `onError` policies per field: `null`, `text`, or `default`
 
 ## Documentation
 
@@ -162,6 +163,8 @@ cat page.html | res-scrapy --table --selector '#data-table'
 - [Getting Started Guide](https://metalbolicx.github.io/res-scrapy/#/getting-started) – Installation and first steps
 - [Schema Guide](https://metalbolicx.github.io/res-scrapy/#/schema-guide) – Complete schema reference with examples
 - [Examples](https://metalbolicx.github.io/res-scrapy/#/examples) – Real-world use cases and patterns
+- [Release Process](https://metalbolicx.github.io/res-scrapy/#/release-process) – Versioning and publishing checklist
+- [Changelog](./CHANGELOG.md) – Notable changes by release
 
 ## Development
 

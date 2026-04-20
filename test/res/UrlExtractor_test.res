@@ -41,9 +41,13 @@ test("UrlExtractor validates protocol and strips query/hash", () => {
 })
 
 test("UrlExtractor returns None for missing or invalid URL", () => {
-  let doc = HtmlFixture.parse("<a class='a'></a><a class='b' href='::invalid::'></a>")
+  let doc = HtmlFixture.parse(
+    "<a class='a'></a><a class='b' href='::invalid::'></a><a class='c' href='javascript:alert(1)'></a>",
+  )
   let a = getElement(doc, ".a")
   let b = getElement(doc, ".b")
+  let c = getElement(doc, ".c")
   isOptionEqualTo(None, UrlExtractor.extract(a, None), ~eq=(a, b) => a == b)
   isOptionEqualTo(None, UrlExtractor.extract(b, None), ~eq=(a, b) => a == b)
+  isOptionEqualTo(None, UrlExtractor.extract(c, None), ~eq=(a, b) => a == b)
 })

@@ -22,6 +22,12 @@ let defaultAttribute: string => string = tagName => {
   }
 }
 
+let isSafeProtocol: string => bool = protocol =>
+  switch protocol {
+  | "http:" | "https:" => true
+  | _ => false
+  }
+
 let getUrlAttribute: (NodeHtmlParserBinding.htmlElement, option<string>) => option<string> = (
   el,
   explicitAttr,
@@ -102,9 +108,12 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<urlOptions>) => option<s
           if !protoOk {
             None
           } else {
-            // 4. Build final URL string, stripping query/hash as needed
-            let final = ref(url.href)
-            if (
+            if !isSafeProtocol(url.protocol) {
+              None
+            } else {
+              // 4. Build final URL string, stripping query/hash as needed
+              let final = ref(url.href)
+              if (
               switch opts {
               | Some(o) => o.stripQuery == Some(true)
               | None => false
@@ -117,10 +126,11 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<urlOptions>) => option<s
               | Some(o) => o.stripHash == Some(true)
               | None => false
               }
-            ) {
-              final := final.contents->String.split("#")->Array.get(0)->Option.getOr(final.contents)
+              ) {
+                final := final.contents->String.split("#")->Array.get(0)->Option.getOr(final.contents)
+              }
+              Some(final.contents)
             }
-            Some(final.contents)
           }
         }
       | None => None

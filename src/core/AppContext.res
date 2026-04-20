@@ -40,6 +40,6 @@ let production: appContext = {
     out: Console.log,
     err: Console.error,
     warn: Console.error,
-    exit: NodeJsBinding.Process.exit,
+    exit: NodeJsBinding.Process.setExitCode,
   },
 }

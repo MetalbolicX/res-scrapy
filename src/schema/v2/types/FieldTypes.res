@@ -215,3 +215,15 @@ type schemaError =
   | FileReadError(string)
   | RequiredFieldMissing({fieldName: string, selector: string})
   | ExtractionError(string)
+
+// ---------------------------------------------------------------------------
+// Field type utilities
+// ---------------------------------------------------------------------------
+
+/** Returns true for field types that operate on the full element array. */
+let isMultiElementType: fieldType => bool = ft =>
+  switch ft {
+  | Count(_) => true
+  | List(_) => true
+  | _ => false
+  }

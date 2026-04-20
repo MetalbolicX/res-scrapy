@@ -8,6 +8,9 @@ module Process = {
   /** Terminates the process with the given numeric exit code. */
   @val @scope("process") external exit: int => unit = "exit"
 
+  /** Sets `process.exitCode` so Node exits naturally after pending writes complete. */
+  let setExitCode: int => unit = %raw(`code => { process.exitCode = code; }`)
+
   /** The command-line argument vector; `argv[0]` is `node`, `argv[1]` is the script. */
   @val @scope("process") external argv: array<string> = "argv"
 
@@ -79,6 +82,7 @@ module Util = {
    */
   type cliValues = {
     help?: bool,
+    version?: bool,
     selector?: string,
     mode?: bool,
     extract?: string,

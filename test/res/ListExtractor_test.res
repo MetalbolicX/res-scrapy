@@ -24,6 +24,24 @@ test("ListExtractor supports unique, filter and limit", () => {
   )
 })
 
+test("ListExtractor rejects unsafe regex patterns", () => {
+  let doc = HtmlFixture.parse("<ul><li>A</li><li>B</li><li>C</li></ul>")
+  let els = HtmlFixture.selectAll(doc, "li")
+  let unsafeBackref: listOptions = {itemType: ListText, filter: "(a)\\1+"}
+  let unsafeLookahead: listOptions = {itemType: ListText, filter: "(?=A)A"}
+
+  isOptionEqualTo(
+    Some(TestHelpers.jsonFromString("[]")),
+    ListExtractor.extract(els, unsafeBackref),
+    ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
+  )
+  isOptionEqualTo(
+    Some(TestHelpers.jsonFromString("[]")),
+    ListExtractor.extract(els, unsafeLookahead),
+    ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
+  )
+})
+
 test("ListExtractor supports join output", () => {
   let doc = HtmlFixture.parse("<ul><li>A</li><li>B</li></ul>")
   let els = HtmlFixture.selectAll(doc, "li")

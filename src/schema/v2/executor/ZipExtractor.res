@@ -11,34 +11,46 @@
 
 open FieldTypes
 
-/** Returns true for field types that need the full element array. */
-let isMultiElementType: fieldType => bool = ft =>
-  switch ft {
-  | Count(_) => true
-  | List(_) => true
-  | _ => false
-  }
-
 let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaError> = (
   document,
   schema,
 ) => {
-  let fieldLists = schema.fields->Array.map(((name, field)) => (
-    name,
-    field,
-    NodeHtmlParserBinding.querySelectorAll(document, field.selector),
-  ))
+  let fieldLists = schema.fields->Array.map(((name, field)) => {
+    let resolvedFieldType = DefaultsMerger.resolveDefaults(schema.config.defaults, field.fieldType)
+    let nestedDefaults = switch resolvedFieldType {
+    | Table(_) => schema.config.defaults
+    | _ => None
+    }
+    let els = NodeHtmlParserBinding.querySelectorAll(document, field.selector)
+    (name, field, resolvedFieldType, nestedDefaults, els)
+  })
+
+let aggregateValues: Dict.t<result<JSON.t, schemaError>> = Dict.make()
+fieldLists->Array.forEach(((name, field, resolvedFieldType, _nestedDefaults, els)) => {
+    if isMultiElementType(resolvedFieldType) {
+      let value = ExtractorRegistry.extractValueList(
+        els,
+        resolvedFieldType,
+        None,
+        schema.config.ignoreErrors,
+        field.required,
+        name,
+        field.selector,
+      )
+      Dict.set(aggregateValues, name, value)
+    }
+  })
 
   // Row count is driven by the first non-aggregate field's element count.
   // Aggregate fields (Count/List) produce a single value per output row regardless.
   // Edge case: if all fields are aggregate and rowSelector is not set, rowCount
   // is 0 and the output is an empty array. Use rowSelector to enable row-based
   // extraction in that scenario.
-  let rowCount = switch fieldLists->Array.find(((_, field, _)) =>
-    !isMultiElementType(field.fieldType)
+  let rowCount = switch fieldLists->Array.find(((_, _, resolvedFieldType, _, _)) =>
+    !isMultiElementType(resolvedFieldType)
   ) {
   | None => 0
-  | Some((_, _, els)) => Array.length(els)
+  | Some((_, _, _, _, els)) => Array.length(els)
   }
 
   let limitedCount = switch schema.config.limit {
@@ -53,26 +65,22 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
       | Ok(rows) => {
           let idx = Array.length(rows)
           let fieldResult: result<array<(string, JSON.t)>, schemaError> =
-            fieldLists->Array.reduce(Ok([]), (fAcc, (name, field, els)) => {
+            fieldLists->Array.reduce(Ok([]), (fAcc, (name, field, resolvedFieldType, nestedDefaults, els)) => {
               switch fAcc {
               | Error(e) => Error(e)
               | Ok(pairs) => {
-                  let value: result<JSON.t, schemaError> = if isMultiElementType(field.fieldType) {
-                    // Aggregate path: pass the full element array; result is the
-                    // same for every row (e.g., total count across the document).
-                    ExtractorRegistry.extractValueList(
-                      els,
-                      field.fieldType,
-                      schema.config.defaults,
-                      schema.config.ignoreErrors,
-                    )
+                  let value: result<JSON.t, schemaError> = if isMultiElementType(resolvedFieldType) {
+                    switch Dict.get(aggregateValues, name) {
+                    | Some(v) => v
+                    | None => Ok(JSON.Encode.null)
+                    }
                   } else {
                     switch Array.get(els, idx) {
                     | Some(el) =>
                       ExtractorRegistry.extractValue(
                         el,
-                        field.fieldType,
-                        schema.config.defaults,
+                        resolvedFieldType,
+                        nestedDefaults,
                         schema.config.ignoreErrors,
                       )
                     | None =>

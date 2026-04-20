@@ -36,6 +36,15 @@ let tableHtml = `<!DOCTYPE html>
 </body>
 </html>`
 
+let unicodeHtml = `<!DOCTYPE html>
+<html>
+<body>
+  <h1 class="title">Café ☕ 日本語 مرحبا</h1>
+</body>
+</html>`
+
+let malformedHtml = "<div class='item'>A<div><span class='item'>B"
+
 testAsync("simple extraction: single element", (planned) => {
   runCli(~args=["--selector", "#intro", "--extract", "text"], ~input=html)
   ->Promise.then(result => {
@@ -43,6 +52,41 @@ testAsync("simple extraction: single element", (planned) => {
     isTextEqualTo("Hello World", arr->Array.get(0)->Option.getOr(""))
     isIntEqualTo(0, result.exitCode)
     planned(~planned=2, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("CLI execution failed")
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("simple extraction: unicode text", (planned) => {
+  runCli(~args=["--selector", ".title", "--extract", "text"], ~input=unicodeHtml)
+  ->Promise.then(result => {
+    let arr: array<string> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
+    isTextEqualTo("Café ☕ 日本語 مرحبا", arr->Array.get(0)->Option.getOr(""))
+    isIntEqualTo(0, result.exitCode)
+    planned(~planned=2, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("CLI execution failed")
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("simple extraction: malformed html does not crash", (planned) => {
+  runCli(~args=["--selector", ".item", "--mode", "--extract", "text"], ~input=malformedHtml)
+  ->Promise.then(result => {
+    let arr: array<string> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
+    isIntEqualTo(1, arr->Array.length)
+    stringContains(arr->Array.get(0)->Option.getOr(""), "A")->isTruthy
+    isIntEqualTo(0, result.exitCode)
+    planned(~planned=3, ())
     Promise.resolve()
   })
   ->Promise.catch(_ => {
@@ -249,6 +293,56 @@ testAsync("error: missing selector with no schema or table", (planned) => {
   ->ignore
 })
 
+testAsync("error: unknown CLI flag returns friendly parse error", (planned) => {
+  runCli(~args=["--unknownFlag"], ~input=html)
+  ->Promise.then(result => {
+    isIntEqualTo(1, result.exitCode)
+    stringContains(result.stderr, "Invalid CLI arguments")->isTruthy
+    planned(~planned=2, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("CLI execution failed")
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("help flag exits with code 0", (planned) => {
+  runCli(~args=["--help"], ~input="")
+  ->Promise.then(result => {
+    isIntEqualTo(0, result.exitCode)
+    stringContains(result.stdout, "Usage: res-scrapy [options]")->isTruthy
+    planned(~planned=2, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("CLI execution failed")
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("version flag exits with code 0 and semantic version", (planned) => {
+  runCli(~args=["--version"], ~input="")
+  ->Promise.then(result => {
+    isIntEqualTo(0, result.exitCode)
+    let trimmed = result.stdout->String.trim
+    let matchesSemver: bool = %raw(`s => /^\d+\.\d+\.\d+(-[0-9A-Za-z-.]+)?$/.test(s)`)(trimmed)
+    isTruthy(matchesSemver)
+    planned(~planned=2, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("CLI execution failed")
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
 testAsync("error: empty stdin", (planned) => {
   runCli(~args=["--selector", "div"], ~input="")
   ->Promise.then(result => {
@@ -299,9 +393,8 @@ testAsync("error: missing selector with attr: extract", (planned) => {
 })
 
 testAsync("schemaPath: loads schema from disk file", (planned) => {
-  let schemaPath = "/tmp/res-scrapy-test-schema.json"
   let schemaContent = `{"fields":{"intro":{"selector":"#intro","type":"text"}}}`
-  runCliWithSchemaFile(~schemaPath, ~schemaContent, ~cliArgs=[], ~input=html)
+  runCliWithSchemaFile(~schemaContent, ~cliArgs=[], ~input=html)
   ->Promise.then(result => {
     isIntEqualTo(0, result.exitCode)
     let arr: array<{..}> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic

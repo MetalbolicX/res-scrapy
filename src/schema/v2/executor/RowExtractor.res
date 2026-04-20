@@ -9,14 +9,6 @@
   */
 open FieldTypes
 
-/** Returns true for field types that need the full element array. */
-let isMultiElementType: fieldType => bool = ft =>
-  switch ft {
-  | Count(_) => true
-  | List(_) => true
-  | _ => false
-  }
-
 let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaError> = (
   document,
   schema,
@@ -38,6 +30,15 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
     }
   }
 
+  let resolvedFields = schema.fields->Array.map(((name, field)) => {
+    let resolvedFieldType = DefaultsMerger.resolveDefaults(schema.config.defaults, field.fieldType)
+    let nestedDefaults = switch resolvedFieldType {
+    | Table(_) => schema.config.defaults
+    | _ => None
+    }
+    (name, field, resolvedFieldType, nestedDefaults)
+  })
+
   let results: result<array<JSON.t>, schemaError> = limitedRows->Array.reduce(Ok([]), (
     acc,
     rowEl,
@@ -48,30 +49,33 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
         let fieldResult: result<
           array<(string, JSON.t)>,
           schemaError,
-        > = schema.fields->Array.reduce(Ok([]), (fAcc, (name, field)) => {
+        > = resolvedFields->Array.reduce(Ok([]), (fAcc, (name, field, resolvedFieldType, nestedDefaults)) => {
           switch fAcc {
           | Error(e) => Error(e)
           | Ok(pairs) => {
-                let value: result<JSON.t, schemaError> = if isMultiElementType(field.fieldType) {
+                let value: result<JSON.t, schemaError> = if isMultiElementType(resolvedFieldType) {
                   // Multi-element path: pass all matched elements to extractValueList.
                   let allEls = NodeHtmlParserBinding.querySelectorAll(rowEl, field.selector)
                   ExtractorRegistry.extractValueList(
                     allEls,
-                    field.fieldType,
-                    schema.config.defaults,
+                    resolvedFieldType,
+                    None,
                     schema.config.ignoreErrors,
+                    field.required,
+                    name,
+                    field.selector,
                   )
                 } else {
                   let maybeEl =
                     NodeHtmlParserBinding.querySelector(rowEl, field.selector)->Nullable.toOption
                   ExtractorRegistry.extractValueOrAbsent(
                     maybeEl,
-                    field.fieldType,
+                    resolvedFieldType,
                     field.default,
                     field.required,
                     name,
                     field.selector,
-                    schema.config.defaults,
+                    nestedDefaults,
                     schema.config.ignoreErrors,
                   )
                 }

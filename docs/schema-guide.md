@@ -9,6 +9,7 @@ This is the canonical, consolidated schema guide for res-scrapy. It is intended 
 Quick reference for the flags at your disposal:
 
 - `-s` (`--selector`) — CSS selector to target element(s).
+- `-v` (`--version`) — display CLI version.
 - `-m` (`--mode`) — multiple mode: when present the extractor returns all matches (otherwise single).
 - `-e` (`--extract`) — what to extract: `outerHtml`, `innerHtml`, `text`, or `attr:<name>` (e.g. `attr:href`).
 - `-c` (`--schema`) — inline JSON schema for structured extraction.
@@ -285,7 +286,6 @@ Key options:
 - `trim` (default true).
 - `normalizeWhitespace`.
 - `pattern` (regex capture).
-- `multiple` (return array).
 
 Example:
 
@@ -352,7 +352,7 @@ Example:
 
 ### 4. Number
 
-Purpose: parse numeric values (currency, percent, locales).
+Purpose: parse numeric values (currency, percent).
 
 Key options:
 
@@ -360,7 +360,6 @@ Key options:
 - `pattern` (regex capture).
 - `thousandsSeparator`.
 - `decimalSeparator`.
-- `locale`.
 - `precision`.
 - `onError` (`null` default).
 
@@ -386,11 +385,10 @@ Purpose: interpret truthy/falsey values.
 
 Key options:
 
-- `mode` (`mapping` default, `presence`, `attribute`).
+- `mode` (`mapping` default, `presence`, `attributeCheck`).
 - `trueValues`.
 - `falseValues`.
 - `attribute`.
-- `pattern`.
 - `onUnknown` (`false` default).
 
 Example (presence):
@@ -418,7 +416,6 @@ Key options:
 - `output` (`iso8601` default).
 - `outputFormat`.
 - `strict`.
-- `locale`.
 - `source` (`text`/`attribute`).
 
 Example:
@@ -467,10 +464,13 @@ Key options:
 - `base`.
 - `resolve` (default true).
 - `validate` (default true).
-- `protocol` (`http`/`https`/`any`).
+- `protocol` (`http`/`https`).
 - `stripQuery`.
 - `stripHash`.
 - `attribute`.
+
+> [!Note]
+> For safety, URLs with unsafe schemes (for example `javascript:` and `data:`) are rejected.
 
 Example:
 
@@ -495,8 +495,7 @@ Key options:
 
 - `source` (`text`/`attribute`).
 - `attribute`.
-- `path` (JSONPath).
-- `validate`.
+- `path` (dot notation, e.g. `offers.price`).
 - `onError`.
 
 Example:
@@ -551,7 +550,6 @@ Top-level `config` keys you will use:
 - `ignoreErrors` (boolean): when true, extraction will skip failing fields and continue (defaults: false)
 - `limit` (number): max rows to return (0 = unlimited)
 - `defaults`: object to set per-type default options (text, number, boolean, datetime, url)
-- `output`: control format (`json`, `jsonl`, `csv`), `pretty`, and whether to include metadata
 
 Default values (summary):
 
@@ -570,7 +568,7 @@ Field-level failures follow these rules:
 1. Required field missing:
    - If `config.ignoreErrors` is false: extraction aborts with error
    - If `config.ignoreErrors` is true: use `default` value or `null` and continue
-2. Parse error (number/date/url): follow the field's `onError` policy (`null`, `text`, `default`, `error`)
+2. Parse error (number/date/url/json): follow the field's `onError` policy (`null`, `text`, `default`)
 3. Validation errors (e.g., URL invalid): treated per field policy
 
 Schema-level validation errors include: invalid JSON, missing `fields`, invalid field type, invalid selector, invalid options.

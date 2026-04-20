@@ -215,3 +215,5 @@ type schemaError =
   | FileReadError(string)
   | RequiredFieldMissing({fieldName: string, selector: string})
   | ExtractionError(string)
+
+let isMultiElementType: fieldType => bool

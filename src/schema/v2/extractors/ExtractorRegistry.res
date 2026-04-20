@@ -97,241 +97,13 @@ let columnTypeToFieldType: columnFieldType => fieldType = columnType =>
   | ColumnList(opts) => List(opts)
   }
 
-let pickOption = (current, fallback) =>
-  switch current {
-  | Some(value) => Some(value)
-  | None => fallback
-  }
-
-let mergeTextOptions = (fieldOpts: option<textOptions>, defaultOpts: option<textOptions>) =>
-  switch defaultOpts {
-  | None => fieldOpts
-  | Some(def) =>
-    switch fieldOpts {
-    | None => Some(def)
-    | Some(opts) =>
-      Some({
-        trim: ?pickOption(opts.trim, def.trim),
-        normalizeWhitespace: ?pickOption(opts.normalizeWhitespace, def.normalizeWhitespace),
-        lowercase: ?pickOption(opts.lowercase, def.lowercase),
-        uppercase: ?pickOption(opts.uppercase, def.uppercase),
-        pattern: ?pickOption(opts.pattern, def.pattern),
-        join: ?pickOption(opts.join, def.join),
-      })
-    }
-  }
-
-let mergeHtmlOptions = (fieldOpts: option<htmlOptions>, defaultOpts: option<htmlOptions>) =>
-  switch defaultOpts {
-  | None => fieldOpts
-  | Some(def) =>
-    switch fieldOpts {
-    | None => Some(def)
-    | Some(opts) =>
-      Some({
-        mode: ?pickOption(opts.mode, def.mode),
-        stripScripts: ?pickOption(opts.stripScripts, def.stripScripts),
-        stripStyles: ?pickOption(opts.stripStyles, def.stripStyles),
-      })
-    }
-  }
-
-let mergeNumberOptions = (fieldOpts: option<numberOptions>, defaultOpts: option<numberOptions>) =>
-  switch defaultOpts {
-  | None => fieldOpts
-  | Some(def) =>
-    switch fieldOpts {
-    | None => Some(def)
-    | Some(opts) =>
-      Some({
-        stripNonNumeric: ?pickOption(opts.stripNonNumeric, def.stripNonNumeric),
-        pattern: ?pickOption(opts.pattern, def.pattern),
-        thousandsSeparator: ?pickOption(opts.thousandsSeparator, def.thousandsSeparator),
-        decimalSeparator: ?pickOption(opts.decimalSeparator, def.decimalSeparator),
-        precision: ?pickOption(opts.precision, def.precision),
-        allowNegative: ?pickOption(opts.allowNegative, def.allowNegative),
-        onError: ?pickOption(opts.onError, def.onError),
-      })
-    }
-  }
-
-let mergeBooleanOptions = (
-  fieldOpts: option<booleanOptions>,
-  defaultOpts: option<booleanOptions>,
-) =>
-  switch defaultOpts {
-  | None => fieldOpts
-  | Some(def) =>
-    switch fieldOpts {
-    | None => Some(def)
-    | Some(opts) =>
-      Some({
-        mode: ?pickOption(opts.mode, def.mode),
-        trueValues: ?pickOption(opts.trueValues, def.trueValues),
-        falseValues: ?pickOption(opts.falseValues, def.falseValues),
-        attribute: ?pickOption(opts.attribute, def.attribute),
-        onUnknown: ?pickOption(opts.onUnknown, def.onUnknown),
-      })
-    }
-  }
-
-let mergeCountOptions = (fieldOpts: option<countOptions>, defaultOpts: option<countOptions>) =>
-  switch defaultOpts {
-  | None => fieldOpts
-  | Some(def) =>
-    switch fieldOpts {
-    | None => Some(def)
-    | Some(opts) => Some({min: ?pickOption(opts.min, def.min), max: ?pickOption(opts.max, def.max)})
-    }
-  }
-
-let mergeDateOptions = (fieldOpts: option<dateOptions>, defaultOpts: option<dateOptions>) =>
-  switch defaultOpts {
-  | None => fieldOpts
-  | Some(def) =>
-    switch fieldOpts {
-    | None => Some(def)
-    | Some(opts) =>
-      Some({
-        formats: ?pickOption(opts.formats, def.formats),
-        timezone: ?pickOption(opts.timezone, def.timezone),
-        output: ?pickOption(opts.output, def.output),
-        strict: ?pickOption(opts.strict, def.strict),
-        source: ?pickOption(opts.source, def.source),
-        attribute: ?pickOption(opts.attribute, def.attribute),
-      })
-    }
-  }
-
-let mergeUrlOptions = (fieldOpts: option<urlOptions>, defaultOpts: option<urlOptions>) =>
-  switch defaultOpts {
-  | None => fieldOpts
-  | Some(def) =>
-    switch fieldOpts {
-    | None => Some(def)
-    | Some(opts) =>
-      Some({
-        base: ?pickOption(opts.base, def.base),
-        resolve: ?pickOption(opts.resolve, def.resolve),
-        validate: ?pickOption(opts.validate, def.validate),
-        protocol: ?pickOption(opts.protocol, def.protocol),
-        stripQuery: ?pickOption(opts.stripQuery, def.stripQuery),
-        stripHash: ?pickOption(opts.stripHash, def.stripHash),
-        attribute: ?pickOption(opts.attribute, def.attribute),
-      })
-    }
-  }
-
-let mergeJsonOptions = (fieldOpts: option<jsonOptions>, defaultOpts: option<jsonOptions>) =>
-  switch defaultOpts {
-  | None => fieldOpts
-  | Some(def) =>
-    switch fieldOpts {
-    | None => Some(def)
-    | Some(opts) =>
-      Some({
-        source: ?pickOption(opts.source, def.source),
-        attribute: ?pickOption(opts.attribute, def.attribute),
-        path: ?pickOption(opts.path, def.path),
-        onError: ?pickOption(opts.onError, def.onError),
-      })
-    }
-  }
-
-let resolveDefaults = (defaults: option<schemaDefaults>, fieldType: fieldType): fieldType =>
-  switch fieldType {
-  | Text(opts) =>
-    Text(
-      mergeTextOptions(
-        opts,
-        switch defaults {
-        | Some(d) => d.text
-        | None => None
-        },
-      ),
-    )
-  | Attribute(cfg) => Attribute(cfg)
-  | Html(opts) =>
-    Html(
-      mergeHtmlOptions(
-        opts,
-        switch defaults {
-        | Some(d) => d.html
-        | None => None
-        },
-      ),
-    )
-  | Number(opts) =>
-    Number(
-      mergeNumberOptions(
-        opts,
-        switch defaults {
-        | Some(d) => d.number
-        | None => None
-        },
-      ),
-    )
-  | Boolean(opts) =>
-    Boolean(
-      mergeBooleanOptions(
-        opts,
-        switch defaults {
-        | Some(d) => d.boolean
-        | None => None
-        },
-      ),
-    )
-  | Count(opts) =>
-    Count(
-      mergeCountOptions(
-        opts,
-        switch defaults {
-        | Some(d) => d.count
-        | None => None
-        },
-      ),
-    )
-  | Url(opts) =>
-    Url(
-      mergeUrlOptions(
-        opts,
-        switch defaults {
-        | Some(d) => d.url
-        | None => None
-        },
-      ),
-    )
-  | Json(opts) =>
-    Json(
-      mergeJsonOptions(
-        opts,
-        switch defaults {
-        | Some(d) => d.json
-        | None => None
-        },
-      ),
-    )
-  | DateTime(opts) =>
-    DateTime(
-      mergeDateOptions(
-        opts,
-        switch defaults {
-        | Some(d) => d.datetime
-        | None => None
-        },
-      ),
-    )
-  | List(opts) => List(opts)
-  | Table(opts) => Table(opts)
-  }
-
 let rec extractValue: (
   NodeHtmlParserBinding.htmlElement,
   fieldType,
   option<schemaDefaults>,
   bool,
 ) => result<JSON.t, schemaError> = (el, ft, defaults, ignoreErrors) => {
-  switch resolveDefaults(defaults, ft) {
+  switch DefaultsMerger.resolveDefaults(defaults, ft) {
   | Text(opts) => TextScalar.run(el, opts)
   | Html(opts) => HtmlScalar.run(el, opts)
   | Attribute(cfg) => AttributeScalar.run(el, cfg)
@@ -353,6 +125,18 @@ let rec extractValue: (
     // List requires the full element array; callers must use extractValueList.
     Ok(JSON.Encode.null)
   | Table(tableOpts) => {
+      let resolvedColumns = tableOpts.columns->Array.map(col => {
+        let resolvedFieldType = switch col.columnType {
+        | ColumnList(opts) => List(opts)
+        | _ => DefaultsMerger.resolveDefaults(defaults, columnTypeToFieldType(col.columnType))
+        }
+        let nestedDefaults = switch resolvedFieldType {
+        | Table(_) => defaults
+        | _ => None
+        }
+        (col, resolvedFieldType, nestedDefaults)
+      })
+
       let rows: array<NodeHtmlParserBinding.htmlElement> = switch tableOpts.rowSelector {
       | Some(sel) => el->NodeHtmlParserBinding.querySelectorAll(sel)
       | None => {
@@ -375,12 +159,12 @@ let rec extractValue: (
         | Error(e) => Error(e)
         | Ok(outputRows) => {
             let pairsResult: result<array<(string, JSON.t)>, schemaError> =
-              tableOpts.columns->Array.reduce(Ok([]), (pAcc, col) => {
+              resolvedColumns->Array.reduce(Ok([]), (pAcc, (col, resolvedFieldType, nestedDefaults)) => {
                 switch pAcc {
                 | Error(e) => Error(e)
                 | Ok(pairs) => {
-                    let value: result<JSON.t, schemaError> = switch col.columnType {
-                    | ColumnList(opts) => {
+                    let value: result<JSON.t, schemaError> = switch resolvedFieldType {
+                    | List(opts) => {
                         let allEls = rowEl->NodeHtmlParserBinding.querySelectorAll(col.selector)
                         switch ListExtractor.extract(allEls, opts) {
                         | Some(json) => Ok(json)
@@ -388,11 +172,11 @@ let rec extractValue: (
                         }
                       }
                     | _ => {
-                        let fieldType = columnTypeToFieldType(col.columnType)
                         switch rowEl
                         ->NodeHtmlParserBinding.querySelector(col.selector)
                         ->Nullable.toOption {
-                        | Some(colEl) => extractValue(colEl, fieldType, defaults, ignoreErrors)
+                        | Some(colEl) =>
+                          extractValue(colEl, resolvedFieldType, nestedDefaults, ignoreErrors)
                         | None =>
                           if col.required && ignoreErrors == false {
                             Error(RequiredFieldMissing({fieldName: col.name, selector: col.selector}))
@@ -455,23 +239,30 @@ let extractValueList: (
   fieldType,
   option<schemaDefaults>,
   bool,
-) => result<JSON.t, schemaError> = (els, ft, defaults, ignoreErrors) => {
-  switch resolveDefaults(defaults, ft) {
-  | Count(opts) =>
-    switch CountExtractor.extract(els, opts) {
-    | Some(n) => Ok(JSON.Encode.int(n))
-    | None => Ok(JSON.Encode.null)
-    }
-  | List(opts) =>
-    switch ListExtractor.extract(els, opts) {
-    | Some(json) => Ok(json)
-    | None => Ok(JSON.Encode.null)
-    }
-  | _ =>
-    // Scalar fallback: delegate to the single-element path on the first match.
-    switch els[0] {
-    | Some(el) => extractValue(el, ft, defaults, ignoreErrors)
-    | None => Ok(JSON.Encode.null)
+  bool,
+  string,
+  string,
+) => result<JSON.t, schemaError> = (els, ft, defaults, ignoreErrors, required, fieldName, selector) => {
+  if Array.length(els) == 0 && required && ignoreErrors == false {
+    Error(RequiredFieldMissing({fieldName, selector}))
+  } else {
+    switch DefaultsMerger.resolveDefaults(defaults, ft) {
+    | Count(opts) =>
+      switch CountExtractor.extract(els, opts) {
+      | Some(n) => Ok(JSON.Encode.int(n))
+      | None => Ok(JSON.Encode.null)
+      }
+    | List(opts) =>
+      switch ListExtractor.extract(els, opts) {
+      | Some(json) => Ok(json)
+      | None => Ok(JSON.Encode.null)
+      }
+    | _ =>
+      // Scalar fallback: delegate to the single-element path on the first match.
+      switch els[0] {
+      | Some(el) => extractValue(el, ft, defaults, ignoreErrors)
+      | None => Ok(JSON.Encode.null)
+      }
     }
   }
 }

@@ -14,10 +14,10 @@ importers:
       node-html-parser:
         specifier: ^7.1.0
         version: 7.1.0
+    devDependencies:
       rescript:
         specifier: ^12.2.0
         version: 12.2.0
-    devDependencies:
       rescript-test:
         specifier: ^8.0.0
         version: 8.0.0(rescript@12.2.0)
@@ -695,8 +695,8 @@ packages:
     resolution: {integrity: sha512-sTSfBjoXBp89JvIKIefqw7U2CCebsc74kiY6awiGogKtoSGbgjYE/G/+l9sF3MWFPNc9IcoOC4ODfKHfxFmp0g==}
     engines: {node: '>= 0.4'}
 
-  get-tsconfig@4.13.7:
-    resolution: {integrity: sha512-7tN6rFgBlMgpBML5j8typ92BKFi2sFQvIdpAqLA2beia5avZDrMs0FLZiM5etShWq5irVyGcGMEA1jcDaK7A/Q==}
+  get-tsconfig@4.13.8:
+    resolution: {integrity: sha512-J87BxkLXykmisLQ+KA4x2+O6rVf+PJrtFUO8lGyiRg4lyxJLJ8/v0sRAKdVZQOy6tR6lMRAF1NqzCf9BQijm0w==}
 
   glob@10.5.0:
     resolution: {integrity: sha512-DfXN8DfhJ7NH3Oe7cFmu3NCu1wKbkReJ8TorzSAFbSKrlNaQSKfIzqYqVY8zlbs2NLBbWpRiU52GX2PbaBVNkg==}
@@ -1491,7 +1491,7 @@ snapshots:
       dunder-proto: 1.0.1
       es-object-atoms: 1.1.1
 
-  get-tsconfig@4.13.7:
+  get-tsconfig@4.13.8:
     dependencies:
       resolve-pkg-maps: 1.0.0
 
@@ -1687,7 +1687,7 @@ snapshots:
       debug: 4.4.3
       es-module-lexer: 1.7.0
       esbuild: 0.28.0
-      get-tsconfig: 4.13.7
+      get-tsconfig: 4.13.8
       rollup: 4.60.1
       unplugin-utils: 0.2.5
     transitivePeerDependencies:

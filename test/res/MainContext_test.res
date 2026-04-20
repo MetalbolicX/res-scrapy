@@ -1,5 +1,6 @@
 open Test
 open Assertions
+open TestHelpers
 
 type event =
   | Out(string)
@@ -23,6 +24,10 @@ let mkContext = (~deps, ~push) : AppContext.appContext => {
     exit: code => push(Exit(code)),
   },
 }
+
+let throwError: string => 'a = %raw(`msg => {
+  throw new Error(msg);
+}`)
 
 let simpleDeps = (
   ~cliValues,
@@ -100,6 +105,84 @@ testAsync("mainWithContext reports cli parse errors", done_ => {
     switch (Array.get(events, 0), Array.get(events, 1)) {
     | (Some(Err(msg)), Some(Exit(code))) => {
         isTextEqualTo("Selector missing", msg)
+        isIntEqualTo(1, code)
+      }
+    | _ => failWith("Expected Err then Exit")
+    }
+    done_(~planned=3, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("mainWithContext should resolve")
+    done_(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("mainWithContext catches parseCli exceptions", done_ => {
+  let (push, getEvents) = makeState()
+  let deps: AppContext.dependencies = {
+    ...simpleDeps(
+      ~cliValues={},
+      ~parseResult=Ok({selector: ".item", extract: Text, mode: Single}),
+      ~stdinResult=Ok("<div class='item'>A</div>"),
+      ~extractResult=Ok([]),
+      ~schemaLoadResult=Error(FileReadError("unused")),
+      ~schemaApplyResult=Error(ExtractionError("unused")),
+    ),
+    parseCli: () => throwError("bad args"),
+  }
+  let ctx = mkContext(~deps, ~push)
+
+  Main.mainWithContext(ctx)
+  ->Promise.then(_ => {
+    let events = getEvents()
+    isIntEqualTo(2, Array.length(events))
+    switch (Array.get(events, 0), Array.get(events, 1)) {
+    | (Some(Err(msg)), Some(Exit(code))) => {
+        stringContains(msg, "Invalid CLI arguments")->isTruthy
+        isIntEqualTo(1, code)
+      }
+    | _ => failWith("Expected Err then Exit")
+    }
+    done_(~planned=3, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("mainWithContext should resolve")
+    done_(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("mainWithContext catches HTML parse exceptions", done_ => {
+  let (push, getEvents) = makeState()
+  let throwingOps: Document.operations = {
+    ...NodeHtmlDocument.operations,
+    parse: _ => throwError("broken html"),
+  }
+  let deps: AppContext.dependencies = {
+    ...simpleDeps(
+      ~cliValues={selector: ".item", extract: "text"},
+      ~parseResult=Ok({selector: ".item", extract: Text, mode: Single}),
+      ~stdinResult=Ok("<div class='item'>A</div>"),
+      ~extractResult=Ok([]),
+      ~schemaLoadResult=Error(FileReadError("unused")),
+      ~schemaApplyResult=Error(ExtractionError("unused")),
+    ),
+    documentOps: throwingOps,
+  }
+  let ctx = mkContext(~deps, ~push)
+
+  Main.mainWithContext(ctx)
+  ->Promise.then(_ => {
+    let events = getEvents()
+    isIntEqualTo(2, Array.length(events))
+    switch (Array.get(events, 0), Array.get(events, 1)) {
+    | (Some(Err(msg)), Some(Exit(code))) => {
+        stringContains(msg, "Failed to parse HTML input")->isTruthy
         isIntEqualTo(1, code)
       }
     | _ => failWith("Expected Err then Exit")

@@ -3,3 +3,4 @@
 - [Schema Guide](schema-guide)
 - [Examples](examples)
 - [Workflow](workflow)
+- [Release Process](release-process)
