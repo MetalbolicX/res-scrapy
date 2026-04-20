@@ -5,6 +5,8 @@
 open FieldTypes
 open JsonUtils
 
+module Iter = NodeJsBinding.Iter
+
 /** Normalise the `fields` value to an object, supporting both:
   * - Object format: `{"title": {"selector": ".title"}, ...}` (v2 preferred)
   * - Array format:  `[{"name": "title", "selector": ".title"}, ...]` (v1 legacy)
@@ -28,7 +30,7 @@ let normalizeFields: {..} => result<array<(string, schemaField)>, schemaError> =
   let keys: array<string> = %raw(`(obj) => Object.keys(obj)`)(fieldsObj)
   let acc = ref([])
   let err = ref(None)
-  keys->Array.forEach(key => {
+  keys->Iter.values->Iter.forEach(key => {
     if err.contents->Option.isNone {
       switch dictGet(fieldsObj, key) {
       | None => ()

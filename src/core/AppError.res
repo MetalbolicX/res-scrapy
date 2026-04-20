@@ -4,6 +4,7 @@ type appError =
   | SchemaError(string)
   | ExtractionError(string)
   | FileError(string)
+  | WriteError(string)
 
 let mapStdInError: StdIn.stdInError => appError = err =>
   switch err {
@@ -38,5 +39,6 @@ let toMessage: appError => string = err =>
   | InputError(msg)
   | SchemaError(msg)
   | ExtractionError(msg)
-  | FileError(msg) => msg
+  | FileError(msg)
+  | WriteError(msg) => msg
   }

@@ -9,6 +9,8 @@
   */
 open FieldTypes
 
+module Iter = NodeJsBinding.Iter
+
 module type ScalarExtractor = {
   type options
   type output
@@ -125,17 +127,21 @@ let rec extractValue: (
     // List requires the full element array; callers must use extractValueList.
     Ok(JSON.Encode.null)
   | Table(tableOpts) => {
-      let resolvedColumns = tableOpts.columns->Array.map(col => {
-        let resolvedFieldType = switch col.columnType {
-        | ColumnList(opts) => List(opts)
-        | _ => DefaultsMerger.resolveDefaults(defaults, columnTypeToFieldType(col.columnType))
-        }
-        let nestedDefaults = switch resolvedFieldType {
-        | Table(_) => defaults
-        | _ => None
-        }
-        (col, resolvedFieldType, nestedDefaults)
-      })
+      let resolvedColumns =
+        tableOpts.columns
+        ->Iter.values
+        ->Iter.map(col => {
+          let resolvedFieldType = switch col.columnType {
+          | ColumnList(opts) => List(opts)
+          | _ => DefaultsMerger.resolveDefaults(defaults, columnTypeToFieldType(col.columnType))
+          }
+          let nestedDefaults = switch resolvedFieldType {
+          | Table(_) => defaults
+          | _ => None
+          }
+          (col, resolvedFieldType, nestedDefaults)
+        })
+        ->Iter.toArray
 
       let rows: array<NodeHtmlParserBinding.htmlElement> = switch tableOpts.rowSelector {
       | Some(sel) => el->NodeHtmlParserBinding.querySelectorAll(sel)
@@ -154,12 +160,12 @@ let rec extractValue: (
         }
       }
 
-      let rowsResult: result<array<JSON.t>, schemaError> = rows->Array.reduce(Ok([]), (acc, rowEl) => {
+      let rowsResult: result<array<JSON.t>, schemaError> = rows->Iter.values->Iter.reduce((acc, rowEl) => {
         switch acc {
         | Error(e) => Error(e)
         | Ok(outputRows) => {
             let pairsResult: result<array<(string, JSON.t)>, schemaError> =
-              resolvedColumns->Array.reduce(Ok([]), (pAcc, (col, resolvedFieldType, nestedDefaults)) => {
+              resolvedColumns->Iter.values->Iter.reduce((pAcc, (col, resolvedFieldType, nestedDefaults)) => {
                 switch pAcc {
                 | Error(e) => Error(e)
                 | Ok(pairs) => {
@@ -210,7 +216,7 @@ let rec extractValue: (
                     }
                   }
                 }
-              })
+              }, Ok([]))
 
             switch pairsResult {
             | Error(e) => Error(e)
@@ -221,7 +227,7 @@ let rec extractValue: (
             }
           }
         }
-      })
+      }, Ok([]))
 
       switch rowsResult {
       | Error(e) => Error(e)

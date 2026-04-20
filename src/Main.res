@@ -3,6 +3,8 @@ let exitWithError = (ctx: AppContext.appContext, err: AppError.appError) => {
   ctx.io.exit(1)
 }
 
+module Iter = NodeJsBinding.Iter
+
 let exnMessage = exn =>
   switch exn->JsExn.fromException {
   | Some(jsExn) => jsExn->JsExn.message->Option.getOr("Unknown error")
@@ -29,7 +31,7 @@ let parseDocumentSafely = (
 }
 
 let hasOnlyAggregateFields = (schema: Schema.schema) =>
-  schema.fields->Array.every(((_, field)) =>
+  schema.fields->Iter.values->Iter.every(((_, field)) =>
     switch field.fieldType {
     | Count(_) | List(_) => true
     | _ => false
@@ -55,10 +57,34 @@ let loadSchema = (ctx: AppContext.appContext, source: ParseCli.schemaSource) =>
   | TableSelector(_) => Error(FieldTypes.ExtractionError("Unreachable: table mode schema load"))
   }
 
+let outputTargetFromOptions = (options: ParseCli.parseOptions): OutputWriter.outputTarget =>
+  switch options.output {
+  | Some(path) => File(path)
+  | None => Stdout
+  }
+
+let writeOutput = (
+  ctx: AppContext.appContext,
+  options: ParseCli.parseOptions,
+  jsonText: string,
+) => {
+  switch OutputWriter.write(
+    ~target=outputTargetFromOptions(options),
+    ~format=options.outputFormat,
+    ~jsonText,
+    ~writeFile=ctx.deps.writeFile,
+    ~out=ctx.io.out,
+  ) {
+  | Ok(()) => ()
+  | Error(err) => exitWithError(ctx, err)
+  }
+}
+
 let runSchemaMode = (
   ctx: AppContext.appContext,
   document: Document.document,
   source: ParseCli.schemaSource,
+  options: ParseCli.parseOptions,
 ) => {
   switch loadSchema(ctx, source)->ResultX.mapError(AppError.mapSchemaError) {
   | Error(err) => exitWithError(ctx, err)
@@ -66,7 +92,7 @@ let runSchemaMode = (
       warnIfZipAggregateOnly(ctx, schema)
       switch ctx.deps.applySchema(document, schema)->ResultX.mapError(AppError.mapSchemaError) {
       | Error(err) => exitWithError(ctx, err)
-      | Ok(json) => ctx.io.out(ctx.deps.stringifyJson(json))
+      | Ok(json) => writeOutput(ctx, options, ctx.deps.stringifyJson(json))
       }
     }
   }
@@ -76,10 +102,11 @@ let runTableMode = (
   ctx: AppContext.appContext,
   document: Document.document,
   selector: string,
+  options: ParseCli.parseOptions,
 ) => {
   switch ctx.deps.extractTable(document, selector) {
   | Error(msg) => exitWithError(ctx, AppError.ExtractionError(msg))
-  | Ok(rows) => ctx.io.out(ctx.deps.stringifyTableRows(rows))
+  | Ok(rows) => writeOutput(ctx, options, ctx.deps.stringifyTableRows(rows))
   }
 }
 
@@ -89,6 +116,7 @@ let runSelectorMode = (
   ~selector: string,
   ~extractMode: ParseCli.extractMode,
   ~mode: ParseCli.mode,
+  ~options: ParseCli.parseOptions,
 ) => {
   let extract = (el: Document.element) =>
     switch extractMode {
@@ -105,9 +133,12 @@ let runSelectorMode = (
     | Some(el) => [extract(el)]
     }
   | Multiple =>
-    Document.querySelectorAll(ctx.deps.documentOps, document, selector)->Array.map(el => extract(el))
+    Document.querySelectorAll(ctx.deps.documentOps, document, selector)
+    ->Iter.values
+    ->Iter.map(el => extract(el))
+    ->Iter.toArray
   }
-  ctx.io.out(ctx.deps.stringifyStrings(contents))
+  writeOutput(ctx, options, ctx.deps.stringifyStrings(contents))
 }
 
 let mainWithContext: AppContext.appContext => promise<unit> = async ctx => {
@@ -124,10 +155,10 @@ let mainWithContext: AppContext.appContext => promise<unit> = async ctx => {
             | Error(err) => exitWithError(ctx, err)
             | Ok(document) =>
               switch ExtractionMode.fromOptions(options) {
-              | TableMode(selector) => runTableMode(ctx, document, selector)
-              | SchemaMode(source) => runSchemaMode(ctx, document, source)
+              | TableMode(selector) => runTableMode(ctx, document, selector, options)
+              | SchemaMode(source) => runSchemaMode(ctx, document, source, options)
               | SelectorMode({selector, extract, mode}) =>
-                runSelectorMode(ctx, document, ~selector, ~extractMode=extract, ~mode)
+                runSelectorMode(ctx, document, ~selector, ~extractMode=extract, ~mode, ~options)
               }
             }
           }

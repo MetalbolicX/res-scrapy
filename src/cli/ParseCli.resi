@@ -11,11 +11,15 @@ type schemaSource =
   | FilePath(string)
   | TableSelector(string)
 
+type outputFormat = Json | Ndjson
+
 type parseOptions = {
   selector: string,
   extract: extractMode,
   mode: mode,
   schemaSource?: schemaSource,
+  output?: string,
+  outputFormat: outputFormat,
 }
 
 type parseError =

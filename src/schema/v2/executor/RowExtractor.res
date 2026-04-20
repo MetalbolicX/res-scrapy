@@ -9,6 +9,8 @@
   */
 open FieldTypes
 
+module Iter = NodeJsBinding.Iter
+
 let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaError> = (
   document,
   schema,
@@ -30,16 +32,20 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
     }
   }
 
-  let resolvedFields = schema.fields->Array.map(((name, field)) => {
-    let resolvedFieldType = DefaultsMerger.resolveDefaults(schema.config.defaults, field.fieldType)
-    let nestedDefaults = switch resolvedFieldType {
-    | Table(_) => schema.config.defaults
-    | _ => None
-    }
-    (name, field, resolvedFieldType, nestedDefaults)
-  })
+  let resolvedFields =
+    schema.fields
+    ->Iter.values
+    ->Iter.map(((name, field)) => {
+      let resolvedFieldType = DefaultsMerger.resolveDefaults(schema.config.defaults, field.fieldType)
+      let nestedDefaults = switch resolvedFieldType {
+      | Table(_) => schema.config.defaults
+      | _ => None
+      }
+      (name, field, resolvedFieldType, nestedDefaults)
+    })
+    ->Iter.toArray
 
-  let results: result<array<JSON.t>, schemaError> = limitedRows->Array.reduce(Ok([]), (
+  let results: result<array<JSON.t>, schemaError> = limitedRows->Iter.values->Iter.reduce((
     acc,
     rowEl,
   ) => {
@@ -49,7 +55,7 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
         let fieldResult: result<
           array<(string, JSON.t)>,
           schemaError,
-        > = resolvedFields->Array.reduce(Ok([]), (fAcc, (name, field, resolvedFieldType, nestedDefaults)) => {
+        > = resolvedFields->Iter.values->Iter.reduce((fAcc, (name, field, resolvedFieldType, nestedDefaults)) => {
           switch fAcc {
           | Error(e) => Error(e)
           | Ok(pairs) => {
@@ -88,7 +94,7 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
               }
             }
           }
-        })
+        }, Ok([]))
         switch fieldResult {
         | Error(e) => Error(e)
         | Ok(pairs) => {
@@ -98,7 +104,7 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
         }
       }
     }
-  })
+  }, Ok([]))
 
   switch results {
   | Error(e) => Error(e)

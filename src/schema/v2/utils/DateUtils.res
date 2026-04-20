@@ -5,6 +5,8 @@
   */
 open FieldTypes
 
+module Iter = NodeJsBinding.Iter
+
 type jsDate
 
 @module("./date/parseDate.mjs")
@@ -22,12 +24,12 @@ let parseDate: (string, array<string>) => option<jsDate> = (str, formats) => {
   } else {
     formats
   }
-  fmts->Array.reduce(None, (acc, fmt) => {
+  fmts->Iter.values->Iter.reduce((acc, fmt) => {
     switch acc {
     | Some(_) => acc
     | None => tryParseWithFormat(str, fmt)
     }
-  })
+  }, None)
 }
 
 /** Format a `jsDate` according to the `dateOutput` variant. */

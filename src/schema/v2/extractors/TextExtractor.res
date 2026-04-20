@@ -1,6 +1,8 @@
 /** Extract and transform text content from an HTML element. */
 open FieldTypes
 
+module Iter = NodeJsBinding.Iter
+
 let extract: (NodeHtmlParserBinding.htmlElement, option<textOptions>) => option<string> = (
   el,
   opts,
@@ -53,7 +55,15 @@ let extractJoined: (
   string,
   option<textOptions>,
 ) => option<string> = (els, sep, opts) => {
-  let parts = els->Array.filterMap(el => extract(el, opts))
+  let parts = els->Iter.values->Iter.reduce((acc, el) => {
+    switch extract(el, opts) {
+    | None => acc
+    | Some(value) => {
+        acc->Array.push(value)
+        acc
+      }
+    }
+  }, [])
   if Array.length(parts) === 0 {
     None
   } else {

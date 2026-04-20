@@ -10,6 +10,8 @@
   */
 open FieldTypes
 
+module Iter = NodeJsBinding.Iter
+
 // @get external textContent: NodeHtmlParserBinding.htmlElement => string = "textContent"
 // @get external innerHTML: NodeHtmlParserBinding.htmlElement => string = "innerHTML"
 
@@ -93,17 +95,22 @@ let extract: (array<NodeHtmlParserBinding.htmlElement>, listOptions) => option<J
   opts,
 ) => {
   // 1. Extract raw values, dropping None
-  let values: array<string> =
-    els
-    ->Array.map(el => extractItemValue(el, opts.itemType))
-    ->Array.filterMap(x => x)
+  let values: array<string> = els->Iter.values->Iter.reduce((acc, el) => {
+    switch extractItemValue(el, opts.itemType) {
+    | None => acc
+    | Some(v) => {
+        acc->Array.push(v)
+        acc
+      }
+    }
+  }, [])
 
   // 2. Filter by regex if provided
   let filtered = switch opts.filter {
   | None => values
   | Some(pat) =>
     switch compileSafePattern(pat) {
-    | Some(re) => values->Array.filter(v => matchesCompiledPattern(re, v))
+    | Some(re) => values->Iter.values->Iter.filter(v => matchesCompiledPattern(re, v))->Iter.toArray
     | None => []
     }
   }
@@ -112,14 +119,14 @@ let extract: (array<NodeHtmlParserBinding.htmlElement>, listOptions) => option<J
   let deduped = switch opts.unique {
   | Some(true) => {
       let seen: Dict.t<bool> = Dict.make()
-      filtered->Array.filter(v => {
+      filtered->Iter.values->Iter.filter(v => {
         if Dict.has(seen, v) {
           false
         } else {
           Dict.set(seen, v, true)
           true
         }
-      })
+      })->Iter.toArray
     }
   | _ => filtered
   }
@@ -138,6 +145,6 @@ let extract: (array<NodeHtmlParserBinding.htmlElement>, listOptions) => option<J
   // 5. Join or return array
   switch opts.join {
   | Some(sep) => Some(JSON.Encode.string(Array.join(limited, sep)))
-  | None => Some(JSON.Encode.array(limited->Array.map(JSON.Encode.string)))
+  | None => Some(JSON.Encode.array(limited->Iter.values->Iter.map(JSON.Encode.string)->Iter.toArray))
   }
 }

@@ -88,6 +88,16 @@ let withTable = (values, t): NodeJsBinding.Util.cliValues => {
   table: t,
 }
 
+let withOutput = (values, path): NodeJsBinding.Util.cliValues => {
+  ...values,
+  output: path,
+}
+
+let withFormat = (values, format): NodeJsBinding.Util.cliValues => {
+  ...values,
+  format,
+}
+
 test("runArgsValidation requires selector when no schema", () => {
   switch runArgsValidation(emptyValues) {
   | Error(e) => isTruthy(isMissingSelector(e))
@@ -256,5 +266,53 @@ test("runArgsValidation --table handles empty selector as table", () => {
     | _ => failWith("Expected TableSelector")
     }
   | Error(_) => failWith("Expected empty selector defaulting to table")
+  }
+})
+
+test("runArgsValidation accepts output path and defaults format to json", () => {
+  let values = emptyValues->withSelector(".item")->withOutput("./result.json")
+  switch runArgsValidation(values) {
+  | Ok(opts) => {
+      isOptionEqualTo(Some("./result.json"), opts.output, ~eq=(a, b) => a == b)
+      switch opts.outputFormat {
+      | Json => pass()
+      | Ndjson => failWith("Expected json output format by default")
+      }
+    }
+  | Error(_) => failWith("Expected output path to be accepted")
+  }
+})
+
+test("runArgsValidation accepts ndjson format when output is provided", () => {
+  let values =
+    emptyValues->withSelector(".item")->withOutput("./result.ndjson")->withFormat("ndjson")
+  switch runArgsValidation(values) {
+  | Ok(opts) =>
+    switch opts.outputFormat {
+    | Ndjson => pass()
+    | Json => failWith("Expected ndjson output format")
+    }
+  | Error(_) => failWith("Expected ndjson format to be accepted with output")
+  }
+})
+
+test("runArgsValidation rejects invalid format when output is provided", () => {
+  let values =
+    emptyValues->withSelector(".item")->withOutput("./result.out")->withFormat("xml")
+  switch runArgsValidation(values) {
+  | Error(e) => isTruthy(isParseError(e))
+  | Ok(_) => failWith("Expected ParseError for invalid --format")
+  }
+})
+
+test("runArgsValidation ignores format when output is not provided", () => {
+  let values = emptyValues->withSelector(".item")->withFormat("ndjson")
+  switch runArgsValidation(values) {
+  | Ok(opts) =>
+    switch opts.outputFormat {
+    | Json => pass()
+    | Ndjson => failWith("Expected format to be ignored without output")
+    }
+  | Error(_) => failWith("Expected format without output to be ignored")
   }
 })

@@ -9,16 +9,19 @@ let defaultTimeoutMs = 10_000
 let runCli = (
   ~args: array<string>=[],
   ~input: string="",
+  ~cwd: string="",
   ~timeoutMs: int=defaultTimeoutMs,
 ): promise<cliResult> => {
   (%raw(`
-    (async (args, input, timeoutMs) => {
+    (async (args, input, cwd, timeoutMs) => {
       const { spawn } = await import('node:child_process');
       const { join } = await import('node:path');
-      const cliPath = join(process.cwd(), 'dist', 'main.mjs');
+      const workDir = cwd && cwd.length > 0 ? cwd : process.cwd();
+      const cliPath = join(workDir, 'dist', 'main.mjs');
       return new Promise((resolve) => {
         const proc = spawn('node', [cliPath, ...args], {
           stdio: ['pipe', 'pipe', 'pipe'],
+          cwd: workDir,
         });
         let stdout = '';
         let stderr = '';
@@ -46,22 +49,24 @@ let runCli = (
         proc.stdin.end();
       });
     })
-  `)(args, input, timeoutMs))->Obj.magic
+  `)(args, input, cwd, timeoutMs))->Obj.magic
 }
 
 let runCliWithSchemaFile = (
   ~schemaContent: string,
   ~cliArgs: array<string>=[],
   ~input: string="",
+  ~cwd: string="",
   ~timeoutMs: int=defaultTimeoutMs,
 ): promise<cliResult> => {
   (%raw(`
-    (async (schemaContent, cliArgs, input, timeoutMs) => {
+    (async (schemaContent, cliArgs, input, cwd, timeoutMs) => {
       const { spawn } = await import('node:child_process');
       const fs = await import('node:fs');
       const os = await import('node:os');
       const { join } = await import('node:path');
-      const cliPath = join(process.cwd(), 'dist', 'main.mjs');
+      const workDir = cwd && cwd.length > 0 ? cwd : process.cwd();
+      const cliPath = join(workDir, 'dist', 'main.mjs');
       const tempDir = fs.mkdtempSync(join(os.tmpdir(), 'res-scrapy-test-'));
       const schemaPath = join(tempDir, 'schema.json');
       fs.writeFileSync(schemaPath, schemaContent);
@@ -69,6 +74,7 @@ let runCliWithSchemaFile = (
       return new Promise((resolve) => {
         const proc = spawn('node', [cliPath, ...cliArgs, '--schemaPath', schemaPath], {
           stdio: ['pipe', 'pipe', 'pipe'],
+          cwd: workDir,
         });
         let stdout = '';
         let stderr = '';
@@ -105,5 +111,5 @@ let runCliWithSchemaFile = (
         proc.stdin.end();
       });
     })
-  `)(schemaContent, cliArgs, input, timeoutMs))->Obj.magic
+  `)(schemaContent, cliArgs, input, cwd, timeoutMs))->Obj.magic
 }

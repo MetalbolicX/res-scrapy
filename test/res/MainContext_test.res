@@ -48,6 +48,7 @@ let simpleDeps = (
     schemaLoadResult
   },
   applySchema: (_, _) => schemaApplyResult,
+  writeFile: (_, _) => (),
   stringifyJson: NodeJsBinding.jsonStringify,
   stringifyTableRows: NodeJsBinding.jsonStringify,
   stringifyStrings: NodeJsBinding.jsonStringify,
@@ -56,7 +57,7 @@ let simpleDeps = (
 testAsync("mainWithContext writes selector output", done_ => {
   let (push, getEvents) = makeState()
   let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> =
-    Ok({selector: ".item", extract: Text, mode: Multiple})
+    Ok({selector: ".item", extract: Text, mode: Multiple, outputFormat: Json})
   let deps = simpleDeps(
     ~cliValues={selector: ".item", mode: true, extract: "text"},
     ~parseResult,
@@ -125,7 +126,7 @@ testAsync("mainWithContext catches parseCli exceptions", done_ => {
   let deps: AppContext.dependencies = {
     ...simpleDeps(
       ~cliValues={},
-      ~parseResult=Ok({selector: ".item", extract: Text, mode: Single}),
+      ~parseResult=Ok({selector: ".item", extract: Text, mode: Single, outputFormat: Json}),
       ~stdinResult=Ok("<div class='item'>A</div>"),
       ~extractResult=Ok([]),
       ~schemaLoadResult=Error(FileReadError("unused")),
@@ -166,7 +167,7 @@ testAsync("mainWithContext catches HTML parse exceptions", done_ => {
   let deps: AppContext.dependencies = {
     ...simpleDeps(
       ~cliValues={selector: ".item", extract: "text"},
-      ~parseResult=Ok({selector: ".item", extract: Text, mode: Single}),
+      ~parseResult=Ok({selector: ".item", extract: Text, mode: Single, outputFormat: Json}),
       ~stdinResult=Ok("<div class='item'>A</div>"),
       ~extractResult=Ok([]),
       ~schemaLoadResult=Error(FileReadError("unused")),

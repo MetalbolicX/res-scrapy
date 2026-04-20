@@ -36,3 +36,7 @@ test("AppError.mapSchemaError maps RequiredFieldMissing to ExtractionError", () 
 test("AppError.toMessage returns underlying message", () => {
   isTextEqualTo("boom", AppError.toMessage(FileError("boom")))
 })
+
+test("AppError.toMessage returns write error message", () => {
+  isTextEqualTo("cannot write", AppError.toMessage(WriteError("cannot write")))
+})

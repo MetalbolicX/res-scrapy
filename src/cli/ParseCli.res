@@ -17,6 +17,8 @@ type schemaSource =
     * defaulting to `"table"` when `--selector` is absent. */
   | TableSelector(string)
 
+type outputFormat = Json | Ndjson
+
 /**
   * Validated, fully-typed options produced by `runArgsValidation`.
   *
@@ -32,6 +34,8 @@ type parseOptions = {
   extract: extractMode,
   mode: mode,
   schemaSource?: schemaSource,
+  output?: string,
+  outputFormat: outputFormat,
 }
 
 /** Errors produced during argument validation. */
@@ -73,6 +77,27 @@ let runArgsValidation: NodeJsBinding.Util.cliValues => result<
     | (Some(s), _) if s != "" => Some(InlineJson(s))
     | (_, Some(p)) if p != "" => Some(FilePath(p))
     | _ => None
+    }
+  }
+
+  let output = switch values.output {
+  | Some(path) if path != "" => Some(path)
+  | _ => None
+  }
+
+  let outputFormatResult: result<outputFormat, parseError> = switch output {
+  | None => Ok(Json)
+  | Some(_) =>
+    switch values.format {
+    | Some("json") | None => Ok(Json)
+    | Some("ndjson") => Ok(Ndjson)
+    | Some(s) =>
+      Error(
+        ParseError({
+          message: `Invalid --format value "${s}". Valid values are: json, ndjson`,
+          details: None,
+        }),
+      )
     }
   }
 
@@ -119,10 +144,14 @@ let runArgsValidation: NodeJsBinding.Util.cliValues => result<
       }
       switch extractResult {
       | Error(e) => Error(e)
-      | Ok(extract) => {
-          let modeFromBoolValue = values.mode->Option.getOr(false)
-          let mode = modeFromBool(modeFromBoolValue)
-          Ok({selector, extract, mode, ?schemaSource})
+      | Ok(extract) =>
+        switch outputFormatResult {
+        | Error(e) => Error(e)
+        | Ok(outputFormat) => {
+            let modeFromBoolValue = values.mode->Option.getOr(false)
+            let mode = modeFromBool(modeFromBoolValue)
+            Ok({selector, extract, mode, ?schemaSource, ?output, outputFormat})
+          }
         }
       }
     }

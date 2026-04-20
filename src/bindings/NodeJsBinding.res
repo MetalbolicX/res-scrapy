@@ -89,6 +89,8 @@ module Util = {
     schema?: string,
     schemaPath?: string,
     table?: bool,
+    output?: string,
+    format?: string,
   }
 
   /**
@@ -139,6 +141,9 @@ let jsonParse = (raw: string): option<'a> => {
 module Fs = {
   /** Reads a file synchronously, returning its contents as a `string`. Raises if the path does not exist. */
   @module("node:fs") external readFileSync: (string, @as("utf8") _) => string = "readFileSync"
+
+  /** Writes text content to a file synchronously, replacing existing contents. */
+  @module("node:fs") external writeFileSync: (string, string) => unit = "writeFileSync"
 }
 
 /** Node.js `node:url` module — URL parsing, resolution, and formatting. */
@@ -156,4 +161,32 @@ module Url = {
   /** Parse and resolve a URL against an optional base URL.
     * `new URL(relative, base)` resolves relative URLs; `new URL(absolute)` parses an absolute URL. */
   @new @module("node:url") external make: (string, option<string>) => urlObj = "URL"
+}
+
+module Iter = {
+  type t<'a> = Iterator.t<'a>
+
+  // Static factory methods (Iterator.from)
+  @val @scope("Iterator") external fromArray: array<'a> => t<'a> = "from"
+  @val @scope("Iterator") external fromSet: Set.t<'a> => t<'a> = "from"
+  @val @scope("Iterator") external fromMap: Map.t<'k, 'v> => t<('k, 'v)> = "from"
+
+  // Array iterator constructors
+  @send external values: array<'a> => t<'a> = "values"
+  @send external entries: array<'a> => t<(int, 'a)> = "entries"
+  @send external keys: array<'a> => t<int> = "keys"
+
+  // Lazy pipeline methods
+  @send external map: (t<'a>, 'a => 'b) => t<'b> = "map"
+  @send external filter: (t<'a>, 'a => bool) => t<'a> = "filter"
+  @send external take: (t<'a>, int) => t<'a> = "take"
+  @send external drop: (t<'a>, int) => t<'a> = "drop"
+  @send external forEach: (t<'a>, 'a => unit) => unit = "forEach"
+  @send external toArray: t<'a> => array<'a> = "toArray"
+  @send external every: (t<'a>, 'a => bool) => bool = "every"
+  @send external some: (t<'a>, 'a => bool) => bool = "some"
+  @send external reduce: (t<'a>, ('b, 'a) => 'b, 'b) => 'b = "reduce"
+  @send external reduce1: (t<'a>, ('a, 'a) => 'a) => 'a = "reduce"
+  @send @return(nullable) external find: (t<'a>, 'a => bool) => option<'a> = "find"
+  @send external flatMap: (t<'a>, 'a => t<'b>) => t<'b> = "flatMap"
 }

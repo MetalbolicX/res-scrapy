@@ -7,6 +7,7 @@ test("ExtractionMode.fromOptions picks table mode", () => {
     extract: OuterHtml,
     mode: Single,
     schemaSource: TableSelector("table.users"),
+    outputFormat: Json,
   }
 
   switch ExtractionMode.fromOptions(options) {
@@ -21,6 +22,7 @@ test("ExtractionMode.fromOptions picks schema mode", () => {
     extract: OuterHtml,
     mode: Single,
     schemaSource: InlineJson("{}"),
+    outputFormat: Json,
   }
 
   switch ExtractionMode.fromOptions(options) {
@@ -34,6 +36,7 @@ test("ExtractionMode.fromOptions picks selector mode", () => {
     selector: ".item",
     extract: Text,
     mode: Multiple,
+    outputFormat: Json,
   }
 
   switch ExtractionMode.fromOptions(options) {

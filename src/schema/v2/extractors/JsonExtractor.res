@@ -8,6 +8,8 @@
   */
 open FieldTypes
 
+module Iter = NodeJsBinding.Iter
+
 let getJsonSource: (NodeHtmlParserBinding.htmlElement, option<jsonOptions>) => option<string> = (
   el,
   opts,
@@ -39,7 +41,7 @@ let getPath: ('a, string) => option<'a> = (obj, path) => {
   } else {
     let keys = String.split(path, ".")
     let current = ref(Some(obj))
-    keys->Array.forEach(key => {
+    keys->Iter.values->Iter.forEach(key => {
       switch current.contents {
       | Some(cur) =>
         let val: option<'a> = JsonUtils.dictGet(cur, key)

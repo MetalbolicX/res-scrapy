@@ -6,6 +6,8 @@
 open FieldTypes
 open JsonUtils
 
+module Iter = NodeJsBinding.Iter
+
 // ---------------------------------------------------------------------------
 // text options
 // ---------------------------------------------------------------------------
@@ -342,7 +344,7 @@ let parseTableOptions: {..} => result<tableOptions, string> = fieldJson => {
       | Some(cols) if Array.length(cols) == 0 =>
         Error("table field requires at least one column in \"tableOptions.columns\"")
       | Some(cols) => {
-          let parsedColumnsResult: result<array<columnField>, string> = cols->Array.reduce(Ok([]), (
+          let parsedColumnsResult: result<array<columnField>, string> = cols->Iter.values->Iter.reduce((
             acc,
             colJson,
           ) => {
@@ -357,7 +359,7 @@ let parseTableOptions: {..} => result<tableOptions, string> = fieldJson => {
                 }
               }
             }
-          })
+          }, Ok([]))
 
           switch parsedColumnsResult {
           | Error(e) => Error(e)

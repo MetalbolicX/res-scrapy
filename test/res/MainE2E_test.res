@@ -3,6 +3,11 @@ open Assertions
 open TestHelpers
 open CliRunner
 
+let tempOutPath: string => string = %raw(`name => {
+  const suffix = Math.random().toString(36).slice(2);
+  return '/tmp/res-scrapy-' + process.pid + '-' + Date.now() + '-' + suffix + '-' + name;
+}`)
+
 let html = `<!DOCTYPE html>
 <html>
 <head><title>Test</title></head>
@@ -400,6 +405,88 @@ testAsync("schemaPath: loads schema from disk file", (planned) => {
     let arr: array<{..}> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
     let firstRow = arr->Array.get(0)->Option.getOr(Obj.magic(%raw("({})")))
     isTextEqualTo("Hello World", firstRow["intro"])
+    planned(~planned=2, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("CLI execution failed")
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("output file: writes json when --output is provided", planned => {
+  let outPath = tempOutPath("output.json")
+  runCli(~args=["--selector", ".item", "--mode", "--extract", "text", "--output", outPath], ~input=html)
+  ->Promise.then(result => {
+    isIntEqualTo(0, result.exitCode)
+    isTextEqualTo("", result.stdout)
+    let fileContent = NodeJsBinding.Fs.readFileSync(outPath)
+    let arr: array<string> = fileContent->TestHelpers.arrayFromJsonString->Obj.magic
+    isIntEqualTo(3, arr->Array.length)
+    planned(~planned=3, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("CLI execution failed")
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("output file: writes ndjson when --format ndjson is provided", planned => {
+  let outPath = tempOutPath("output.ndjson")
+  runCli(
+    ~args=["--selector", ".item", "--mode", "--extract", "text", "--output", outPath, "--format", "ndjson"],
+    ~input=html,
+  )
+  ->Promise.then(result => {
+    isIntEqualTo(0, result.exitCode)
+    isTextEqualTo("", result.stdout)
+    let fileContent = NodeJsBinding.Fs.readFileSync(outPath)
+    let lines = fileContent->String.trim->String.split("\n")
+    isIntEqualTo(3, lines->Array.length)
+    let first = lines->Array.get(0)->Option.getOr("")
+    isTextEqualTo("\"Item 1\"", first)
+    planned(~planned=4, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("CLI execution failed")
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("output format is ignored on stdout when --output is absent", planned => {
+  runCli(~args=["--selector", ".item", "--mode", "--extract", "text", "--format", "ndjson"], ~input=html)
+  ->Promise.then(result => {
+    isIntEqualTo(0, result.exitCode)
+    let arr: array<string> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
+    isIntEqualTo(3, arr->Array.length)
+    planned(~planned=2, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("CLI execution failed")
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("output file: invalid format returns CLI error", planned => {
+  let outPath = tempOutPath("output.data")
+  runCli(
+    ~args=["--selector", ".item", "--extract", "text", "--output", outPath, "--format", "xml"],
+    ~input=html,
+  )
+  ->Promise.then(result => {
+    isIntEqualTo(1, result.exitCode)
+    stringContains(result.stderr, "Invalid --format value")->isTruthy
     planned(~planned=2, ())
     Promise.resolve()
   })

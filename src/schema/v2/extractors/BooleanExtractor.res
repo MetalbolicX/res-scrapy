@@ -7,12 +7,14 @@
   */
 open FieldTypes
 
+module Iter = NodeJsBinding.Iter
+
 let defaultTrueValues = ["true", "yes", "1", "on", "in stock"]
 let defaultFalseValues = ["false", "no", "0", "off", "out of stock"]
 
 let matchesAny: (string, array<string>) => bool = (s, arr) => {
   let lower = StringUtils.toLower(s)
-  arr->Array.some(v => StringUtils.toLower(v) === lower)
+  arr->Iter.values->Iter.some(v => StringUtils.toLower(v) === lower)
 }
 
 /** Mapping mode: look up text in trueValues / falseValues. */

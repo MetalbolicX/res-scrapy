@@ -3,6 +3,8 @@
  */
 @get_index external getObjectKey: ({..}, string) => option<'a> = ""
 
+module Iter = NodeJsBinding.Iter
+
 let candidatePackagePaths: unit => array<string> = %raw(`() => {
   try {
     return [
@@ -32,7 +34,7 @@ let parseVersionFromPath: string => option<string> = path => {
 let getCliVersion: unit => string = () => {
   let paths = candidatePackagePaths()
   let found: ref<option<string>> = ref(None)
-  paths->Array.forEach(path => {
+  paths->Iter.values->Iter.forEach(path => {
     if found.contents->Option.isNone {
       found := parseVersionFromPath(path)
     }
@@ -51,6 +53,8 @@ let showHelp: unit => unit = () => {
     -c, --schema      Specify the schema to use
     -p, --schemaPath  Specify the path to the schema
     -t, --table       Extract a table as JSON; pair with --selector to target a specific table (defaults to "table")
+    -o, --output      Write output to a file instead of stdout
+    -f, --format      Output format for file writes: json (default) or ndjson
   `)
   NodeJsBinding.Process.exit(0)
 }
@@ -77,6 +81,8 @@ let parse: unit => NodeJsBinding.Util.cliValues = () => {
     ("schema", {type_: "string", short: "c"}),
     ("schemaPath", {type_: "string", short: "p"}),
     ("table", {type_: "boolean", short: "t", default: Bool(false)}),
+    ("output", {type_: "string", short: "o"}),
+    ("format", {type_: "string", short: "f", default: String("json")}),
     ("help", {type_: "boolean", short: "h"}),
   ])
 

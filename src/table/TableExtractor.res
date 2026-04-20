@@ -24,6 +24,8 @@
   * Extracts the table matching `selector` from `document` and returns an array of
   * row objects, or an error string when no table is found.
  */
+module Iter = NodeJsBinding.Iter
+
 let extract: (
   NodeHtmlParserBinding.htmlElement,
   string,
@@ -49,10 +51,14 @@ let extract: (
         }
       }
 
-      let headers: array<string> = headerEls->Array.mapWithIndex((el, i) => {
-        let text = String.trim(el.textContent)
-        text == "" ? `col_${Int.toString(i)}` : text
-      })
+      let headers: array<string> =
+        headerEls
+        ->Iter.entries
+        ->Iter.map(((i, el)) => {
+          let text = String.trim(el.textContent)
+          text == "" ? `col_${Int.toString(i)}` : text
+        })
+        ->Iter.toArray
 
       // -----------------------------------------------------------------------
       // 2. Resolve data rows
@@ -71,18 +77,22 @@ let extract: (
       // -----------------------------------------------------------------------
       // 3. Build row objects
       // -----------------------------------------------------------------------
-      let rows: array<dict<string>> = rowEls->Array.map(row => {
-        let cells = row->NodeHtmlParserBinding.querySelectorAll("td")
-        let obj = Dict.make()
-        headers->Array.forEachWithIndex((header, i) => {
-          let value = switch cells->Array.get(i) {
-          | None => ""
-          | Some(cell) => String.trim(cell.textContent)
-          }
-          Dict.set(obj, header, value)
+      let rows: array<dict<string>> =
+        rowEls
+        ->Iter.values
+        ->Iter.map(row => {
+          let cells = row->NodeHtmlParserBinding.querySelectorAll("td")
+          let obj = Dict.make()
+          headers->Iter.entries->Iter.forEach(((i, header)) => {
+            let value = switch cells->Array.get(i) {
+            | None => ""
+            | Some(cell) => String.trim(cell.textContent)
+            }
+            Dict.set(obj, header, value)
+          })
+          obj
         })
-        obj
-      })
+        ->Iter.toArray
 
       Ok(rows)
     }
