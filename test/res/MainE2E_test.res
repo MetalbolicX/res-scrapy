@@ -486,17 +486,27 @@ testAsync("output file: permission denied returns error", planned => {
     Nodefs.writeFileSync(file, '[]');
     Nodefs.chmodSync(file, 0o000);
   }`)(tempDir, readOnlyFile)
+  let restorePermissions = (path: string): unit => {
+    let _ = %raw(`(file) => {
+      try {
+        Nodefs.chmodSync(file, 0o600);
+      } catch {}
+    }`)(path)
+    ()
+  }
   runCli(
     ~args=["--selector", ".item", "--mode", "--extract", "text", "--output", readOnlyFile],
     ~input=html,
   )
   ->Promise.then(result => {
+    restorePermissions(readOnlyFile)
     isIntEqualTo(1, result.exitCode)
     stringContains(result.stderr, "Failed to write output file")->isTruthy
     planned(~planned=2, ())
     Promise.resolve()
   })
   ->Promise.catch(_ => {
+    restorePermissions(readOnlyFile)
     failWith("CLI execution failed")
     planned(~planned=0, ())
     Promise.resolve()

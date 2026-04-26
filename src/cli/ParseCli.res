@@ -85,6 +85,14 @@ let runArgsValidation: NodeJsBinding.Util.cliValues => result<
   | _ => None
   }
 
+  switch (output, values.format) {
+  | (None, Some(fmt)) if fmt != "json" =>
+    Console.error(
+      "Warning: --format is ignored unless --output is provided; stdout always uses JSON array format.",
+    )
+  | _ => ()
+  }
+
   let outputFormatResult: result<outputFormat, parseError> = switch output {
   | None => Ok(Json)
   | Some(_) =>

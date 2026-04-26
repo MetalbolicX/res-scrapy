@@ -5,17 +5,11 @@ let exitWithError = (ctx: AppContext.appContext, err: AppError.appError) => {
 
 module Iter = NodeJsBinding.Iter
 
-let exnMessage = exn =>
-  switch exn->JsExn.fromException {
-  | Some(jsExn) => jsExn->JsExn.message->Option.getOr("Unknown error")
-  | None => "Unknown error"
-  }
-
 let parseCliSafely = (ctx: AppContext.appContext): result<ParseCli.parseOptions, AppError.appError> => {
   try {
     ctx.deps.parseCli()->ctx.deps.validateArgs->ResultX.mapError(AppError.mapParseError)
   } catch {
-  | exn => Error(AppError.CliError(`Invalid CLI arguments: ${exnMessage(exn)}`))
+  | exn => Error(AppError.CliError(`Invalid CLI arguments: ${ExnUtils.message(exn)}`))
   }
 }
 
@@ -26,7 +20,7 @@ let parseDocumentSafely = (
   try {
     Ok(Document.parse(ctx.deps.documentOps, html))
   } catch {
-  | exn => Error(AppError.InputError(`Failed to parse HTML input: ${exnMessage(exn)}`))
+  | exn => Error(AppError.InputError(`Failed to parse HTML input: ${ExnUtils.message(exn)}`))
   }
 }
 
@@ -166,7 +160,7 @@ let mainWithContext: AppContext.appContext => promise<unit> = async ctx => {
       }
     }
   } catch {
-  | exn => exitWithError(ctx, AppError.ExtractionError(`Unexpected error: ${exnMessage(exn)}`))
+  | exn => exitWithError(ctx, AppError.ExtractionError(`Unexpected error: ${ExnUtils.message(exn)}`))
   }
 }
 

@@ -2,12 +2,6 @@ type outputTarget =
   | Stdout
   | File(string)
 
-let exnMessage = exn =>
-  switch exn->JsExn.fromException {
-  | Some(jsExn) => jsExn->JsExn.message->Option.getOr("Unknown error")
-  | None => "Unknown error"
-  }
-
 let jsonArrayToNdjson: string => option<string> = %raw(`raw => {
   try {
     const value = JSON.parse(raw);
@@ -36,7 +30,7 @@ let writeText = (
       writeFile(path, text)
       Ok(())
     } catch {
-    | exn => Error(AppError.WriteError(`Failed to write output file "${path}": ${exnMessage(exn)}`))
+    | exn => Error(AppError.WriteError(`Failed to write output file "${path}": ${ExnUtils.message(exn)}`))
     }
   }
 
@@ -47,18 +41,15 @@ let write = (
   ~writeFile: (string, string) => unit,
   ~out: string => unit,
 ): result<unit, AppError.appError> =>
-  switch target {
-  | Stdout => writeText(~target, ~text=jsonText, ~writeFile, ~out)
-  | File(_) =>
-    switch format {
-    | Json => writeText(~target, ~text=jsonText, ~writeFile, ~out)
-    | Ndjson =>
-      switch jsonArrayToNdjson(jsonText) {
-      | Some(ndjson) => writeText(~target, ~text=ndjson, ~writeFile, ~out)
-      | None =>
-        Error(
-          AppError.WriteError("Cannot write NDJSON output: expected extraction result to be a JSON array"),
-        )
-      }
+  switch (target, format) {
+  | (Stdout, _) => writeText(~target, ~text=jsonText, ~writeFile, ~out)
+  | (File(_), Json) => writeText(~target, ~text=jsonText, ~writeFile, ~out)
+  | (File(_), Ndjson) =>
+    switch jsonArrayToNdjson(jsonText) {
+    | Some(ndjson) => writeText(~target, ~text=ndjson, ~writeFile, ~out)
+    | None =>
+      Error(
+        AppError.WriteError("Cannot write NDJSON output: expected extraction result to be a JSON array"),
+      )
     }
   }
