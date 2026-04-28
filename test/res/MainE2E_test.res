@@ -494,12 +494,22 @@ testAsync("output file: permission denied returns error", planned => {
     }`)(path)
     ()
   }
+  let cleanupPath = (path: string): unit => {
+    let _ = %raw(`(target) => {
+      try {
+        Nodefs.rmSync(target, { recursive: true, force: true });
+      } catch {}
+    }`)(path)
+    ()
+  }
   runCli(
     ~args=["--selector", ".item", "--mode", "--extract", "text", "--output", readOnlyFile],
     ~input=html,
   )
   ->Promise.then(result => {
     restorePermissions(readOnlyFile)
+    cleanupPath(readOnlyFile)
+    cleanupPath(tempDir)
     isIntEqualTo(1, result.exitCode)
     stringContains(result.stderr, "Failed to write output file")->isTruthy
     planned(~planned=2, ())
@@ -507,6 +517,8 @@ testAsync("output file: permission denied returns error", planned => {
   })
   ->Promise.catch(_ => {
     restorePermissions(readOnlyFile)
+    cleanupPath(readOnlyFile)
+    cleanupPath(tempDir)
     failWith("CLI execution failed")
     planned(~planned=0, ())
     Promise.resolve()

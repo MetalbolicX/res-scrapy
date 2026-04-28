@@ -36,6 +36,7 @@ type parseOptions = {
   schemaSource?: schemaSource,
   output?: string,
   outputFormat: outputFormat,
+  warnings: array<string>,
 }
 
 /** Errors produced during argument validation. */
@@ -85,12 +86,10 @@ let runArgsValidation: NodeJsBinding.Util.cliValues => result<
   | _ => None
   }
 
-  switch (output, values.format) {
+  let warnings = switch (output, values.format) {
   | (None, Some(fmt)) if fmt != "json" =>
-    Console.error(
-      "Warning: --format is ignored unless --output is provided; stdout always uses JSON array format.",
-    )
-  | _ => ()
+    ["Warning: --format is ignored unless --output is provided; stdout always uses JSON array format."]
+  | _ => []
   }
 
   let outputFormatResult: result<outputFormat, parseError> = switch output {
@@ -158,7 +157,7 @@ let runArgsValidation: NodeJsBinding.Util.cliValues => result<
         | Ok(outputFormat) => {
             let modeFromBoolValue = values.mode->Option.getOr(false)
             let mode = modeFromBool(modeFromBoolValue)
-            Ok({selector, extract, mode, ?schemaSource, ?output, outputFormat})
+            Ok({selector, extract, mode, ?schemaSource, ?output, outputFormat, warnings})
           }
         }
       }

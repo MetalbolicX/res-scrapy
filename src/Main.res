@@ -74,6 +74,9 @@ let writeOutput = (
   }
 }
 
+let emitWarnings = (ctx: AppContext.appContext, options: ParseCli.parseOptions) =>
+  options.warnings->Array.forEach(ctx.io.warn)
+
 let runSchemaMode = (
   ctx: AppContext.appContext,
   document: Document.document,
@@ -141,6 +144,7 @@ let mainWithContext: AppContext.appContext => promise<unit> = async ctx => {
     switch parsed {
     | Error(err) => exitWithError(ctx, err)
     | Ok(options) => {
+        emitWarnings(ctx, options)
         let stdinResult = await ctx.deps.readStdin()
         switch stdinResult->ResultX.mapError(AppError.mapStdInError) {
         | Error(err) => exitWithError(ctx, err)

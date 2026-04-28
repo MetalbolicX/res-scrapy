@@ -87,14 +87,20 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
                 }
               switch value {
               | Error(e) => Error(e)
-              | Ok(v) => Ok(Array.concat(pairs, [(name, v)]))
+              | Ok(v) => {
+                  pairs->Array.push((name, v))
+                  Ok(pairs)
+                }
               }
             }
           }
         }, Ok([]))
         switch fieldResult {
         | Error(e) => Error(e)
-        | Ok(pairs) => Ok(Array.concat(outputRows, [JSON.Encode.object(Dict.fromArray(pairs))]))
+        | Ok(pairs) => {
+            outputRows->Array.push(JSON.Encode.object(Dict.fromArray(pairs)))
+            Ok(outputRows)
+          }
         }
       }
     }

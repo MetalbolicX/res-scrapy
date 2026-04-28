@@ -20,6 +20,7 @@ type parseOptions = {
   schemaSource?: schemaSource,
   output?: string,
   outputFormat: outputFormat,
+  warnings: array<string>,
 }
 
 type parseError =
