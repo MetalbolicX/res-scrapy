@@ -13,6 +13,11 @@ type schemaSource =
 
 type outputFormat = Json | Ndjson
 
+type headerEntry = {
+  name: string,
+  value: string,
+}
+
 type parseOptions = {
   selector: string,
   extract: extractMode,
@@ -23,6 +28,11 @@ type parseOptions = {
   warnings: array<string>,
   url?: string,
   concurrency: int,
+  userAgent?: string,
+  timeoutSeconds: int,
+  retryCount: int,
+  delayMs: int,
+  requestHeaders: array<headerEntry>,
 }
 
 type parseError =
@@ -30,6 +40,10 @@ type parseError =
   | ParseError({message: string, details: option<JsExn.t>})
   | NoMatches({message: string, selector: string})
   | InvalidConcurrency(string)
+  | InvalidTimeout(string)
+  | InvalidRetry(string)
+  | InvalidDelay(string)
+  | InvalidHeader(string)
   | InvalidUrlMode(string)
 
 let runArgsValidation: NodeJsBinding.Util.cliValues => result<parseOptions, parseError>

@@ -15,8 +15,8 @@ Extract data from any HTML source—websites, files, or API responses—using si
 ## Why res-scrapy?
 
 - **Zero-code data extraction** – No programming required, just CSS selectors
-- **10 built-in field types** – Text, numbers, booleans, dates, URLs, JSON, lists, and more
-- **Multi-page URL fetching** – Scrape paginated sites with `{start..end}` templates
+- **11 built-in field types** – Text, numbers, booleans, dates, URLs, JSON, lists, and more
+- **Multi-page URL fetching** – Scrape paginated sites with `{start..end}` templates, custom headers, rate limiting, and proxy support
 - **Table mode** – Convert HTML tables to JSON instantly
 - **Schema-driven** – Reusable, version-controlled extraction configs
 - **Pipe-friendly** – Works seamlessly with `curl`, `cat`, and other CLI tools
@@ -48,9 +48,10 @@ curl -s https://example.com | res-scrapy -s 'a' -m -e 'attr:href'
 # Extract an HTML table to JSON
 curl -s https://example.com | res-scrapy -t
 
-# Multi-page scrape (URL templates)
+# Multi-page scrape with rate limiting & custom UA
 res-scrapy \
   --url 'https://books.toscrape.com/catalogue/page-{1..50}.html' \
+  --user-agent 'MyBot/1.0' --delay 200 --timeout 15 \
   -s 'h3' -e text -m -j 20
 ```
 
@@ -72,6 +73,12 @@ Options:
   -f, --format            Output format for file writes: json (default) or ndjson
   -u, --url               URL template (e.g. "https://site.com/page-{1..10}.html")
   -j, --concurrency       Max concurrent fetches (default: 5, max: 20)
+      --user-agent        Custom User-Agent header (default: "res-scrapy/{version}")
+      --timeout           Request timeout in seconds (default: 30, min: 1)
+      --retry             Max retries on failure (default: 3, min: 1)
+      --delay             Minimum delay between request starts in ms (default: 0)
+      --header            Custom HTTP header in "Key: Value" format (repeatable)
+      --cookie            Cookie value (repeatable, sugar for --header)
 ```
 
 ## Documentation

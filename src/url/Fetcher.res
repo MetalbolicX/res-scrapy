@@ -12,10 +12,11 @@ type fetchResult = {
 type fetchOptions = {
   concurrency: int,
   userAgent: string,
+  timeoutSeconds: int,
+  retryCount: int,
+  delayMs: int,
+  headers: array<(string, string)>,
 }
-
-/** Request timeout in milliseconds (30 seconds). */
-let timeoutMs = 30000
 
 /** Base delay for exponential backoff (1 second). */
 let baseDelayMs = 1000
@@ -66,20 +67,52 @@ let delay: int => promise<unit> = ms =>
     ()
   })
 
+let createEnvProxyDispatcher: unit => promise<option<NodeJsBinding.Fetch.dispatcher>> =
+  %raw(`async () => {
+    const hasProxy = Boolean(
+      process.env.HTTP_PROXY ||
+      process.env.HTTPS_PROXY ||
+      process.env.ALL_PROXY
+    );
+    if (!hasProxy) return undefined;
+    try {
+      const undici = await import('undici');
+      return new undici.EnvHttpProxyAgent();
+    } catch {
+      return undefined;
+    }
+  }`)
+
+let proxyDispatcherPromise: ref<option<promise<option<NodeJsBinding.Fetch.dispatcher>>>> = ref(None)
+
+let getEnvProxyDispatcher = (): promise<option<NodeJsBinding.Fetch.dispatcher>> =>
+  switch proxyDispatcherPromise.contents {
+  | Some(promise) => promise
+  | None => {
+      let promise = createEnvProxyDispatcher()
+      proxyDispatcherPromise := Some(promise)
+      promise
+    }
+  }
+
 /**
   * Fetches a single URL with timeout and error handling.
   */
-let fetchOnce: (string, string) => promise<result<string, fetchError>> = async (url, userAgent) => {
+let fetchOnce: (string, string, int, array<(string, string)>) => promise<result<string, fetchError>> = async (url, userAgent, timeoutSeconds, headers) => {
+  let timeoutMs = timeoutSeconds * 1000
   // Set up controller and timeout OUTSIDE try so timeoutId is accessible in catch.
   let controller = NodeJsBinding.Fetch.AbortSignal.makeController()
   let timeoutId = setTimeout(() => {
     NodeJsBinding.Fetch.AbortSignal.abort(controller)
   }, timeoutMs)
 
+  let headerPairs = Array.concat([("User-Agent", userAgent)], headers)
+  let dispatcher = await getEnvProxyDispatcher()
   let options: NodeJsBinding.Fetch.options = {
     method: "GET",
-    headers: Dict.fromArray([("User-Agent", userAgent)]),
+    headers: Dict.fromArray(headerPairs),
     signal: NodeJsBinding.Fetch.AbortSignal.signal(controller),
+    ?dispatcher,
   }
 
   try {
@@ -113,9 +146,9 @@ let fetchOnce: (string, string) => promise<result<string, fetchError>> = async (
 /**
   * Fetches a URL with retries.
   */
-let fetchWithRetry: (string, string) => promise<result<string, fetchError>> = async (url, userAgent) => {
+let fetchWithRetry: (string, string, int, int, array<(string, string)>) => promise<result<string, fetchError>> = async (url, userAgent, timeoutSeconds, retryCount, headers) => {
   let rec tryFetch = async (attempt: int, maxAttempts: int) => {
-    let result = await fetchOnce(url, userAgent)
+    let result = await fetchOnce(url, userAgent, timeoutSeconds, headers)
     
     switch result {
     | Ok(_) => result
@@ -131,7 +164,7 @@ let fetchWithRetry: (string, string) => promise<result<string, fetchError>> = as
     }
   }
   
-  await tryFetch(1, 3)
+  await tryFetch(1, retryCount)
 }
 
 /**
@@ -164,16 +197,42 @@ let release = (sem: semaphore) => {
   }
 }
 
+type startLimiter = {
+  mutable nextStartAt: float,
+  delayMs: int,
+}
+
+let makeStartLimiter = (delayMs: int): startLimiter => {
+  nextStartAt: 0.0,
+  delayMs,
+}
+
+let acquireStartSlot = async (limiter: startLimiter) => {
+  if limiter.delayMs <= 0 {
+    ()
+  } else {
+    let now = NodeJsBinding.Performance.now()
+    let scheduledStart = max(limiter.nextStartAt, now)
+    let waitMs = scheduledStart -. now
+    limiter.nextStartAt = scheduledStart +. Float.fromInt(limiter.delayMs)
+    if waitMs > 0.0 {
+      await delay(waitMs->Float.toInt)
+    }
+  }
+}
+
 /**
   * Fetches all URLs with concurrency control.
   */
 let fetchAll: (array<string>, fetchOptions) => promise<array<fetchResult>> = async (urls, options) => {
   let concurrency = min(options.concurrency, 20) // Hard cap at 20
   let sem = makeSemaphore(concurrency)
+  let limiter = makeStartLimiter(options.delayMs)
 
   let fetchWithSemaphore = async url => {
     await acquire(sem)
-    let result = await fetchWithRetry(url, options.userAgent)
+    await acquireStartSlot(limiter)
+    let result = await fetchWithRetry(url, options.userAgent, options.timeoutSeconds, options.retryCount, options.headers)
     release(sem)
     {url, result}
   }

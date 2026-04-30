@@ -196,10 +196,14 @@ let runUrlMode = async (
     let startTime = ctx.deps.performanceNow()
 
     // Fetch all pages
-    let userAgent = `res-scrapy/${ctx.deps.getCliVersion()}`
+    let userAgent = options.userAgent->Option.getOr(`res-scrapy/${ctx.deps.getCliVersion()}`)
     let fetchOptions: Fetcher.fetchOptions = {
       concurrency: options.concurrency,
       userAgent,
+      timeoutSeconds: options.timeoutSeconds,
+      retryCount: options.retryCount,
+      delayMs: options.delayMs,
+      headers: options.requestHeaders->Array.map(h => (h.name, h.value)),
     }
     let fetchResults = await ctx.deps.fetchAll(urls, fetchOptions)
 

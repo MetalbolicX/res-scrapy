@@ -10,6 +10,10 @@ test("ExtractionMode.fromOptions picks table mode", () => {
     outputFormat: Json,
     warnings: [],
     concurrency: 5,
+    timeoutSeconds: 30,
+    retryCount: 3,
+    delayMs: 0,
+    requestHeaders: [],
   }
 
   switch ExtractionMode.fromOptions(options) {
@@ -27,6 +31,10 @@ test("ExtractionMode.fromOptions picks schema mode", () => {
     outputFormat: Json,
     warnings: [],
     concurrency: 5,
+    timeoutSeconds: 30,
+    retryCount: 3,
+    delayMs: 0,
+    requestHeaders: [],
   }
 
   switch ExtractionMode.fromOptions(options) {
@@ -43,6 +51,10 @@ test("ExtractionMode.fromOptions picks selector mode", () => {
     outputFormat: Json,
     warnings: [],
     concurrency: 5,
+    timeoutSeconds: 30,
+    retryCount: 3,
+    delayMs: 0,
+    requestHeaders: [],
   }
 
   switch ExtractionMode.fromOptions(options) {

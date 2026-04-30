@@ -74,6 +74,7 @@ module Util = {
     @as("type") type_: string,
     short?: string,
     default?: defaultValue,
+    multiple?: bool,
   }
 
   /**
@@ -93,6 +94,12 @@ module Util = {
     format?: string,
     url?: string,
     concurrency?: string,
+    userAgent?: string,
+    timeout?: string,
+    retry?: string,
+    delay?: string,
+    header?: array<string>,
+    cookie?: array<string>,
   }
 
   /**
@@ -203,6 +210,8 @@ module Iter = {
 
 /** Bindings to the global `fetch` API (available in Node.js >= 18). */
 module Fetch = {
+  type dispatcher
+
   /** AbortSignal for fetch timeout control. */
   module AbortSignal = {
     type t
@@ -228,6 +237,7 @@ module Fetch = {
     method?: string,
     headers?: dict<string>,
     signal?: AbortSignal.t,
+    dispatcher?: dispatcher,
   }
 
   /** Performs an HTTP request using the global `fetch` API. */

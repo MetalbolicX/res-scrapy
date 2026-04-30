@@ -21,6 +21,10 @@ let mapParseError: ParseCli.parseError => appError = err =>
   | ParseError({message}) => CliError(message)
   | NoMatches({message}) => CliError(message)
   | InvalidConcurrency(msg) => CliError(msg)
+  | InvalidTimeout(msg) => CliError(msg)
+  | InvalidRetry(msg) => CliError(msg)
+  | InvalidDelay(msg) => CliError(msg)
+  | InvalidHeader(msg) => CliError(msg)
   | InvalidUrlMode(msg) => CliError(msg)
   }
 

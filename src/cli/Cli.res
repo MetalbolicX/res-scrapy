@@ -57,6 +57,12 @@ let showHelp: unit => unit = () => {
     -f, --format       Output format for file writes: json (default) or ndjson
     -u, --url          URL or URL template (e.g., https://site.com/page={1..10})
     -j, --concurrency  Max concurrent fetches (default: 5, max: 20)
+    --user-agent       Override the HTTP User-Agent header for URL mode
+    --timeout          Request timeout in seconds for URL mode (default: 30)
+    --retry            Max retry attempts for URL mode (default: 3)
+    --delay            Delay in milliseconds between URL request starts (default: 0)
+    --header           Add request header for URL mode; repeatable (e.g. --header 'Accept: text/html')
+    --cookie           Add Cookie header value for URL mode; repeatable
   `)
   NodeJsBinding.Process.exit(0)
 }
@@ -87,6 +93,12 @@ let parse: unit => NodeJsBinding.Util.cliValues = () => {
     ("format", {type_: "string", short: "f", default: String("json")}),
     ("url", {type_: "string", short: "u"}),
     ("concurrency", {type_: "string", short: "j", default: String("5")}),
+    ("userAgent", {type_: "string"}),
+    ("timeout", {type_: "string", default: String("30")}),
+    ("retry", {type_: "string", default: String("3")}),
+    ("delay", {type_: "string", default: String("0")}),
+    ("header", {type_: "string", multiple: true}),
+    ("cookie", {type_: "string", multiple: true}),
     ("help", {type_: "boolean", short: "h"}),
   ])
 

@@ -1,5 +1,6 @@
 open Test
 open Assertions
+open TestHelpers
 open ParseCli
 
 let isMissingSelector = e =>
@@ -96,6 +97,11 @@ let withOutput = (values, path): NodeJsBinding.Util.cliValues => {
 let withFormat = (values, format): NodeJsBinding.Util.cliValues => {
   ...values,
   format,
+}
+
+let withUserAgent = (values, ua): NodeJsBinding.Util.cliValues => {
+  ...values,
+  userAgent: ua,
 }
 
 test("runArgsValidation requires selector when no schema", () => {
@@ -314,5 +320,319 @@ test("runArgsValidation ignores format when output is not provided", () => {
     | Ndjson => failWith("Expected format to be ignored without output")
     }
   | Error(_) => failWith("Expected format without output to be ignored")
+  }
+})
+
+test("runArgsValidation rejects empty --user-agent", () => {
+  let values = emptyValues->withSelector(".item")->withUserAgent("")
+  switch runArgsValidation(values) {
+  | Error(e) => isTruthy(isParseError(e))
+  | Ok(_) => failWith("Expected ParseError for empty --user-agent")
+  }
+})
+
+test("runArgsValidation accepts non-empty --user-agent", () => {
+  let values = emptyValues->withSelector(".item")->withUserAgent("MyBot/1.0")
+  switch runArgsValidation(values) {
+  | Ok(opts) => isOptionEqualTo(Some("MyBot/1.0"), opts.userAgent, ~eq=(a, b) => a == b)
+  | Error(_) => failWith("Expected non-empty --user-agent to be accepted")
+  }
+})
+
+test("runArgsValidation warns that --user-agent is ignored without --url", () => {
+  let values = emptyValues->withSelector(".item")->withUserAgent("MyBot/1.0")
+  switch runArgsValidation(values) {
+  | Ok(opts) => {
+      isIntEqualTo(1, opts.warnings->Array.length)
+      let warning = opts.warnings->Array.get(0)->Option.getOr("")
+      stringContains(warning, "--user-agent")->isTruthy
+      stringContains(warning, "stdin mode")->isTruthy
+    }
+  | Error(_) => failWith("Expected warning for --user-agent without --url")
+  }
+})
+
+test("runArgsValidation does not warn for --user-agent in URL mode", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    userAgent: "MyBot/1.0",
+    url: "https://example.com/page-{1..2}.html",
+  }
+  switch runArgsValidation(values) {
+  | Ok(opts) => {
+      let hasUserAgentIgnoredWarning =
+        opts.warnings
+        ->Array.some(w =>
+          stringContains(w, "--user-agent") && stringContains(w, "ignored in stdin mode")
+        )
+      isTruthy(hasUserAgentIgnoredWarning == false)
+      isIntEqualTo(30, opts.timeoutSeconds)
+      isIntEqualTo(3, opts.retryCount)
+      isIntEqualTo(0, opts.delayMs)
+    }
+  | Error(_) => failWith("Expected URL mode to accept --user-agent without stdin warning")
+  }
+})
+
+test("runArgsValidation parses valid --timeout seconds", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    timeout: "45",
+  }
+  switch runArgsValidation(values) {
+  | Ok(opts) => isIntEqualTo(45, opts.timeoutSeconds)
+  | Error(_) => failWith("Expected valid --timeout to parse")
+  }
+})
+
+test("runArgsValidation rejects invalid non-numeric --timeout", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    timeout: "abc",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch e {
+    | InvalidTimeout(msg) => stringContains(msg, "Invalid timeout value")->isTruthy
+    | _ => failWith("Expected InvalidTimeout for non-numeric value")
+    }
+  | Ok(_) => failWith("Expected InvalidTimeout for non-numeric --timeout")
+  }
+})
+
+test("runArgsValidation rejects timeout less than 1", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    timeout: "0",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch e {
+    | InvalidTimeout(msg) => stringContains(msg, "must be >= 1")->isTruthy
+    | _ => failWith("Expected InvalidTimeout for timeout < 1")
+    }
+  | Ok(_) => failWith("Expected InvalidTimeout for timeout < 1")
+  }
+})
+
+test("runArgsValidation warns that --timeout is ignored without --url", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    timeout: "40",
+  }
+  switch runArgsValidation(values) {
+  | Ok(opts) => {
+      let hasTimeoutWarning =
+        opts.warnings->Array.some(w =>
+          stringContains(w, "--timeout") && stringContains(w, "ignored in stdin mode")
+        )
+      isTruthy(hasTimeoutWarning)
+    }
+  | Error(_) => failWith("Expected warning for --timeout without --url")
+  }
+})
+
+test("runArgsValidation parses valid --retry", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    retry: "5",
+  }
+  switch runArgsValidation(values) {
+  | Ok(opts) => isIntEqualTo(5, opts.retryCount)
+  | Error(_) => failWith("Expected valid --retry to parse")
+  }
+})
+
+test("runArgsValidation parses repeatable --header and --cookie", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    header: ["Accept: text/html", "X-Trace: abc"],
+    cookie: ["session=one", "lang=en"],
+  }
+  switch runArgsValidation(values) {
+  | Ok(opts) => {
+      isIntEqualTo(3, opts.requestHeaders->Array.length)
+      let hasAccept = opts.requestHeaders->Array.some(h => h.name == "accept" && h.value == "text/html")
+      let hasTrace = opts.requestHeaders->Array.some(h => h.name == "x-trace" && h.value == "abc")
+      let hasCookie = opts.requestHeaders->Array.some(h => h.name == "cookie" && h.value == "session=one; lang=en")
+      isTruthy(hasAccept)
+      isTruthy(hasTrace)
+      isTruthy(hasCookie)
+    }
+  | Error(_) => failWith("Expected headers and cookies to parse")
+  }
+})
+
+test("runArgsValidation rejects malformed --header", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    header: ["MissingColon"],
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch e {
+    | InvalidHeader(msg) => stringContains(msg, "Expected format")->isTruthy
+    | _ => failWith("Expected InvalidHeader for malformed --header")
+    }
+  | Ok(_) => failWith("Expected InvalidHeader for malformed --header")
+  }
+})
+
+test("runArgsValidation merges duplicate header names with last value wins", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    header: ["Accept: application/json", "accept: text/html"],
+  }
+  switch runArgsValidation(values) {
+  | Ok(opts) => {
+      let accepts = opts.requestHeaders->Array.filter(h => h.name == "accept")
+      isIntEqualTo(1, accepts->Array.length)
+      let firstValue = switch accepts->Array.get(0) {
+      | Some(h) => h.value
+      | None => ""
+      }
+      isTextEqualTo("text/html", firstValue)
+    }
+  | Error(_) => failWith("Expected duplicate header normalization")
+  }
+})
+
+test("runArgsValidation warns that --header and --cookie are ignored without --url", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    header: ["Accept: text/html"],
+    cookie: ["session=one"],
+  }
+  switch runArgsValidation(values) {
+  | Ok(opts) => {
+      let hasHeadersWarning =
+        opts.warnings->Array.some(w =>
+          stringContains(w, "--header") && stringContains(w, "--cookie") && stringContains(w, "ignored in stdin mode")
+        )
+      isTruthy(hasHeadersWarning)
+    }
+  | Error(_) => failWith("Expected ignored warning for --header/--cookie without --url")
+  }
+})
+
+test("runArgsValidation rejects non-numeric --retry", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    retry: "abc",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch e {
+    | InvalidRetry(msg) => stringContains(msg, "Invalid retry value")->isTruthy
+    | _ => failWith("Expected InvalidRetry for non-numeric --retry")
+    }
+  | Ok(_) => failWith("Expected InvalidRetry for non-numeric --retry")
+  }
+})
+
+test("runArgsValidation rejects retry less than 1", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    retry: "0",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch e {
+    | InvalidRetry(msg) => stringContains(msg, "must be >= 1")->isTruthy
+    | _ => failWith("Expected InvalidRetry for retry < 1")
+    }
+  | Ok(_) => failWith("Expected InvalidRetry for retry < 1")
+  }
+})
+
+test("runArgsValidation warns that --retry is ignored without --url", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    retry: "4",
+  }
+  switch runArgsValidation(values) {
+  | Ok(opts) => {
+      let hasRetryWarning =
+        opts.warnings->Array.some(w =>
+          stringContains(w, "--retry") && stringContains(w, "ignored in stdin mode")
+        )
+      isTruthy(hasRetryWarning)
+    }
+  | Error(_) => failWith("Expected warning for --retry without --url")
+  }
+})
+
+test("runArgsValidation parses valid --delay milliseconds", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    delay: "250",
+  }
+  switch runArgsValidation(values) {
+  | Ok(opts) => isIntEqualTo(250, opts.delayMs)
+  | Error(_) => failWith("Expected valid --delay to parse")
+  }
+})
+
+test("runArgsValidation rejects negative --delay", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    delay: "-5",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch e {
+    | InvalidDelay(msg) => stringContains(msg, "Delay must be >= 0")->isTruthy
+    | _ => failWith("Expected InvalidDelay for negative --delay")
+    }
+  | Ok(_) => failWith("Expected InvalidDelay for negative --delay")
+  }
+})
+
+test("runArgsValidation rejects non-numeric --delay", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    delay: "abc",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch e {
+    | InvalidDelay(msg) => stringContains(msg, "Invalid delay value")->isTruthy
+    | _ => failWith("Expected InvalidDelay for non-numeric --delay")
+    }
+  | Ok(_) => failWith("Expected InvalidDelay for non-numeric --delay")
+  }
+})
+
+test("runArgsValidation warns that --delay is ignored without --url", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    delay: "100",
+  }
+  switch runArgsValidation(values) {
+  | Ok(opts) => {
+      let hasDelayWarning =
+        opts.warnings->Array.some(w =>
+          stringContains(w, "--delay") && stringContains(w, "ignored in stdin mode")
+        )
+      isTruthy(hasDelayWarning)
+    }
+  | Error(_) => failWith("Expected warning for --delay without --url")
   }
 })

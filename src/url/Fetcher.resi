@@ -5,9 +5,10 @@
   * - Configurable concurrency cap (default 5, max 20)
   * - 3 retries with exponential backoff (1s, 2s, 4s) + jitter (±500ms)
   * - 30s timeout per request
+  * - Optional proxy routing via EnvHttpProxyAgent when HTTP_PROXY/HTTPS_PROXY/ALL_PROXY are set
   * - Retry only on transient failures (network errors, timeouts, 429, 5xx)
   *
-  * Uses `Promise.allSettled` to ensure all fetches complete regardless of individual failures.
+  * Uses `Promise.all` to collect all fetch results; each fetch always resolves with `result`.
   */
 
 type fetchError =
@@ -24,6 +25,10 @@ type fetchResult = {
 type fetchOptions = {
   concurrency: int,
   userAgent: string,
+  timeoutSeconds: int,
+  retryCount: int,
+  delayMs: int,
+  headers: array<(string, string)>,
 }
 
 /**

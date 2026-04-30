@@ -409,11 +409,21 @@ sequenceDiagram
 
 ### Fetcher (`Fetcher.res`)
 
-- **Timeout:** 30 seconds per request via `AbortController`.
-- **Retry:** 3 attempts with exponential backoff (1s, 2s, 4s) + random jitter (±500ms).
+All transport parameters are configurable via CLI flags, with sensible defaults:
+
+- **Timeout:** Configurable via `--timeout` (default: 30s, min: 1s). Implemented via `AbortController`.
+- **Retry:** Configurable via `--retry` (default: 3, min: 1). Uses exponential backoff (1s, 2s, 4s) + random jitter (±500ms).
 - **Retryable errors:** Network errors, timeouts, HTTP 429 (rate limit), HTTP 5xx (server errors).
 - **Concurrency:** Hand-rolled semaphore (no external dependency). Hard cap at 20 concurrent requests.
-- **User-Agent:** `res-scrapy/{version}`.
+- **User-Agent:** Configurable via `--user-agent`. Defaults to `res-scrapy/{version}`.
+- **Custom headers:** Set via `--header` (repeatable). Header names are normalized to lowercase; duplicates apply last-wins merging. The `--cookie` flag is syntactic sugar — values are joined with `; ` and mapped to the `Cookie` header.
+- **Delay rate limiter:** The `--delay` flag controls a `startLimiter` that ensures a minimum time span between consecutive request starts. Works in tandem with the semaphore (concurrency control) rather than replacing it. Internally uses monotonic timestamps (`performance.now()`) and a `nextStartAt` slot counter that is updated before yielding, making it safe under concurrent access.
+
+### Proxy Support
+
+- **Env vars:** `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` are detected automatically at fetch time.
+- **Implementation:** Uses `undici`'s `EnvHttpProxyAgent`, imported lazily and cached process-wide (`proxyDispatcherPromise`). Falls back gracefully when `undici` is not installed.
+- **Design choice:** Env-var only for now (follows standard Node.js tooling convention). An explicit `--proxy` flag is deferred for a future change.
 
 ### Reporter (`Reporter.res`)
 
