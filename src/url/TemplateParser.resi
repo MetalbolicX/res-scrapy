@@ -22,7 +22,6 @@
 type parseError =
   | InvalidSyntax(string)
   | InvalidRange(string)
-  | MultipleTemplates(string)
 
 /**
   * Parses a URL template and expands it into an array of URLs.

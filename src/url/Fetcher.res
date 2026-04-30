@@ -63,6 +63,7 @@ let isRetryable: fetchError => bool = err =>
 let delay: int => promise<unit> = ms =>
   Promise.make((resolve, _reject) => {
     let _timerId = setTimeout(() => resolve(), ms)
+    ()
   })
 
 /**

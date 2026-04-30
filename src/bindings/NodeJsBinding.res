@@ -139,13 +139,21 @@ let jsonParse = (raw: string): option<'a> => {
   }
 }
 
-/** Node.js `fs` module — synchronous file-system access used for schema loading. */
+/**
+  * Node.js `fs` module — synchronous file-system access used for schema loading.
+  *
+  * Note: `readFileSync` uses the encoding from the binding (always "utf8").
+  * `writeFileSync` replaces existing contents atomically.
+  */
 module Fs = {
-  /** Reads a file synchronously, returning its contents as a `string`. Raises if the path does not exist. */
+  /** Reads a file synchronously, returning its contents as a UTF-8 `string`. */
   @module("node:fs") external readFileSync: (string, @as("utf8") _) => string = "readFileSync"
 
   /** Writes text content to a file synchronously, replacing existing contents. */
   @module("node:fs") external writeFileSync: (string, string) => unit = "writeFileSync"
+
+  /** Appends text to a file synchronously (creates file if it doesn't exist). */
+  @module("node:fs") external appendFileSync: (string, string) => unit = "appendFileSync"
 }
 
 /** Node.js `node:url` module — URL parsing, resolution, and formatting. */

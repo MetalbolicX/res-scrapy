@@ -33,7 +33,8 @@ Or use without installing:
 npx res-scrapy -h
 ```
 
-**Requirements:** Node.js >= 22.0.0
+> [!NOTE]
+> Requirements: Node.js >= 22.0.0
 
 ## Quick Start
 

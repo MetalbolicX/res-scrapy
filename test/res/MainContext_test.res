@@ -49,6 +49,7 @@ let simpleDeps = (
   },
   applySchema: (_, _) => schemaApplyResult,
   writeFile: (_, _) => (),
+  appendFile: (_, _) => (),
   stringifyJson: NodeJsBinding.jsonStringify,
   stringifyTableRows: NodeJsBinding.jsonStringify,
   stringifyStrings: NodeJsBinding.jsonStringify,

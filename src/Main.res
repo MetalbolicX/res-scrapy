@@ -7,16 +7,16 @@ module Iter = NodeJsBinding.Iter
 
 /** Extracts results from a JSON value, handling both arrays and single objects. */
 let extractJsonArray: JSON.t => array<JSON.t> = json => {
-  switch JSON.Classify.classify(json) {
-  | Array(arr) => arr
+  switch json {
+  | JSON.Array(arr) => arr
   | _ => [json]
   }
 }
 
 /** Counts the number of rows in a JSON result. */
 let countRows: JSON.t => int = json => {
-  switch JSON.Classify.classify(json) {
-  | Array(arr) => Array.length(arr)
+  switch json {
+  | JSON.Array(arr) => Array.length(arr)
   | _ => 1
   }
 }
@@ -34,15 +34,9 @@ let appendNdjsonToFile: (AppContext.appContext, string, JSON.t) => unit = (ctx, 
   let rows = extractJsonArray(json)
   let content = rows->Array.map(ctx.deps.stringifyJson)->Array.join("\n") ++ "\n"
   try {
-    // TODO: Use appendFileSync when available in bindings
-    let existing = try {
-      NodeJsBinding.Fs.readFileSync(path)
-    } catch {
-    | _ => ""
-    }
-    ctx.deps.writeFile(path, existing ++ content)
+    ctx.deps.appendFile(path, content)
   } catch {
-  | _exn => () // Ignore append errors for now
+  | _exn => ()
   }
 }
 

@@ -41,7 +41,6 @@ let mapTemplateError: TemplateParser.parseError => appError = err =>
   switch err {
   | InvalidSyntax(msg) => TemplateError(msg)
   | InvalidRange(msg) => TemplateError(msg)
-  | MultipleTemplates(msg) => TemplateError(msg)
   }
 
 let mapFetchError: Fetcher.fetchError => appError = err =>

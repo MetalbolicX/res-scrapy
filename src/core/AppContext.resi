@@ -7,6 +7,7 @@ type dependencies = {
   loadSchema: (~isInline: bool, string) => result<Schema.schema, FieldTypes.schemaError>,
   applySchema: (Document.document, Schema.schema) => result<JSON.t, FieldTypes.schemaError>,
   writeFile: (string, string) => unit,
+  appendFile: (string, string) => unit,
   stringifyJson: JSON.t => string,
   stringifyTableRows: array<dict<string>> => string,
   stringifyStrings: array<string> => string,

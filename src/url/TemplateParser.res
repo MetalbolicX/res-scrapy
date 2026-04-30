@@ -1,7 +1,6 @@
 type parseError =
   | InvalidSyntax(string)
   | InvalidRange(string)
-  | MultipleTemplates(string)
 
 /**
   * Extracts template tokens from a URL template string.
@@ -84,13 +83,13 @@ let parseRange: string => result<(int, int, int, int), parseError> = content => 
   * Generates a sequence of integers from start to end (inclusive) with the given step.
   */
 let generateSequence: (int, int, int) => array<int> = (start, end_, step) => {
-  let result = []
   let current = ref(start)
+  let acc = []
   while current.contents <= end_ {
-    result->Array.push(current.contents)
+    acc->Array.push(current.contents)
     current := current.contents + step
   }
-  result
+  acc
 }
 
 /**
@@ -142,6 +141,5 @@ let parseErrorToMessage: parseError => string = err => {
   switch err {
   | InvalidSyntax(msg) => `Invalid template syntax: ${msg}`
   | InvalidRange(msg) => `Invalid range: ${msg}`
-  | MultipleTemplates(msg) => `Multiple templates not supported: ${msg}`
   }
 }
