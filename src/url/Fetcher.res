@@ -69,18 +69,19 @@ let delay: int => promise<unit> = ms =>
   * Fetches a single URL with timeout and error handling.
   */
 let fetchOnce: (string, string) => promise<result<string, fetchError>> = async (url, userAgent) => {
+  // Set up controller and timeout OUTSIDE try so timeoutId is accessible in catch.
+  let controller = NodeJsBinding.Fetch.AbortSignal.makeController()
+  let timeoutId = setTimeout(() => {
+    NodeJsBinding.Fetch.AbortSignal.abort(controller)
+  }, timeoutMs)
+
+  let options: NodeJsBinding.Fetch.options = {
+    method: "GET",
+    headers: Dict.fromArray([("User-Agent", userAgent)]),
+    signal: NodeJsBinding.Fetch.AbortSignal.signal(controller),
+  }
+
   try {
-    let controller = NodeJsBinding.Fetch.AbortSignal.makeController()
-    let timeoutId = setTimeout(() => {
-      NodeJsBinding.Fetch.AbortSignal.abort(controller)
-    }, timeoutMs)
-
-    let options: NodeJsBinding.Fetch.options = {
-      method: "GET",
-      headers: Dict.fromArray([("User-Agent", userAgent)]),
-      signal: NodeJsBinding.Fetch.AbortSignal.signal(controller),
-    }
-
     let response = await NodeJsBinding.Fetch.fetch(url, Some(options))
     clearTimeout(timeoutId)
 
@@ -92,11 +93,12 @@ let fetchOnce: (string, string) => promise<result<string, fetchError>> = async (
     }
   } catch {
   | exn => {
+      clearTimeout(timeoutId)
       let message = switch exn->JsExn.fromException {
       | Some(jsExn) => jsExn->JsExn.message->Option.getOr("Unknown error")
       | None => "Unknown error"
       }
-      
+
       // Detect timeout
       if String.includes(message, "abort") || String.includes(message, "timeout") {
         Error(Timeout(`timeout after ${Int.toString(timeoutMs / 1000)}s`))

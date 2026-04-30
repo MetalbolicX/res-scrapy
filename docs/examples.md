@@ -336,7 +336,98 @@ Schema snippet:
 
 ---
 
-## 5. Advanced Patterns & Error Handling
+## 5. Multi-Page URL Fetching
+
+Fetch data from paginated websites without piping each page through stdin. URL templates automatically expand `{start..end}` into multiple URLs, fetch them concurrently, and extract from every page.
+
+> [!Note] When using `--url`, stdin is not read. An extraction flag (`-s`, `-p`, or `-t`) is required. Output automatically switches to NDJSON on stdout (one result per page). Use `--output` + `--format json` to get a single merged JSON array instead.
+
+### 1. Basic range `{start..end}`
+
+Scrape [books.toscrape](https://books.toscrape.com) — 50 pages (1 to 50):
+
+```sh
+res-scrapy \
+  --url 'https://books.toscrape.com/catalogue/page-{1..50}.html' \
+  -s 'h3' -e text -m
+```
+
+Each page yields a row of results. Stdout (NDJSON):
+
+```json
+{"url":"https://books.toscrape.com/catalogue/page-1.html","result":["A Light in the Attic","Tipping the Velvet",...]}
+{"url":"https://books.toscrape.com/catalogue/page-2.html","result":["Sapiens","The Grand Design",...]}
+```
+
+### 2. Range with step `{start..end..step}`
+
+Fetch every 10th page:
+
+```sh
+res-scrapy \
+  --url 'https://site.com/articles?page={0..100..10}' \
+  -s 'h2' -e text -m
+```
+
+### 3. Zero-padded ranges `{001..050}`
+
+When URLs use zero-padded numbers (e.g. `page-001.html`):
+
+```sh
+res-scrapy \
+  --url 'https://site.com/page-{001..050}.html' \
+  -s '.product' -e text -m
+```
+
+This expands to `page-001.html`, `page-002.html`, … `page-050.html`.
+
+### 4. Concurrency control
+
+Use `-j` / `--concurrency` to control how many pages are fetched simultaneously. Default is 5, max is 20.
+
+```sh
+# Faster scraping (20 concurrent fetches)
+res-scrapy -u 'https://site.com/page-{1..100}.html' -s 'h2' -e text -m -j 20
+
+# Polite scraping (2 concurrent fetches)
+res-scrapy -u 'https://site.com/page-{1..100}.html' -s 'h2' -e text -m -j 2
+```
+
+### 5. Save merged results to a file
+
+Combine all pages into a single JSON file:
+
+```sh
+res-scrapy \
+  --url 'https://books.toscrape.com/catalogue/page-{1..50}.html' \
+  -s 'h3' -e text -m \
+  --output all-titles.json
+```
+
+File output defaults to JSON (a single merged array). Use `--format ndjson` to stream one page-result per line instead.
+
+### 6. Error behavior
+
+- Failed pages are **skipped** (not retried after 3 attempts with backoff)
+- A report of failed URLs is printed to **stderr**
+- Exit code is **0** if any page succeeded, **1** if all failed
+
+### 7. Real-world example
+
+Scrape all 1000 book titles from books.toscrape.com (50 pages × 20 books):
+
+```sh
+res-scrapy \
+  --url 'https://books.toscrape.com/catalogue/page-{1..50}.html' \
+  -s 'h3' -e text -m -j 20 \
+  --output books.json
+```
+
+This fetches 50 pages concurrently (up to 20 at a time), extracts every `<h3>` text, and writes one merged JSON array with 1000 titles to `books.json`.
+
+---
+
+## 6. Advanced Patterns & Error Handling
 
 1. Use `ignoreErrors` and field `default` when the site is flaky
 

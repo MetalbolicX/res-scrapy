@@ -27,11 +27,13 @@ type fetchOptions = {
 }
 
 /**
+  * @internal Exported for unit testing only.
   * Checks if an error is retryable (transient failure).
   */
 let isRetryable: fetchError => bool
 
 /**
+  * @internal Exported for unit testing only.
   * Calculates exponential backoff delay for a retry attempt.
   */
 let backoffDelay: int => int
