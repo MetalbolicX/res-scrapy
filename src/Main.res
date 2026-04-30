@@ -5,6 +5,47 @@ let exitWithError = (ctx: AppContext.appContext, err: AppError.appError) => {
 
 module Iter = NodeJsBinding.Iter
 
+/** Extracts results from a JSON value, handling both arrays and single objects. */
+let extractJsonArray: JSON.t => array<JSON.t> = json => {
+  switch JSON.Classify.classify(json) {
+  | Array(arr) => arr
+  | _ => [json]
+  }
+}
+
+/** Counts the number of rows in a JSON result. */
+let countRows: JSON.t => int = json => {
+  switch JSON.Classify.classify(json) {
+  | Array(arr) => Array.length(arr)
+  | _ => 1
+  }
+}
+
+/** Writes NDJSON to stdout by iterating over a JSON array. */
+let writeNdjsonToStdout: (AppContext.appContext, JSON.t) => unit = (ctx, json) => {
+  let rows = extractJsonArray(json)
+  rows->Array.forEach(row => {
+    ctx.io.out(ctx.deps.stringifyJson(row))
+  })
+}
+
+/** Appends NDJSON rows to a file. */
+let appendNdjsonToFile: (AppContext.appContext, string, JSON.t) => unit = (ctx, path, json) => {
+  let rows = extractJsonArray(json)
+  let content = rows->Array.map(ctx.deps.stringifyJson)->Array.join("\n") ++ "\n"
+  try {
+    // TODO: Use appendFileSync when available in bindings
+    let existing = try {
+      NodeJsBinding.Fs.readFileSync(path)
+    } catch {
+    | _ => ""
+    }
+    ctx.deps.writeFile(path, existing ++ content)
+  } catch {
+  | _exn => () // Ignore append errors for now
+  }
+}
+
 let parseCliSafely = (ctx: AppContext.appContext): result<ParseCli.parseOptions, AppError.appError> => {
   try {
     ctx.deps.parseCli()->ctx.deps.validateArgs->ResultX.mapError(AppError.mapParseError)
@@ -138,6 +179,156 @@ let runSelectorMode = (
   writeOutput(ctx, options, ctx.deps.stringifyStrings(contents))
 }
 
+/** Runs URL mode: fetch multiple pages, extract from each, merge results. */
+let runUrlMode = async (
+  ctx: AppContext.appContext,
+  urlTemplate: string,
+  options: ParseCli.parseOptions,
+) => {
+  // Parse URL template
+  let urls = switch ctx.deps.parseTemplate(urlTemplate)->ResultX.mapError(AppError.mapTemplateError) {
+  | Error(err) => {
+      exitWithError(ctx, err)
+      []
+    }
+  | Ok(urls) => urls
+  }
+
+  // Exit early if no URLs
+  if Array.length(urls) == 0 {
+    exitWithError(ctx, AppError.CliError("URL template produced no URLs"))
+  } else {
+    // Start timing
+    let startTime = ctx.deps.performanceNow()
+
+    // Fetch all pages
+    let userAgent = `res-scrapy/${ctx.deps.getCliVersion()}`
+    let fetchOptions: Fetcher.fetchOptions = {
+      concurrency: options.concurrency,
+      userAgent,
+    }
+    let fetchResults = await ctx.deps.fetchAll(urls, fetchOptions)
+
+    // Initialize stats and output accumulator
+    let stats = ref(Reporter.empty())
+    let allResults = ref([])
+
+    // Process each fetch result
+    fetchResults->Array.forEach(({url, result}) => {
+      switch result {
+      | Error(fetchErr) => {
+          let reason = switch fetchErr {
+          | NetworkError(msg) => msg
+          | Timeout(msg) => msg
+          | HttpError(status, msg) => `HTTP ${Int.toString(status)}: ${msg}`
+          | ParseError(msg) => msg
+          }
+          stats := Reporter.recordFailure(stats.contents, ~url, ~reason)
+        }
+      | Ok(html) => {
+          // Parse document
+          switch parseDocumentSafely(ctx, html) {
+          | Error(_err) => {
+              stats := Reporter.recordFailure(stats.contents, ~url, ~reason="Failed to parse HTML")
+            }
+          | Ok(document) => {
+              // Extract data
+              let extractionResult = switch ExtractionMode.fromOptions(options) {
+              | TableMode(selector) => ctx.deps.extractTable(document, selector)->Result.map(ctx.deps.stringifyTableRows)
+              | SchemaMode(source) =>
+                loadSchema(ctx, source)
+                ->ResultX.flatMap(schema => ctx.deps.applySchema(document, schema))
+                ->Result.map(ctx.deps.stringifyJson)
+                ->Result.mapError(_ => "Schema error")
+              | SelectorMode({selector, extract: extractMode, mode}) => {
+                  let extract = (el: Document.element) =>
+                    switch extractMode {
+                    | OuterHtml => Document.outerHTML(ctx.deps.documentOps, el)
+                    | InnerHtml => Document.innerHTML(ctx.deps.documentOps, el)
+                    | Text => Document.textContent(ctx.deps.documentOps, el)
+                    | Attribute(name) =>
+                      Document.getAttribute(ctx.deps.documentOps, el, name)->Option.getOr("")
+                    }
+                  let contents: array<string> = switch mode {
+                  | Single =>
+                    switch Document.querySelector(ctx.deps.documentOps, document, selector) {
+                    | None => []
+                    | Some(el) => [extract(el)]
+                    }
+                  | Multiple =>
+                    Document.querySelectorAll(ctx.deps.documentOps, document, selector)
+                    ->Iter.values
+                    ->Iter.map(el => extract(el))
+                    ->Iter.toArray
+                  }
+                  Ok(ctx.deps.stringifyStrings(contents))
+                }
+              }
+
+              switch extractionResult {
+              | Error(_err) => {
+                  stats := Reporter.recordFailure(stats.contents, ~url, ~reason="Extraction failed")
+                }
+              | Ok(jsonText) => {
+                  // Parse JSON to count rows
+                  switch NodeJsBinding.jsonParse(jsonText) {
+                  | Some(json) => {
+                      let rowCount = countRows(json)
+                      stats := Reporter.recordSuccess(stats.contents, ~rowCount)
+                      
+                      // For streaming output, write immediately
+                      switch (options.output, options.outputFormat) {
+                      | (None, _) => writeNdjsonToStdout(ctx, json) // stdout always streams NDJSON
+                      | (Some(path), Ndjson) => appendNdjsonToFile(ctx, path, json) // file NDJSON streams
+                      | (Some(_), Json) => allResults := Array.concat(allResults.contents, extractJsonArray(json)) // buffer for JSON
+                      }
+                    }
+                  | None => {
+                      stats := Reporter.recordFailure(stats.contents, ~url, ~reason="Failed to parse extraction result")
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    })
+
+    // Calculate duration
+    let endTime = ctx.deps.performanceNow()
+    let duration = endTime -. startTime
+    stats := Reporter.setDuration(stats.contents, duration)
+
+    // Write buffered results for file JSON output
+    switch (options.output, options.outputFormat) {
+    | (Some(path), Json) => {
+        let json = JSON.Encode.array(allResults.contents)
+        let jsonText = ctx.deps.stringifyJson(json)
+        switch OutputWriter.write(
+          ~target=File(path),
+          ~format=Json,
+          ~jsonText,
+          ~writeFile=ctx.deps.writeFile,
+          ~out=ctx.io.out,
+        ) {
+        | Ok(()) => ()
+        | Error(err) => exitWithError(ctx, err)
+        }
+      }
+    | _ => () // Already streamed
+    }
+
+    // Print report to stderr
+    Reporter.printReport(stats.contents, ~err=ctx.io.err)
+
+    // Exit code: 0 if any succeeded, 1 if all failed
+    if stats.contents.succeeded == 0 && stats.contents.failed > 0 {
+      ctx.io.exit(1)
+    }
+  }
+}
+
 let mainWithContext: AppContext.appContext => promise<unit> = async ctx => {
   try {
     let parsed = parseCliSafely(ctx)
@@ -145,18 +336,29 @@ let mainWithContext: AppContext.appContext => promise<unit> = async ctx => {
     | Error(err) => exitWithError(ctx, err)
     | Ok(options) => {
         emitWarnings(ctx, options)
-        let stdinResult = await ctx.deps.readStdin()
-        switch stdinResult->ResultX.mapError(AppError.mapStdInError) {
-        | Error(err) => exitWithError(ctx, err)
-        | Ok(html) => {
-            switch parseDocumentSafely(ctx, html) {
+        
+        // Check if URL mode or stdin mode
+        switch options.url {
+        | Some(urlTemplate) => {
+            // URL mode: fetch pages and extract
+            await runUrlMode(ctx, urlTemplate, options)
+          }
+        | None => {
+            // Stdin mode: existing behavior
+            let stdinResult = await ctx.deps.readStdin()
+            switch stdinResult->ResultX.mapError(AppError.mapStdInError) {
             | Error(err) => exitWithError(ctx, err)
-            | Ok(document) =>
-              switch ExtractionMode.fromOptions(options) {
-              | TableMode(selector) => runTableMode(ctx, document, selector, options)
-              | SchemaMode(source) => runSchemaMode(ctx, document, source, options)
-              | SelectorMode({selector, extract, mode}) =>
-                runSelectorMode(ctx, document, ~selector, ~extractMode=extract, ~mode, ~options)
+            | Ok(html) => {
+                switch parseDocumentSafely(ctx, html) {
+                | Error(err) => exitWithError(ctx, err)
+                | Ok(document) =>
+                  switch ExtractionMode.fromOptions(options) {
+                  | TableMode(selector) => runTableMode(ctx, document, selector, options)
+                  | SchemaMode(source) => runSchemaMode(ctx, document, source, options)
+                  | SelectorMode({selector, extract, mode}) =>
+                    runSelectorMode(ctx, document, ~selector, ~extractMode=extract, ~mode, ~options)
+                  }
+                }
               }
             }
           }

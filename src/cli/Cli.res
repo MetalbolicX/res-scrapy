@@ -45,16 +45,18 @@ let getCliVersion: unit => string = () => {
 let showHelp: unit => unit = () => {
   Console.log(`
   Usage: res-scrapy [options]
-    -v, --version     Display CLI version
-    -h, --help        Display this help message
-    -s, --selector    Specify a CSS selector to extract data
-    -m, --mode        Extract multiple results (single by default)
-    -e, --extract     What to extract: outerHtml (default), innerHtml, text, or attr:<name>
-    -c, --schema      Specify the schema to use
-    -p, --schemaPath  Specify the path to the schema
-    -t, --table       Extract a table as JSON; pair with --selector to target a specific table (defaults to "table")
-    -o, --output      Write output to a file instead of stdout
-    -f, --format      Output format for file writes: json (default) or ndjson
+    -v, --version      Display CLI version
+    -h, --help         Display this help message
+    -s, --selector     Specify a CSS selector to extract data
+    -m, --mode         Extract multiple results (single by default)
+    -e, --extract      What to extract: outerHtml (default), innerHtml, text, or attr:<name>
+    -c, --schema       Specify the schema to use
+    -p, --schemaPath   Specify the path to the schema
+    -t, --table        Extract a table as JSON; pair with --selector to target a specific table (defaults to "table")
+    -o, --output       Write output to a file instead of stdout
+    -f, --format       Output format for file writes: json (default) or ndjson
+    -u, --url          URL or URL template (e.g., https://site.com/page={1..10})
+    -j, --concurrency  Max concurrent fetches (default: 5, max: 20)
   `)
   NodeJsBinding.Process.exit(0)
 }
@@ -83,6 +85,8 @@ let parse: unit => NodeJsBinding.Util.cliValues = () => {
     ("table", {type_: "boolean", short: "t", default: Bool(false)}),
     ("output", {type_: "string", short: "o"}),
     ("format", {type_: "string", short: "f", default: String("json")}),
+    ("url", {type_: "string", short: "u"}),
+    ("concurrency", {type_: "string", short: "j", default: String("5")}),
     ("help", {type_: "boolean", short: "h"}),
   ])
 

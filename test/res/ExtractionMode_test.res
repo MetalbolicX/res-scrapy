@@ -8,6 +8,8 @@ test("ExtractionMode.fromOptions picks table mode", () => {
     mode: Single,
     schemaSource: TableSelector("table.users"),
     outputFormat: Json,
+    warnings: [],
+    concurrency: 5,
   }
 
   switch ExtractionMode.fromOptions(options) {
@@ -23,6 +25,8 @@ test("ExtractionMode.fromOptions picks schema mode", () => {
     mode: Single,
     schemaSource: InlineJson("{}"),
     outputFormat: Json,
+    warnings: [],
+    concurrency: 5,
   }
 
   switch ExtractionMode.fromOptions(options) {
@@ -37,6 +41,8 @@ test("ExtractionMode.fromOptions picks selector mode", () => {
     extract: Text,
     mode: Multiple,
     outputFormat: Json,
+    warnings: [],
+    concurrency: 5,
   }
 
   switch ExtractionMode.fromOptions(options) {

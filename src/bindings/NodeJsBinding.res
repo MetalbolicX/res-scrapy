@@ -79,7 +79,7 @@ module Util = {
   /**
     * Parsed flag values returned by `parseArgs`.
     * All fields are optional because flags may be absent from the invocation.
-   */
+    */
   type cliValues = {
     help?: bool,
     version?: bool,
@@ -91,6 +91,8 @@ module Util = {
     table?: bool,
     output?: string,
     format?: string,
+    url?: string,
+    concurrency?: string,
   }
 
   /**
@@ -189,4 +191,43 @@ module Iter = {
   @send external reduce1: (t<'a>, ('a, 'a) => 'a) => 'a = "reduce"
   @send @return(nullable) external find: (t<'a>, 'a => bool) => option<'a> = "find"
   @send external flatMap: (t<'a>, 'a => t<'b>) => t<'b> = "flatMap"
+}
+
+/** Bindings to the global `fetch` API (available in Node.js >= 18). */
+module Fetch = {
+  /** AbortSignal for fetch timeout control. */
+  module AbortSignal = {
+    type t
+    type controller
+    
+    @new external makeController: unit => controller = "AbortController"
+    @get external signal: controller => t = "signal"
+    @send external abort: controller => unit = "abort"
+  }
+
+  /** Represents an HTTP response from `fetch`. */
+  type response = {
+    ok: bool,
+    status: int,
+    statusText: string,
+  }
+
+  /** Extracts the response body as text. */
+  @send external text: response => promise<string> = "text"
+
+  /** Configuration object for fetch requests. */
+  type options = {
+    method?: string,
+    headers?: dict<string>,
+    signal?: AbortSignal.t,
+  }
+
+  /** Performs an HTTP request using the global `fetch` API. */
+  @val external fetch: (string, option<options>) => promise<response> = "fetch"
+}
+
+/** Bindings to `performance.now()` for high-resolution timing. */
+module Performance = {
+  /** Returns the current high-resolution timestamp in milliseconds since time origin. */
+  @val @scope("performance") external now: unit => float = "now"
 }

@@ -5,6 +5,8 @@ type appError =
   | ExtractionError(string)
   | FileError(string)
   | WriteError(string)
+  | FetchError(string)
+  | TemplateError(string)
 
 let mapStdInError: StdIn.stdInError => appError = err =>
   switch err {
@@ -18,6 +20,8 @@ let mapParseError: ParseCli.parseError => appError = err =>
   | MissingSelector(msg) => CliError(msg)
   | ParseError({message}) => CliError(message)
   | NoMatches({message}) => CliError(message)
+  | InvalidConcurrency(msg) => CliError(msg)
+  | InvalidUrlMode(msg) => CliError(msg)
   }
 
 let mapSchemaError: FieldTypes.schemaError => appError = err =>
@@ -33,6 +37,21 @@ let mapSchemaError: FieldTypes.schemaError => appError = err =>
   | FieldTypes.ExtractionError(msg) => ExtractionError(msg)
   }
 
+let mapTemplateError: TemplateParser.parseError => appError = err =>
+  switch err {
+  | InvalidSyntax(msg) => TemplateError(msg)
+  | InvalidRange(msg) => TemplateError(msg)
+  | MultipleTemplates(msg) => TemplateError(msg)
+  }
+
+let mapFetchError: Fetcher.fetchError => appError = err =>
+  switch err {
+  | NetworkError(msg) => FetchError(msg)
+  | Timeout(msg) => FetchError(msg)
+  | HttpError(status, msg) => FetchError(`HTTP ${Int.toString(status)}: ${msg}`)
+  | ParseError(msg) => FetchError(msg)
+  }
+
 let toMessage: appError => string = err =>
   switch err {
   | CliError(msg)
@@ -40,5 +59,7 @@ let toMessage: appError => string = err =>
   | SchemaError(msg)
   | ExtractionError(msg)
   | FileError(msg)
-  | WriteError(msg) => msg
+  | WriteError(msg)
+  | FetchError(msg)
+  | TemplateError(msg) => msg
   }

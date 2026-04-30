@@ -10,6 +10,10 @@ type dependencies = {
   stringifyJson: JSON.t => string,
   stringifyTableRows: array<dict<string>> => string,
   stringifyStrings: array<string> => string,
+  parseTemplate: string => result<array<string>, TemplateParser.parseError>,
+  fetchAll: (array<string>, Fetcher.fetchOptions) => promise<array<Fetcher.fetchResult>>,
+  getCliVersion: unit => string,
+  performanceNow: unit => float,
 }
 
 type io = {

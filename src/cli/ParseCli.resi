@@ -21,11 +21,15 @@ type parseOptions = {
   output?: string,
   outputFormat: outputFormat,
   warnings: array<string>,
+  url?: string,
+  concurrency: int,
 }
 
 type parseError =
   | MissingSelector(string)
   | ParseError({message: string, details: option<JsExn.t>})
   | NoMatches({message: string, selector: string})
+  | InvalidConcurrency(string)
+  | InvalidUrlMode(string)
 
 let runArgsValidation: NodeJsBinding.Util.cliValues => result<parseOptions, parseError>

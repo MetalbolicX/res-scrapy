@@ -10,6 +10,10 @@ type dependencies = {
   stringifyJson: JSON.t => string,
   stringifyTableRows: array<dict<string>> => string,
   stringifyStrings: array<string> => string,
+  parseTemplate: string => result<array<string>, TemplateParser.parseError>,
+  fetchAll: (array<string>, Fetcher.fetchOptions) => promise<array<Fetcher.fetchResult>>,
+  getCliVersion: unit => string,
+  performanceNow: unit => float,
 }
 
 type io = {
@@ -37,6 +41,10 @@ let production: appContext = {
     stringifyJson: NodeJsBinding.jsonStringify,
     stringifyTableRows: NodeJsBinding.jsonStringify,
     stringifyStrings: NodeJsBinding.jsonStringify,
+    parseTemplate: TemplateParser.parse,
+    fetchAll: Fetcher.fetchAll,
+    getCliVersion: Cli.getCliVersion,
+    performanceNow: NodeJsBinding.Performance.now,
   },
   io: {
     out: Console.log,
