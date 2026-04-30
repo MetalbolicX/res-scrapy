@@ -9,7 +9,8 @@ type stats = {
   failed: int,
   rowsExtracted: int,
   durationMs: float,
-  failedUrls: array<failedUrl>,
+  /** Accumulated in reverse order for O(1) prepend; reversed at print time. */
+  failedUrls: list<failedUrl>,
 }
 
 let empty = () => {
@@ -18,7 +19,7 @@ let empty = () => {
   failed: 0,
   rowsExtracted: 0,
   durationMs: 0.0,
-  failedUrls: [],
+  failedUrls: list{},
 }
 
 let recordSuccess = (stats, ~rowCount) => {
@@ -35,7 +36,8 @@ let recordFailure = (stats, ~url, ~reason) => {
     ...stats,
     attempted: stats.attempted + 1,
     failed: stats.failed + 1,
-    failedUrls: Array.concat(stats.failedUrls, [{url, reason}]),
+    /** O(1) prepend via list cons; reversed once at print time. */
+    failedUrls: list{{url, reason}, ...stats.failedUrls},
   }
 }
 
@@ -57,7 +59,9 @@ let printReport = (stats, ~err) => {
   if stats.failed > 0 {
     err("")
     err("  Failed URLs:")
-    stats.failedUrls->Array.forEach(failed => {
+    stats.failedUrls
+    ->List.reverse
+    ->List.forEach(failed => {
       err(`    ${failed.url}  → ${failed.reason}`)
     })
   }

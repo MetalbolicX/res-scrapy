@@ -381,16 +381,17 @@ res-scrapy \
 
 This expands to `page-001.html`, `page-002.html`, … `page-050.html`.
 
-### 4. Concurrency control
+### 4. Concurrency control & Rate Limiting
 
-Use `-j` / `--concurrency` to control how many pages are fetched simultaneously. Default is 5, max is 20.
+Use `-j` / `--concurrency` to control how many pages are fetched simultaneously (default is 5, max is 20).
+Use `--delay` to ensure a minimum gap (in milliseconds) between request starts, avoiding rate limits.
 
 ```sh
 # Faster scraping (20 concurrent fetches)
 res-scrapy -u 'https://site.com/page-{1..100}.html' -s 'h2' -e text -m -j 20
 
-# Polite scraping (2 concurrent fetches)
-res-scrapy -u 'https://site.com/page-{1..100}.html' -s 'h2' -e text -m -j 2
+# Polite scraping (5 concurrent, but force 500ms between each request start)
+res-scrapy -u 'https://site.com/page-{1..100}.html' -s 'h2' -e text -m --delay 500
 ```
 
 ### 5. Save merged results to a file
@@ -412,7 +413,17 @@ File output defaults to JSON (a single merged array). Use `--format ndjson` to s
 - A report of failed URLs is printed to **stderr**
 - Exit code is **0** if any page succeeded, **1** if all failed
 
-### 7. Real-world example
+### 8. Custom Headers & Auth
+
+You can pass custom headers or cookies for protected sites:
+
+```sh
+res-scrapy \
+  --url 'https://site.com/api/data-{1..5}' \
+  --header 'Authorization: Bearer token123' \
+  --cookie 'session_id=abc456' \
+  -s '.item' -e text -m
+```
 
 Scrape all 1000 book titles from books.toscrape.com (50 pages × 20 books):
 

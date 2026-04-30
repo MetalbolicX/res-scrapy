@@ -15,8 +15,14 @@ Quick reference for the flags at your disposal:
 - `-c` (`--schema`) — inline JSON schema for structured extraction.
 - `-p` (`--schemaPath`) — path to a JSON schema file for structured extraction.
 - `-t` (`--table`) — extract an HTML `<table>` as a JSON array of row objects.
- - `-o` (`--output`) — write results to a file instead of stdout.
- - `-f` (`--format`) — output format when writing to a file: `json` (default) or `ndjson` (newline-delimited JSON).
+ - `-u` (`--url`) — URL template for fetching pages directly (e.g. `https://site.com/page-{1..10}.html`).
+- `-j` (`--concurrency`) — max concurrent fetches in URL mode (default: 5).
+- `--user-agent` — custom User-Agent header for URL mode.
+- `--timeout` — request timeout in seconds (default: 30).
+- `--retry` — max retries on failure (default: 3).
+- `--delay` — minimum delay between request starts in ms.
+- `--header` — custom HTTP header in "Key: Value" format (repeatable).
+- `--cookie` — cookie value (repeatable, sugar for `--header`).
 
 > [!Note] The CLI reads HTML from stdin and writes JSON to stdout. Many examples below use `echo`/`printf` or file redirection to demonstrate usage. Use `--output/-o` to write results to a file; when writing to a file you can control the file format with `--format/-f` (`json` or `ndjson`). The `--format` flag is ignored when `--output` is not provided — stdout always uses the JSON array format.
 

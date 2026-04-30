@@ -21,7 +21,8 @@ type stats = {
   failed: int,
   rowsExtracted: int,
   durationMs: float,
-  failedUrls: array<failedUrl>,
+  /** Stored in reverse order (O(1) prepend); reversed at print time. */
+  failedUrls: list<failedUrl>,
 }
 
 /**
