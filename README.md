@@ -4,13 +4,11 @@
   <img src="./docs/assets/logo.svg" alt="VanRS Logo" width="200" height="200" />
 </div>
 
+> **The CLI tool that turns HTML into structured JSON with zero code.**
+
 [![npm version](https://img.shields.io/npm/v/res-scrapy.svg)](https://www.npmjs.com/package/res-scrapy)
 ![Node.js](https://img.shields.io/badge/node->=22.0.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
-
-> **The CLI tool that turns HTML into structured JSON with zero code.**
-
-Extract data from any HTML source—websites, files, or API responses—using simple CSS selectors or powerful JSON schemas. Built with ReScript for reliability and speed.
 
 ## Why res-scrapy?
 
