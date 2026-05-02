@@ -36,49 +36,102 @@ npx res-scrapy -h
 > [!NOTE]
 > Requirements: Node.js >= 22.0.0
 
-## Quick Start
+## Quick Start Examples
+
+### 1. Extract text with a CSS selector
 
 ```bash
 # Extract text from the first <h1>
 curl -s https://example.com | res-scrapy -s 'h1' -e text
+# ["Welcome to Example"]
+```
 
-# Extract all links
+### 2. Extract all links
+
+```bash
 curl -s https://example.com | res-scrapy -s 'a' -m -e 'attr:href'
+# ["https://example.com/about", "https://example.com/contact"]
+```
 
-# Extract an HTML table to JSON
-curl -s https://example.com | res-scrapy -t
+### 3. Scrape multiple pages with URL templates
 
-# Multi-page scrape with rate limiting & custom UA
+```bash
 res-scrapy \
-  --url 'https://books.toscrape.com/catalogue/page-{1..50}.html' \
-  --user-agent 'MyBot/1.0' --delay 200 --timeout 15 \
-  -s 'h3' -e text -m -j 20
+ --url 'https://books.toscrape.com/catalogue/page-{1..50}.html' \
+ --user-agent 'MyBot/1.0' --delay 200 --timeout 15 \
+ -s 'h3' -e text -m -j 20
+```
+
+### 4. Multi-page URL ranges: {start..end}, with concurrency and output options
+
+```bash
+res-scrapy --url 'https://books.toscrape.com/catalogue/page-{1..5}.html' -s 'h3' -m --output books.json
 ```
 
 ## CLI Reference
 
 ```
+
 Usage: res-scrapy [options]
 
 Options:
-  -v, --version           Display CLI version
-  -h, --help              Display help message
-  -s, --selector          CSS selector to target element(s)
-  -m, --mode              Extract multiple results (single by default)
-  -e, --extract           What to extract: outerHtml, innerHtml, text, or attr:<name>
-  -c, --schema            Inline JSON schema for structured extraction
-  -p, --schemaPath        Path to JSON schema file
-  -t, --table             Extract HTML table as JSON array
-  -o, --output            Write results to a file instead of stdout
-  -f, --format            Output format for file writes: json (default) or ndjson
-  -u, --url               URL template (e.g. "https://site.com/page-{1..10}.html")
-  -j, --concurrency       Max concurrent fetches (default: 5, max: 20)
-      --user-agent        Custom User-Agent header (default: "res-scrapy/{version}")
-      --timeout           Request timeout in seconds (default: 30, min: 1)
-      --retry             Max retries on failure (default: 3, min: 1)
-      --delay             Minimum delay between request starts in ms (default: 0)
-      --header            Custom HTTP header in "Key: Value" format (repeatable)
-      --cookie            Cookie value (repeatable, sugar for --header)
+-v, --version Display CLI version
+-h, --help Display help message
+-s, --selector CSS selector to target element(s)
+-m, --mode Extract multiple results (single by default)
+-e, --extract What to extract: outerHtml, innerHtml, text, or attr:<name>
+-c, --schema Inline JSON schema for structured extraction
+-p, --schemaPath Path to JSON schema file
+-t, --table Extract HTML table as JSON array
+-o, --output Write results to a file instead of stdout
+-f, --format Output format for file writes: json (default) or ndjson
+-u, --url URL template (e.g. "https://site.com/page-{1..10}.html")
+-j, --concurrency Max concurrent fetches (default: 5, max: 20)
+--user-agent Custom User-Agent header (default: "res-scrapy/{version}")
+--timeout Request timeout in seconds (default: 30, min: 1)
+--retry Max retries on failure (default: 3, min: 1)
+--delay Minimum delay between request starts in ms (default: 0)
+--header Custom HTTP header in "Key: Value" format (repeatable)
+--cookie Cookie value (repeatable, sugar for --header)
+```
+
+## Key Features
+
+### 10 Field Types for Semi-Structured Data Extraction
+
+| Type        | Purpose                   | Example Use Case               |
+| ----------- | ------------------------- | ------------------------------ |
+| `text`      | Extract text content      | Product names, descriptions    |
+| `attribute` | Extract HTML attributes   | `href`, `src`, `data-*`        |
+| `html`      | Extract raw HTML markup   | Preserving formatting          |
+| `number`    | Parse numeric values      | Prices with currency stripping |
+| `boolean`   | Convert to true/false     | Stock status, availability     |
+| `datetime`  | Parse and normalize dates | Published dates, timestamps    |
+| `url`       | Extract and resolve URLs  | Absolute links from relative   |
+| `json`      | Parse embedded JSON-LD    | Schema.org data                |
+| `list`      | Collect multiple values   | Tags, categories               |
+| `count`     | Count matching elements   | Review counts, item totals     |
+
+### Table Mode
+
+Quickly convert HTML tables to JSON without writing schemas:
+
+```bash
+cat page.html | res-scrapy --table --selector '#data-table'
+```
+
+### Row-Based Extraction (Recommended)
+
+Use `config.rowSelector` to extract repeating items like product cards or search results. Each row becomes a JSON object with fields evaluated relative to that row.
+
+```json
+{
+  "config": { "rowSelector": ".job-card" },
+  "fields": {
+    "title": { "selector": "h2", "type": "text" },
+    "company": { "selector": ".company", "type": "text" }
+  }
+}
 ```
 
 ## Documentation
@@ -91,6 +144,8 @@ Options:
 - [Changelog](./CHANGELOG.md)
 
 ## Development
+
+Clone and build from source:
 
 ```bash
 git clone https://github.com/MetalbolicX/res-scrapy.git
