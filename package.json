@@ -60,8 +60,8 @@
   "devDependencies": {
     "rescript": "^12.2.0",
     "rescript-test": "^8.0.0",
-    "rolldown": "1.0.0-rc.15",
+    "rolldown": "1.0.0-rc.18",
     "rollup-plugin-esbuild": "^6.2.1",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.3"
   }
 }
