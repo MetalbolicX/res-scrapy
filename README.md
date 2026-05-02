@@ -6,9 +6,12 @@
 
 > **The CLI tool that turns HTML into structured JSON with zero code.**
 
-[![npm version](https://img.shields.io/npm/v/res-scrapy.svg)](https://www.npmjs.com/package/res-scrapy)
-![Node.js](https://img.shields.io/badge/node->=22.0.0-blue)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+<p align="center">
+  <a href="https://www.npmjs.com/package/res-scrapy"><img src="https://img.shields.io/npm/v/res-scrapy.svg" alt="npm version"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node->=22.0.0-272e33?logo=node.js&logoColor=white" alt="Node.js"></a>
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
+  <img src="https://img.shields.io/badge/ReScript-12.2.0-ff69ce?logo=rescript&logoColor=white" alt="ReScript">
+</p>
 
 ## Why res-scrapy?
 
