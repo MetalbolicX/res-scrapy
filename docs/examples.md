@@ -344,22 +344,128 @@ Fetch data from paginated websites without piping each page through stdin. URL t
 
 ### 1. Basic range `{start..end}`
 
-Scrape [books.toscrape](https://books.toscrape.com) — 50 pages (1 to 50):
+Sample first page HTML from books.toscrape.com:
+
+```html
+<article class="product_pod">
+  <div class="image_container">
+    <a href="a-light-in-the-attic_1000/index.html">
+      <img src="../media/cache/2c/da/2cdad67c44b002e7ead0cc35693c0e8b.jpg" alt="A Light in the Attic">
+    </a>
+  </div>
+  <p class="star-rating Three">
+    <i class="icon-star"></i><i class="icon-star"></i><i class="icon-star"></i>...
+  </p>
+  <h3><a href="a-light-in-the-attic_1000/index.html" title="A Light in the Attic">A Light in the ...</a></h3>
+  <div class="product_price">
+    <p class="price_color">£51.77</p>
+    <p class="instock availability"><i class="icon-ok"></i>In stock</p>
+  </div>
+</article>
+```
+
+Command (single page, extract all `<h3>` text):
+
+```sh
+res-scrapy --url 'https://books.toscrape.com/catalogue/page-1.html' -s 'h3' -e text -m
+```
+
+Expected output (NDJSON):
+
+```json
+{"url":"https://books.toscrape.com/catalogue/page-1.html","result":["A Light in the ...","Tipping the Velvet","Soumission","Sharp Objects","Sapiens: A Brief History of Humankind","The Requiem Red","The Dirty Little Secrets of Getting Your Dream Job","The Coming Woman: A Novel Based on the Life of the Infamous Feminist, Victoria Woodhull","The Boys in the Boat: Nine Americans and Their Epic Quest for Gold at the 1936 Berlin Olympics","The Black Maria","Starving Hearts (Triangular Trade Trilogy, #1)","Shakespeare\u0027s Sonnets","Set Me Free","Scott Pilgrim\u0027s Precious Little Life (Scott Pilgrim #1)","Rip it Up and Start Again","Our Band Could Be Your Life: Scenes from the American Indie Underground, 1981-1991","Olio","Mesaerion: The Best Science Fiction Stories 1800-1849",...]}
+```
+
+To get full titles (not truncated), use `title` attribute:
+
+```sh
+res-scrapy --url 'https://books.toscrape.com/catalogue/page-1.html' -s 'h3 a' -e 'attr:title' -m
+```
+
+Expected output:
+
+```json
+{"url":"https://books.toscrape.com/catalogue/page-1.html","result":["A Light in the Attic","Tipping the Velvet","Soumission","Sharp Objects","Sapiens: A Brief History of Humankind","The Requiem Red","The Dirty Little Secrets of Getting Your Dream Job","The Coming Woman: A Novel Based on the Life of the Infamous Feminist, Victoria Woodhull","The Boys in the Boat: Nine Americans and Their Epic Quest for Gold at the 1936 Berlin Olympics","The Black Maria","Starving Hearts (Triangular Trade Trilogy, #1)","Shakespeare\u0027s Sonnets","Set Me Free","Scott Pilgrim\u0027s Precious Little Life (Scott Pilgrim #1)","Rip it Up and Start Again","Our Band Could Be Your Life: Scenes from the American Indie Underground, 1981-1991","Olio","Mesaerion: The Best Science Fiction Stories 1800-1849",...]}
+```
+
+### 2. Extract prices (converting currency to number)
+
+```sh
+res-scrapy --url 'https://books.toscrape.com/catalogue/page-1.html' -s '.price_color' -e text -m
+```
+
+Expected output:
+
+```json
+{"url":"https://books.toscrape.com/catalogue/page-1.html","result":["£51.77","£53.74","£50.10","£47.82","£54.23","£22.65","£33.34","£17.93","£22.60","£52.15","£13.99","£20.66","£17.46","£52.29","£35.02","£57.25","£23.88","£37.59",...]}
+```
+
+### 3. Extract links (absolute URLs)
+
+```sh
+res-scrapy --url 'https://books.toscrape.com/catalogue/page-1.html' -s 'h3 a' -e 'attr:href' -m
+```
+
+Expected output:
+
+```json
+{"url":"https://books.toscrape.com/catalogue/page-1.html","result":["a-light-in-the-attic_1000/index.html","tipping-the-velvet_999/index.html","soumission_998/index.html",...]}
+```
+
+Note: Links are relative. For absolute URLs, prepend the base URL in post-processing.
+
+### 4. Schema-driven structured extraction
+
+Extract multiple fields per book (title, price, rating, stock, image, link):
 
 ```sh
 res-scrapy \
-  --url 'https://books.toscrape.com/catalogue/page-{1..50}.html' \
-  -s 'h3' -e text -m
+  --url 'https://books.toscrape.com/catalogue/page-1.html' \
+  --schema '{"config":{"rowSelector":".product_pod"},"fields":{"title":{"selector":"h3 a","type":"text","attribute":"title"},"price":{"selector":".price_color","type":"text"},"rating":{"selector":".star-rating","type":"attribute","attribute":"class"},"stock":{"selector":".instock","type":"text"},"image":{"selector":".image_container img","type":"attribute","attribute":"src"},"link":{"selector":"h3 a","type":"attribute","attribute":"href"}}}' \
+  -m
 ```
 
-Each page yields a row of results. Stdout (NDJSON):
+Expected output:
 
 ```json
-{"url":"https://books.toscrape.com/catalogue/page-1.html","result":["A Light in the Attic","Tipping the Velvet",...]}
-{"url":"https://books.toscrape.com/catalogue/page-2.html","result":["Sapiens","The Grand Design",...]}
+{"url":"https://books.toscrape.com/catalogue/page-1.html","result":[{"title":"A Light in the Attic","price":"£51.77","rating":"star-rating Three","stock":"In stock","image":"../media/cache/2c/da/2cdad67c44b002e7ead0cc35693c0e8b.jpg","link":"a-light-in-the-attic_1000/index.html"},{"title":"Tipping the Velvet","price":"£53.74","rating":"star-rating One","stock":"In stock","image":"../media/cache/26/0c/260c6ae16bce31c8f8c95daddd9f4a1c.jpg","link":"tipping-the-velvet_999/index.html"},...]}
 ```
 
-### 2. Range with step `{start..end..step}`
+### 5. Convert price to number with `stripNonNumeric`
+
+Use the `number` type with `stripNonNumeric: true` to convert "£51.77" → 51.77:
+
+```sh
+res-scrapy \
+  --url 'https://books.toscrape.com/catalogue/page-1.html' \
+  --schema '{"config":{"rowSelector":".product_pod"},"fields":{"title":{"selector":"h3 a","type":"text","attribute":"title"},"price":{"selector":".price_color","type":"number","numberOptions":{"stripNonNumeric":true}}}' \
+  -m
+```
+
+Expected output:
+
+```json
+{"url":"https://books.toscrape.com/catalogue/page-1.html","result":[{"title":"A Light in the Attic","price":51.77},{"title":"Tipping the Velvet","price":53.74},{"title":"Soumission","price":50.1},...]}
+```
+
+### 6. Parse rating from CSS class
+
+The rating is stored in the class attribute (e.g., "star-rating Three"). Extract the word:
+
+```sh
+res-scrapy \
+  --url 'https://books.toscrape.com/catalogue/page-1.html' \
+  --schema '{"config":{"rowSelector":".product_pod"},"fields":{"title":{"selector":"h3 a","type":"text","attribute":"title"},"rating":{"selector":".star-rating","type":"text"}}}' \
+  -m
+```
+
+Expected output:
+
+```json
+{"url":"https://books.toscrape.com/catalogue/page-1.html","result":[{"title":"A Light in the Attic","rating":"Three"},{"title":"Tipping the Velvet","rating":"One"},{"title":"Sapiens: A Brief History of Humankind","rating":"Five"},...]}
+```
+
+### 7. Range with step `{start..end..step}`
 
 Fetch every 10th page:
 
@@ -369,7 +475,7 @@ res-scrapy \
   -s 'h2' -e text -m
 ```
 
-### 3. Zero-padded ranges `{001..050}`
+### 8. Zero-padded ranges `{001..050}`
 
 When URLs use zero-padded numbers (e.g. `page-001.html`):
 
@@ -381,7 +487,7 @@ res-scrapy \
 
 This expands to `page-001.html`, `page-002.html`, … `page-050.html`.
 
-### 4. Concurrency control & Rate Limiting
+### 9. Concurrency control & Rate Limiting
 
 Use `-j` / `--concurrency` to control how many pages are fetched simultaneously (default is 5, max is 20).
 Use `--delay` to ensure a minimum gap (in milliseconds) between request starts, avoiding rate limits.
@@ -394,7 +500,7 @@ res-scrapy -u 'https://site.com/page-{1..100}.html' -s 'h2' -e text -m -j 20
 res-scrapy -u 'https://site.com/page-{1..100}.html' -s 'h2' -e text -m --delay 500
 ```
 
-### 5. Save merged results to a file
+### 10. Save merged results to a file
 
 Combine all pages into a single JSON file:
 
@@ -407,7 +513,7 @@ res-scrapy \
 
 File output defaults to JSON (a single merged array). Use `--format ndjson` to stream one page-result per line instead.
 
-### 6. Error behavior
+### 11. Error behavior
 
 - Failed pages are **skipped** (not retried after 3 attempts with backoff)
 - A report of failed URLs is printed to **stderr**
