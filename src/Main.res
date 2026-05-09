@@ -131,6 +131,53 @@ let runSchemaMode = (
   }
 }
 
+/** Extracts element content from a document using selector + extract mode.
+  * Returns array of strings for Single/Multiple mode. */
+let extractElements: (
+  AppContext.appContext,
+  Document.document,
+  string,
+  ParseCli.extractMode,
+  ParseCli.mode,
+) => result<array<string>, string> = (ctx, document, selector, extractMode, mode) => {
+  let extract = (el: Document.element) =>
+    switch extractMode {
+    | OuterHtml => Document.outerHTML(ctx.deps.documentOps, el)
+    | InnerHtml => Document.innerHTML(ctx.deps.documentOps, el)
+    | Text => Document.textContent(ctx.deps.documentOps, el)
+    | Attribute(name) =>
+      Document.getAttribute(ctx.deps.documentOps, el, name)->Option.getOr("")
+    }
+  switch mode {
+  | Single =>
+    switch Document.querySelector(ctx.deps.documentOps, document, selector) {
+    | None => Ok([])
+    | Some(el) => Ok([extract(el)])
+    }
+  | Multiple =>
+    Ok(
+      Document.querySelectorAll(ctx.deps.documentOps, document, selector)
+      ->Iter.values
+      ->Iter.map(el => extract(el))
+      ->Iter.toArray,
+    )
+  }
+}
+
+let runSelectorMode = (
+  ctx: AppContext.appContext,
+  document: Document.document,
+  ~selector: string,
+  ~extractMode: ParseCli.extractMode,
+  ~mode: ParseCli.mode,
+  ~options: ParseCli.parseOptions,
+) => {
+  switch extractElements(ctx, document, selector, extractMode, mode) {
+  | Error(msg) => exitWithError(ctx, AppError.ExtractionError(msg))
+  | Ok(contents) => writeOutput(ctx, options, ctx.deps.stringifyStrings(contents))
+  }
+}
+
 let runTableMode = (
   ctx: AppContext.appContext,
   document: Document.document,
@@ -143,14 +190,15 @@ let runTableMode = (
   }
 }
 
-let runSelectorMode = (
-  ctx: AppContext.appContext,
-  document: Document.document,
-  ~selector: string,
-  ~extractMode: ParseCli.extractMode,
-  ~mode: ParseCli.mode,
-  ~options: ParseCli.parseOptions,
-) => {
+/** Extracts element content from a document using selector + extract mode.
+  * Returns array of strings for Single/Multiple mode. */
+let extractElements: (
+  AppContext.appContext,
+  Document.document,
+  string,
+  ParseCli.extractMode,
+  ParseCli.mode,
+) => result<array<string>, string> = (ctx, document, selector, extractMode, mode) => {
   let extract = (el: Document.element) =>
     switch extractMode {
     | OuterHtml => Document.outerHTML(ctx.deps.documentOps, el)
@@ -159,19 +207,20 @@ let runSelectorMode = (
     | Attribute(name) =>
       Document.getAttribute(ctx.deps.documentOps, el, name)->Option.getOr("")
     }
-  let contents: array<string> = switch mode {
+  switch mode {
   | Single =>
     switch Document.querySelector(ctx.deps.documentOps, document, selector) {
-    | None => []
-    | Some(el) => [extract(el)]
+    | None => Ok([])
+    | Some(el) => Ok([extract(el)])
     }
   | Multiple =>
-    Document.querySelectorAll(ctx.deps.documentOps, document, selector)
-    ->Iter.values
-    ->Iter.map(el => extract(el))
-    ->Iter.toArray
+    Ok(
+      Document.querySelectorAll(ctx.deps.documentOps, document, selector)
+      ->Iter.values
+      ->Iter.map(el => extract(el))
+      ->Iter.toArray,
+    )
   }
-  writeOutput(ctx, options, ctx.deps.stringifyStrings(contents))
 }
 
 /** Runs URL mode: fetch multiple pages, extract from each, merge results. */
@@ -210,7 +259,8 @@ let runUrlMode = async (
 
     // Initialize stats, output accumulator, and pending write promises
     let stats = ref(Reporter.empty())
-    let allResults = ref([])
+    let allResults = ref(list{})
+    let totalRowCount = ref(0)
     let pendingWrites: ref<list<promise<unit>>> = ref(list{})
     let jsonOutputHitCap = ref(false)
 
@@ -241,29 +291,11 @@ let runUrlMode = async (
                 ->ResultX.flatMap(schema => ctx.deps.applySchema(document, schema))
                 ->Result.map(ctx.deps.stringifyJson)
                 ->Result.mapError(_ => "Schema error")
-              | SelectorMode({selector, extract: extractMode, mode}) => {
-                  let extract = (el: Document.element) =>
-                    switch extractMode {
-                    | OuterHtml => Document.outerHTML(ctx.deps.documentOps, el)
-                    | InnerHtml => Document.innerHTML(ctx.deps.documentOps, el)
-                    | Text => Document.textContent(ctx.deps.documentOps, el)
-                    | Attribute(name) =>
-                      Document.getAttribute(ctx.deps.documentOps, el, name)->Option.getOr("")
-                    }
-                  let contents: array<string> = switch mode {
-                  | Single =>
-                    switch Document.querySelector(ctx.deps.documentOps, document, selector) {
-                    | None => []
-                    | Some(el) => [extract(el)]
-                    }
-                  | Multiple =>
-                    Document.querySelectorAll(ctx.deps.documentOps, document, selector)
-                    ->Iter.values
-                    ->Iter.map(el => extract(el))
-                    ->Iter.toArray
+              | SelectorMode({selector, extract: extractMode, mode}) =>
+                  switch extractElements(ctx, document, selector, extractMode, mode) {
+                  | Error(msg) => Error(msg)
+                  | Ok(contents) => Ok(ctx.deps.stringifyStrings(contents))
                   }
-                  Ok(ctx.deps.stringifyStrings(contents))
-                }
               }
 
               switch extractionResult {
@@ -285,15 +317,13 @@ let runUrlMode = async (
                         if jsonOutputHitCap.contents {
                           () // Already at cap, discard rows silently
                         } else {
-                          let newTotal = allResults.contents->Array.length + (switch json {
-                            | JSON.Array(arr) => Array.length(arr)
-                            | _ => 1
-                          })
-                          if newTotal > 100_000 {
+                          let batchRows = countRows(json)
+                          if totalRowCount.contents + batchRows > 100_000 {
                             ctx.io.err("Warning: JSON output exceeds 100,000 rows; capping and continuing without this batch.")
                             jsonOutputHitCap := true
                           } else {
-                            allResults := Array.concat(allResults.contents, extractJsonArray(json))
+                            totalRowCount := totalRowCount.contents + batchRows
+                            allResults := list{extractJsonArray(json), ...allResults.contents}
                           }
                         }
                       }
@@ -324,7 +354,8 @@ let runUrlMode = async (
     // Write buffered results for file JSON output
     switch (options.output, options.outputFormat) {
     | (Some(path), Json) => {
-        let json = JSON.Encode.array(allResults.contents)
+        let flatResults = allResults.contents->List.reverse->List.toArray->Array.flat
+        let json = JSON.Encode.array(flatResults)
         let jsonText = ctx.deps.stringifyJson(json)
         switch await OutputWriter.writeAsync(
           ~target=File(path),

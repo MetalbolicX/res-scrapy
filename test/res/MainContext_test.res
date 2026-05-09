@@ -29,10 +29,6 @@ let throwError: string => 'a = %raw(`msg => {
   throw new Error(msg);
 }`)
 
-let asyncThrowError: string => promise<'a> = %raw(`msg => {
-  return Promise.reject(new Error(msg));
-}`)
-
 let asyncThrowSystemError: (string, string) => promise<'a> = %raw(`(code, msg) => {
   const err = new Error(msg);
   err.code = code;

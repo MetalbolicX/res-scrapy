@@ -68,7 +68,7 @@ let writeTextAsync = (
   | File(path) =>
     writeFile(path, text)
     ->Promise.then(_ => Promise.resolve(Ok(())))
-    ->Promise.catch(_ => Promise.resolve(Error(AppError.WriteError("Failed to write output file \"" ++ path ++ "\": unknown error"))))
+    ->Promise.catch(exn => Promise.resolve(Error(AppError.WriteError("Failed to write output file \"" ++ path ++ "\": " ++ ExnUtils.message(exn)))))
   }
 }
 
