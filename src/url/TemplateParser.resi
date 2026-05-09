@@ -22,6 +22,7 @@
 type parseError =
   | InvalidSyntax(string)
   | InvalidRange(string)
+  | UrlCountExceeded(int) // actual count, cap applied
 
 /**
   * Parses a URL template and expands it into an array of URLs.

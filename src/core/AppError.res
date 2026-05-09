@@ -45,6 +45,7 @@ let mapTemplateError: TemplateParser.parseError => appError = err =>
   switch err {
   | InvalidSyntax(msg) => TemplateError(msg)
   | InvalidRange(msg) => TemplateError(msg)
+  | UrlCountExceeded(_) as e => TemplateError(TemplateParser.parseErrorToMessage(e))
   }
 
 let mapFetchError: Fetcher.fetchError => appError = err =>

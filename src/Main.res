@@ -29,14 +29,15 @@ let writeNdjsonToStdout: (AppContext.appContext, JSON.t) => unit = (ctx, json) =
   })
 }
 
-/** Appends NDJSON rows to a file. */
-let appendNdjsonToFile: (AppContext.appContext, string, JSON.t) => unit = (ctx, path, json) => {
+/** Appends NDJSON rows to a file asynchronously. */
+let appendNdjsonToFile: (AppContext.appContext, string, JSON.t) => promise<unit> = async (ctx, path, json) => {
   let rows = extractJsonArray(json)
   let content = rows->Array.map(ctx.deps.stringifyJson)->Array.join("\n") ++ "\n"
   try {
-    ctx.deps.appendFile(path, content)
+    await ctx.deps.appendFile(path, content)
   } catch {
-  | _exn => ()
+  | exn =>
+    ctx.io.err(`Warning: Failed to append to output file "${path}": ${ExnUtils.message(exn)}`)
   }
 }
 
@@ -101,7 +102,7 @@ let writeOutput = (
     ~target=outputTargetFromOptions(options),
     ~format=options.outputFormat,
     ~jsonText,
-    ~writeFile=ctx.deps.writeFile,
+    ~writeFile=ctx.deps.writeFileSync,
     ~out=ctx.io.out,
   ) {
   | Ok(()) => ()
@@ -207,9 +208,11 @@ let runUrlMode = async (
     }
     let fetchResults = await ctx.deps.fetchAll(urls, fetchOptions)
 
-    // Initialize stats and output accumulator
+    // Initialize stats, output accumulator, and pending write promises
     let stats = ref(Reporter.empty())
     let allResults = ref([])
+    let pendingWrites: ref<list<promise<unit>>> = ref(list{})
+    let jsonOutputHitCap = ref(false)
 
     // Process each fetch result
     fetchResults->Array.forEach(({url, result}) => {
@@ -273,12 +276,26 @@ let runUrlMode = async (
                   | Some(json) => {
                       let rowCount = countRows(json)
                       stats := Reporter.recordSuccess(stats.contents, ~rowCount)
-                      
+
                       // For streaming output, write immediately
                       switch (options.output, options.outputFormat) {
                       | (None, _) => writeNdjsonToStdout(ctx, json) // stdout always streams NDJSON
-                      | (Some(path), Ndjson) => appendNdjsonToFile(ctx, path, json) // file NDJSON streams
-                      | (Some(_), Json) => allResults := Array.concat(allResults.contents, extractJsonArray(json)) // buffer for JSON
+                      | (Some(path), Ndjson) => pendingWrites := list{appendNdjsonToFile(ctx, path, json), ...pendingWrites.contents}
+                      | (Some(_), Json) =>
+                        if jsonOutputHitCap.contents {
+                          () // Already at cap, discard rows silently
+                        } else {
+                          let newTotal = allResults.contents->Array.length + (switch json {
+                            | JSON.Array(arr) => Array.length(arr)
+                            | _ => 1
+                          })
+                          if newTotal > 100_000 {
+                            ctx.io.err("Warning: JSON output exceeds 100,000 rows; capping and continuing without this batch.")
+                            jsonOutputHitCap := true
+                          } else {
+                            allResults := Array.concat(allResults.contents, extractJsonArray(json))
+                          }
+                        }
                       }
                     }
                   | None => {
@@ -293,6 +310,12 @@ let runUrlMode = async (
       }
     })
 
+    // Await all pending file writes
+    let writes = pendingWrites.contents->List.reverse->List.toArray
+    if Array.length(writes) > 0 {
+      let _ = await Promise.all(writes)
+    }
+
     // Calculate duration
     let endTime = ctx.deps.performanceNow()
     let duration = endTime -. startTime
@@ -303,7 +326,7 @@ let runUrlMode = async (
     | (Some(path), Json) => {
         let json = JSON.Encode.array(allResults.contents)
         let jsonText = ctx.deps.stringifyJson(json)
-        switch OutputWriter.write(
+        switch await OutputWriter.writeAsync(
           ~target=File(path),
           ~format=Json,
           ~jsonText,

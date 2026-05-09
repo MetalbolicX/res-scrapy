@@ -161,6 +161,12 @@ module Fs = {
 
   /** Appends text to a file synchronously (creates file if it doesn't exist). */
   @module("node:fs") external appendFileSync: (string, string) => unit = "appendFileSync"
+
+  /** Writes text content to a file asynchronously. */
+  @module("node:fs/promises") external writeFile: (string, string) => promise<unit> = "writeFile"
+
+  /** Appends text to a file asynchronously (creates file if it doesn't exist). */
+  @module("node:fs/promises") external appendFile: (string, string) => promise<unit> = "appendFile"
 }
 
 /** Node.js `node:url` module — URL parsing, resolution, and formatting. */

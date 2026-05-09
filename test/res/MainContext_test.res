@@ -29,6 +29,16 @@ let throwError: string => 'a = %raw(`msg => {
   throw new Error(msg);
 }`)
 
+let asyncThrowError: string => promise<'a> = %raw(`msg => {
+  return Promise.reject(new Error(msg));
+}`)
+
+let asyncThrowSystemError: (string, string) => promise<'a> = %raw(`(code, msg) => {
+  const err = new Error(msg);
+  err.code = code;
+  return Promise.reject(err);
+}`)
+
 let simpleDeps = (
   ~cliValues,
   ~parseResult,
@@ -48,8 +58,10 @@ let simpleDeps = (
     schemaLoadResult
   },
   applySchema: (_, _) => schemaApplyResult,
-  writeFile: (_, _) => (),
-  appendFile: (_, _) => (),
+  writeFile: (_, _) => Promise.resolve(),
+  appendFile: (_, _) => Promise.resolve(),
+  writeFileSync: (_, _) => (),
+  appendFileSync: (_, _) => (),
   stringifyJson: NodeJsBinding.jsonStringify,
   stringifyTableRows: NodeJsBinding.jsonStringify,
   stringifyStrings: NodeJsBinding.jsonStringify,
@@ -105,7 +117,7 @@ testAsync("mainWithContext reports write error when writeFile throws", done_ => 
       ~schemaLoadResult=Error(FileReadError("unused")),
       ~schemaApplyResult=Error(ExtractionError("unused")),
     ),
-    writeFile: (_, _) => throwError("disk full"),
+    writeFileSync: (_, _) => throwError("disk full"),
   }
   let ctx = mkContext(~deps, ~push)
 
@@ -262,7 +274,7 @@ testAsync("write error: permission denied (EACCES) exits with code 1", done_ => 
       ~schemaLoadResult=Error(FileReadError("unused")),
       ~schemaApplyResult=Error(ExtractionError("unused")),
     ),
-    writeFile: (_, _) => throwSystemError("EACCES", "EACCES: permission denied, open '/root/forbidden/output.json'"),
+    writeFileSync: (_, _) => throwSystemError("EACCES", "EACCES: permission denied, open '/root/forbidden/output.json'"),
   }
   let ctx = mkContext(~deps, ~push)
 
@@ -303,7 +315,7 @@ testAsync("write error: non-writable directory path (EISDIR) exits with code 1",
       ~schemaLoadResult=Error(FileReadError("unused")),
       ~schemaApplyResult=Error(ExtractionError("unused")),
     ),
-    writeFile: (_, _) => throwSystemError("EISDIR", "EISDIR: illegal operation on a directory, open '/some/directory/path'"),
+    writeFileSync: (_, _) => throwSystemError("EISDIR", "EISDIR: illegal operation on a directory, open '/some/directory/path'"),
   }
   let ctx = mkContext(~deps, ~push)
 
@@ -344,7 +356,7 @@ testAsync("write error: permission denied for NDJSON output exits with code 1", 
       ~schemaLoadResult=Error(FileReadError("unused")),
       ~schemaApplyResult=Error(ExtractionError("unused")),
     ),
-    writeFile: (_, _) => throwSystemError("EACCES", "EACCES: permission denied, open '/root/forbidden/output.ndjson'"),
+    writeFileSync: (_, _) => throwSystemError("EACCES", "EACCES: permission denied, open '/root/forbidden/output.ndjson'"),
   }
   let ctx = mkContext(~deps, ~push)
 

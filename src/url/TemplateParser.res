@@ -1,6 +1,7 @@
 type parseError =
   | InvalidSyntax(string)
   | InvalidRange(string)
+  | UrlCountExceeded(int) // actual count, cap applied
 
 /**
   * Extracts template tokens from a URL template string.
@@ -80,16 +81,28 @@ let parseRange: string => result<(int, int, int, int), parseError> = content => 
 }
 
 /**
-  * Generates a sequence of integers from start to end (inclusive) with the given step.
+  * Maximum number of URLs that can be generated from a single template.
+  * Prevents OOM from unbounded range expansions (e.g. {0..1000000000}).
   */
-let generateSequence: (int, int, int) => array<int> = (start, end_, step) => {
-  let current = ref(start)
-  let acc = []
-  while current.contents <= end_ {
-    acc->Array.push(current.contents)
-    current := current.contents + step
+let maxUrls = 100_000
+
+/**
+  * Generates a sequence of integers from start to end (inclusive) with the given step.
+  * Returns an error if the sequence exceeds maxUrls.
+  */
+let generateSequence: (int, int, int) => result<array<int>, parseError> = (start, end_, step) => {
+  let count = (end_ - start) / step + 1
+  if count > maxUrls {
+    Error(UrlCountExceeded(count))
+  } else {
+    let current = ref(start)
+    let acc = []
+    while current.contents <= end_ {
+      acc->Array.push(current.contents)
+      current := current.contents + step
+    }
+    Ok(acc)
   }
-  acc
 }
 
 /**
@@ -122,12 +135,16 @@ let parse: string => result<array<string>, parseError> = url => {
       switch parseRange(content) {
       | Error(e) => Error(e)
       | Ok((start, end_, step, zeroPad)) => {
-          let sequence = generateSequence(start, end_, step)
-          let urls = sequence->Array.map(num => {
-            let numStr = padZero(num, zeroPad)
-            prefix ++ numStr ++ suffix
-          })
-          Ok(urls)
+          switch generateSequence(start, end_, step) {
+          | Error(e) => Error(e)
+          | Ok(sequence) => {
+              let urls = sequence->Array.map(num => {
+                let numStr = padZero(num, zeroPad)
+                prefix ++ numStr ++ suffix
+              })
+              Ok(urls)
+            }
+          }
         }
       }
     }
@@ -141,5 +158,7 @@ let parseErrorToMessage: parseError => string = err => {
   switch err {
   | InvalidSyntax(msg) => `Invalid template syntax: ${msg}`
   | InvalidRange(msg) => `Invalid range: ${msg}`
+  | UrlCountExceeded(count) =>
+    `URL template would generate ${Int.toString(count)} URLs, which exceeds the maximum of ${Int.toString(maxUrls)}. Reduce the range or split into multiple templates.`
   }
 }

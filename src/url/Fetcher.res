@@ -79,6 +79,7 @@ let createEnvProxyDispatcher: unit => promise<option<NodeJsBinding.Fetch.dispatc
       const undici = await import('undici');
       return new undici.EnvHttpProxyAgent();
     } catch {
+      console.error("Warning: HTTP_PROXY/HTTPS_PROXY/ALL_PROXY is set but undici is unavailable — proxy will be ignored. Install undici with: npm install undici");
       return undefined;
     }
   }`)

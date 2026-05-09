@@ -30,7 +30,7 @@ let writeText = (
       writeFile(path, text)
       Ok(())
     } catch {
-    | exn => Error(AppError.WriteError(`Failed to write output file "${path}": ${ExnUtils.message(exn)}`))
+    | exn => Error(AppError.WriteError("Failed to write output file \"" ++ path ++ "\": " ++ ExnUtils.message(exn)))
     }
   }
 
@@ -51,5 +51,43 @@ let write = (
       Error(
         AppError.WriteError("Cannot write NDJSON output: expected extraction result to be a JSON array"),
       )
+    }
+  }
+
+let writeTextAsync = (
+  ~target: outputTarget,
+  ~text: string,
+  ~writeFile: (string, string) => promise<unit>,
+  ~out: string => unit,
+): promise<result<unit, AppError.appError>> => {
+  switch target {
+  | Stdout => {
+      out(text)
+      Promise.resolve(Ok(()))
+    }
+  | File(path) =>
+    writeFile(path, text)
+    ->Promise.then(_ => Promise.resolve(Ok(())))
+    ->Promise.catch(_ => Promise.resolve(Error(AppError.WriteError("Failed to write output file \"" ++ path ++ "\": unknown error"))))
+  }
+}
+
+let writeAsync = (
+  ~target: outputTarget,
+  ~format: ParseCli.outputFormat,
+  ~jsonText: string,
+  ~writeFile: (string, string) => promise<unit>,
+  ~out: string => unit,
+): promise<result<unit, AppError.appError>> =>
+  switch (target, format) {
+  | (Stdout, _) => writeTextAsync(~target, ~text=jsonText, ~writeFile, ~out)
+  | (File(_), Json) => writeTextAsync(~target, ~text=jsonText, ~writeFile, ~out)
+  | (File(_), Ndjson) =>
+    switch jsonArrayToNdjson(jsonText) {
+    | Some(ndjson) => writeTextAsync(~target, ~text=ndjson, ~writeFile, ~out)
+    | None =>
+      Promise.resolve(Error(
+        AppError.WriteError("Cannot write NDJSON output: expected extraction result to be a JSON array"),
+      ))
     }
   }
