@@ -22,7 +22,8 @@
     "release:check": "pnpm run res:build && pnpm run res:test && pnpm run bundle && pnpm run date:check",
     "bundle": "rolldown -c",
     "security:audit": "npm audit --audit-level=high",
-    "prepare": "pnpm run bundle && node ./scripts/ensure-cli.mjs"
+    "prepare": "pnpm run bundle && node ./scripts/ensure-cli.mjs",
+    "res:coverage": "c8 pnpm run res:test"
   },
   "bin": {
     "res-scrapy": "dist/main.mjs"
@@ -59,6 +60,7 @@
     "node": ">=22.0.0"
   },
   "devDependencies": {
+    "c8": "^11.0.0",
     "rescript": "^12.2.0",
     "rescript-test": "^8.0.0",
     "rolldown": "1.0.0-rc.18",
