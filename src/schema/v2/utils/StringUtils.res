@@ -10,9 +10,6 @@ let toLower: string => string = text => String.toLowerCase(text)
 
 let toUpper: string => string = text => String.toUpperCase(text)
 
-/** Extract first capture group of a regex pattern. Returns None when no match. */
-@get_index external getMatchAt: (RegExp.Result.t, int) => option<string> = ""
-
 let regexEvalScript =
   "const mode = process.argv[1]; const text = process.argv[2]; const pattern = process.argv[3]; try { const re = new RegExp(pattern); if (mode === 'test') { process.stdout.write(re.test(text) ? '1' : '0'); } else { const match = re.exec(text); process.stdout.write(match ? match[0] : ''); } } catch { process.stdout.write(''); }"
 
@@ -45,14 +42,19 @@ pattern => {
 }
 `)
 
+let _makeArgs: (string, string, string, string, string) => array<string> = %raw(`
+(a, b, c, d, e) => [a, b, c, d, e]
+`)
+
 let runRegexInChild = (~mode: string, ~text: string, ~pattern: string): option<string> => {
   switch compileSafePattern(pattern) {
   | None => None
   | Some(_) =>
     try {
+      let args = _makeArgs("-e", regexEvalScript, mode, text, pattern)
       let output = NodeJsBinding.ChildProcess.execFileSync(
         NodeJsBinding.Process.execPath,
-        [|"-e", regexEvalScript, mode, text, pattern|],
+        args,
         {encoding: "utf8", timeout: 1000},
       )
       if output === "" {
