@@ -29,6 +29,7 @@ test("ListExtractor rejects unsafe regex patterns", () => {
   let els = HtmlFixture.selectAll(doc, "li")
   let unsafeBackref: listOptions = {itemType: ListText, filter: "(a)\\1+"}
   let unsafeLookahead: listOptions = {itemType: ListText, filter: "(?=A)A"}
+  let unsafeAlternation: listOptions = {itemType: ListText, filter: "(a|b)+"}
 
   isOptionEqualTo(
     Some(TestHelpers.jsonFromString("[]")),
@@ -38,6 +39,11 @@ test("ListExtractor rejects unsafe regex patterns", () => {
   isOptionEqualTo(
     Some(TestHelpers.jsonFromString("[]")),
     ListExtractor.extract(els, unsafeLookahead),
+    ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
+  )
+  isOptionEqualTo(
+    Some(TestHelpers.jsonFromString("[]")),
+    ListExtractor.extract(els, unsafeAlternation),
     ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
   )
 })

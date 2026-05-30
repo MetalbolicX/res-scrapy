@@ -35,6 +35,13 @@ test("NumberUtils.parseWithOptions supports pattern extraction", () => {
   )
 })
 
+test("NumberUtils.parseWithOptions rejects catastrophic regex patterns", () => {
+  let opts1: option<numberOptions> = Some({pattern: "(a+)+b"})
+  let opts2: option<numberOptions> = Some({pattern: "(a|b)+"})
+  isOptionEqualTo(None, NumberUtils.parseWithOptions("aaaaaaaaaaaaaaaa", opts1), ~eq=eqFloat)
+  isOptionEqualTo(None, NumberUtils.parseWithOptions("aaaaaaaaaaaaaaaa", opts2), ~eq=eqFloat)
+})
+
 test("NumberUtils.parseWithOptions blocks negative when configured", () => {
   let opts: option<numberOptions> = Some({allowNegative: false})
   isOptionEqualTo(None, NumberUtils.parseWithOptions("-12.5", opts), ~eq=eqFloat)

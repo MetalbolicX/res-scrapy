@@ -25,6 +25,19 @@ test("StringUtils.extractPattern handles no match and invalid regex", () => {
   isOptionEqualTo(None, StringUtils.extractPattern("abc", "(["), ~eq=(a, b) => a == b)
 })
 
+test("StringUtils.extractPattern rejects catastrophic but syntactically valid patterns", () => {
+  isOptionEqualTo(
+    None,
+    StringUtils.extractPattern("aaaaaaaaaaaaaaaa", "(a+)+b"),
+    ~eq=(a, b) => a == b,
+  )
+  isOptionEqualTo(
+    None,
+    StringUtils.extractPattern("aaaaaaaaaaaaaaaa", "(a|b)+"),
+    ~eq=(a, b) => a == b,
+  )
+})
+
 test("StringUtils.stripNonNumeric keeps signs and decimals", () => {
   isTextEqualTo("1234.56", StringUtils.stripNonNumeric("$1,234.56"))
   isTextEqualTo("-99.5", StringUtils.stripNonNumeric("USD -99.5"))

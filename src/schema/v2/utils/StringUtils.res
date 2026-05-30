@@ -13,14 +13,70 @@ let toUpper: string => string = text => String.toUpperCase(text)
 /** Extract first capture group of a regex pattern. Returns None when no match. */
 @get_index external getMatchAt: (RegExp.Result.t, int) => option<string> = ""
 
-let extractPattern: (string, string) => option<string> = (text, pattern) => {
+let regexEvalScript =
+  "const mode = process.argv[1]; const text = process.argv[2]; const pattern = process.argv[3]; try { const re = new RegExp(pattern); if (mode === 'test') { process.stdout.write(re.test(text) ? '1' : '0'); } else { const match = re.exec(text); process.stdout.write(match ? match[0] : ''); } } catch { process.stdout.write(''); }"
+
+let compileSafePattern: string => option<RegExp.t> = %raw(`
+pattern => {
+  if (!pattern || typeof pattern !== "string") return undefined;
+  if (pattern.length > 200) return undefined;
+
+  // Disallow backreferences: \1, \2, ...
+  if (/\\[1-9][0-9]*/.test(pattern)) return undefined;
+
+  // Disallow lookaheads/lookbehinds
+  if (/\(\?[:=!<]/.test(pattern)) return undefined;
+
+  // Disallow nested quantified groups (e.g. (a+)+, (a*)+, (a{1,3})*)
+  if (/\([^)]*[+*?][^)]*\)\s*[+*?]/.test(pattern)) return undefined;
+  if (/\([^)]*\{[^}]+\}[^)]*\)\s*[+*?]/.test(pattern)) return undefined;
+
+  // Disallow quantified alternation groups (often expensive)
+  if (/\((?:[^()]*\|){1,}[^()]*\)\s*[+*{]/.test(pattern)) return undefined;
+
+  // Disallow very large explicit quantifiers
+  if (/\{(?:\d{4,}|\d+,\d{4,}|\d{4,},)\}/.test(pattern)) return undefined;
+
   try {
-    RegExp.fromString(pattern)
-    ->RegExp.exec(text)
-    ->Option.flatMap(res => getMatchAt(res, 0))
+    return new RegExp(pattern);
   } catch {
-  | _ => None
+    return undefined;
   }
 }
+`)
+
+let runRegexInChild = (~mode: string, ~text: string, ~pattern: string): option<string> => {
+  switch compileSafePattern(pattern) {
+  | None => None
+  | Some(_) =>
+    try {
+      let output = NodeJsBinding.ChildProcess.execFileSync(
+        NodeJsBinding.Process.execPath,
+        [|"-e", regexEvalScript, mode, text, pattern|],
+        {encoding: "utf8", timeout: 1000},
+      )
+      if output === "" {
+        None
+      } else {
+        Some(output)
+      }
+    } catch {
+    | _ => None
+    }
+  }
+}
+
+let extractPattern: (string, string) => option<string> = (text, pattern) => {
+  switch runRegexInChild(~mode="extract", ~text, ~pattern) {
+  | Some(output) => Some(output)
+  | None => None
+  }
+}
+
+let matchesPattern: (string, string) => bool = (text, pattern) =>
+  switch runRegexInChild(~mode="test", ~text, ~pattern) {
+  | Some("1") => true
+  | _ => false
+  }
 
 let stripNonNumeric: string => string = text => text->String.replaceRegExp(/[^0-9.\-]/g, "")

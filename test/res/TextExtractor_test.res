@@ -65,6 +65,13 @@ test("TextExtractor returns None when pattern has no match", () => {
   isOptionEqualTo(None, TextExtractor.extract(el, Some({pattern: "([0-9]+\\.[0-9]+)"})), ~eq=(a, b) => a == b)
 })
 
+test("TextExtractor rejects catastrophic regex patterns", () => {
+  let doc = HtmlFixture.parse("<div class='t'>aaaaaaaaaaaaaaaa</div>")
+  let el = getElement(doc, ".t")
+  isOptionEqualTo(None, TextExtractor.extract(el, Some({pattern: "(a+)+b"})), ~eq=(a, b) => a == b)
+  isOptionEqualTo(None, TextExtractor.extract(el, Some({pattern: "(a|b)+"})), ~eq=(a, b) => a == b)
+})
+
 test("TextExtractor.extractJoined joins multiple elements with separator", () => {
   let doc = HtmlFixture.parse(`<div class='items'><span>Apple</span><span>Banana</span><span>Cherry</span></div>`)
   let els = HtmlFixture.selectAll(doc, "span")

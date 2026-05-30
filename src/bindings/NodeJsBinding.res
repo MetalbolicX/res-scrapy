@@ -27,6 +27,9 @@ module Process = {
   /** A reference to `process.stdin`. */
   @val @scope("process") external stdin: stdInput = "stdin"
 
+  /** The absolute path to the current Node.js executable. */
+  @val @scope("process") external execPath: string = "execPath"
+
   /** Listens for `"data"` events, invoking `cb` with each UTF-8 chunk. */
   @send external onData: (stdInput, @as("data") _, string => unit) => unit = "on"
 
@@ -167,6 +170,16 @@ module Fs = {
 
   /** Appends text to a file asynchronously (creates file if it doesn't exist). */
   @module("node:fs/promises") external appendFile: (string, string) => promise<unit> = "appendFile"
+}
+
+/** Bindings to `node:child_process` for synchronous timeout-bounded execution. */
+module ChildProcess = {
+  type execFileSyncOptions = {
+    encoding?: string,
+    timeout?: int,
+  }
+
+  @module("node:child_process") external execFileSync: (string, array<string>, execFileSyncOptions) => string = "execFileSync"
 }
 
 /** Node.js `node:url` module — URL parsing, resolution, and formatting. */
