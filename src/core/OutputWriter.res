@@ -91,3 +91,29 @@ let writeAsync = (
       ))
     }
   }
+
+let outputTargetFromOptions = (options: ParseCli.parseOptions): outputTarget =>
+  switch options.output {
+  | Some(path) => File(path)
+  | None => Stdout
+  }
+
+let writeOutput = (
+  ctx: AppContext.appContext,
+  options: ParseCli.parseOptions,
+  jsonText: string,
+): unit => {
+  switch write(
+    ~target=outputTargetFromOptions(options),
+    ~format=options.outputFormat,
+    ~jsonText,
+    ~writeFile=ctx.deps.writeFileSync,
+    ~out=ctx.io.out,
+  ) {
+  | Ok(()) => ()
+  | Error(err) => {
+ ctx.io.err(AppError.toMessage(err))
+      ctx.io.exit(1)
+    }
+  }
+}

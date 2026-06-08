@@ -20,3 +20,4 @@ let textContent: (operations, element) => string
 let innerHTML: (operations, element) => string
 let outerHTML: (operations, element) => string
 let tagName: (operations, element) => string
+let parseDocumentSafely: (operations, string) => result<document, AppError.appError>

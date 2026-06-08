@@ -1,0 +1,51 @@
+module Iter = NodeJsBinding.Iter
+
+/** Extracts element content from a document using selector + extract mode.
+  * Returns array of strings for Single/Multiple mode. */
+let extractElements: (
+  AppContext.appContext,
+  Document.document,
+  string,
+  ParseCli.extractMode,
+  ParseCli.mode,
+) => result<array<string>, string> = (ctx, document, selector, extractMode, mode) => {
+  let extract = (el: Document.element) =>
+    switch extractMode {
+    | OuterHtml => Document.outerHTML(ctx.deps.documentOps, el)
+    | InnerHtml => Document.innerHTML(ctx.deps.documentOps, el)
+    | Text => Document.textContent(ctx.deps.documentOps, el)
+    | Attribute(name) =>
+      Document.getAttribute(ctx.deps.documentOps, el, name)->Option.getOr("")
+    }
+  switch mode {
+  | Single =>
+    switch Document.querySelector(ctx.deps.documentOps, document, selector) {
+    | None => Ok([])
+    | Some(el) => Ok([extract(el)])
+    }
+  | Multiple =>
+    Ok(
+      Document.querySelectorAll(ctx.deps.documentOps, document, selector)
+      ->Iter.values
+      ->Iter.map(el => extract(el))
+      ->Iter.toArray,
+    )
+  }
+}
+
+let runSelectorMode = (
+  ctx: AppContext.appContext,
+  document: Document.document,
+  ~selector: string,
+  ~extractMode: ParseCli.extractMode,
+  ~mode: ParseCli.mode,
+  ~options: ParseCli.parseOptions,
+) => {
+  switch extractElements(ctx, document, selector, extractMode, mode) {
+  | Error(msg) => {
+ ctx.io.err(AppError.toMessage(AppError.ExtractionError(msg)))
+      ctx.io.exit(1)
+    }
+  | Ok(contents) => OutputWriter.writeOutput(ctx, options, ctx.deps.stringifyStrings(contents))
+  }
+}

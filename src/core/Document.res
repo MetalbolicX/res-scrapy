@@ -21,3 +21,14 @@ let textContent = (ops: operations, el: element) => ops.textContent(el)
 let innerHTML = (ops: operations, el: element) => ops.innerHTML(el)
 let outerHTML = (ops: operations, el: element) => ops.outerHTML(el)
 let tagName = (ops: operations, el: element) => ops.tagName(el)
+
+let parseDocumentSafely = (
+  ops: operations,
+  html: string,
+): result<document, AppError.appError> => {
+  try {
+    Ok(parse(ops, html))
+  } catch {
+  | exn => Error(AppError.InputError(`Failed to parse HTML input: ${ExnUtils.message(exn)}`))
+  }
+}
