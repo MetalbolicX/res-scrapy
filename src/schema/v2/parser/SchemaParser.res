@@ -26,26 +26,20 @@ let toFieldsObject: 'a => {..} = %raw(`
 
 /** Convert the `fields` object (keys → field defs) into a sorted array. */
 let normalizeFields: {..} => result<array<(string, schemaField)>, schemaError> = fieldsObj => {
-  // Collect all own keys then parse each field
   let keys: array<string> = %raw(`(obj) => Object.keys(obj)`)(fieldsObj)
-  let acc = ref([])
-  let err = ref(None)
-  keys->Iter.values->Iter.forEach(key => {
-    if err.contents->Option.isNone {
+  keys->Iter.values->Iter.reduce((acc, key) =>
+    switch acc {
+    | Error(_) => acc
+    | Ok(pairs) =>
       switch dictGet(fieldsObj, key) {
-      | None => ()
+      | None => Ok(pairs)
       | Some(fieldJson) =>
         switch FieldParser.parseField(fieldJson, key) {
-        | Error(e) => err := Some(e)
-        | Ok(field) => acc := Array.concat(acc.contents, [(key, field)])
+        | Error(e) => Error(e)
+        | Ok(field) => Ok(pairs->Array.concat([(key, field)]))
         }
       }
-    }
-  })
-  switch err.contents {
-  | Some(e) => Error(e)
-  | None => Ok(acc.contents)
-  }
+    }, Ok([]))
 }
 
 /** Parse a complete schema from a raw JSON value.
