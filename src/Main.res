@@ -190,39 +190,6 @@ let runTableMode = (
   }
 }
 
-/** Extracts element content from a document using selector + extract mode.
-  * Returns array of strings for Single/Multiple mode. */
-let extractElements: (
-  AppContext.appContext,
-  Document.document,
-  string,
-  ParseCli.extractMode,
-  ParseCli.mode,
-) => result<array<string>, string> = (ctx, document, selector, extractMode, mode) => {
-  let extract = (el: Document.element) =>
-    switch extractMode {
-    | OuterHtml => Document.outerHTML(ctx.deps.documentOps, el)
-    | InnerHtml => Document.innerHTML(ctx.deps.documentOps, el)
-    | Text => Document.textContent(ctx.deps.documentOps, el)
-    | Attribute(name) =>
-      Document.getAttribute(ctx.deps.documentOps, el, name)->Option.getOr("")
-    }
-  switch mode {
-  | Single =>
-    switch Document.querySelector(ctx.deps.documentOps, document, selector) {
-    | None => Ok([])
-    | Some(el) => Ok([extract(el)])
-    }
-  | Multiple =>
-    Ok(
-      Document.querySelectorAll(ctx.deps.documentOps, document, selector)
-      ->Iter.values
-      ->Iter.map(el => extract(el))
-      ->Iter.toArray,
-    )
-  }
-}
-
 /** Runs URL mode: fetch multiple pages, extract from each, merge results. */
 let runUrlMode = async (
   ctx: AppContext.appContext,
