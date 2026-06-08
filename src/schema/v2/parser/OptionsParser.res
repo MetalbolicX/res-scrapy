@@ -291,26 +291,53 @@ let parseBooleanOptions: {..} => option<booleanOptions> = fieldJson => {
 // table options
 // ---------------------------------------------------------------------------
 
-let parseColumnFieldType: ({..}, string) => result<columnFieldType, string> = (columnJson, typeName) => {
-  switch typeName {
-  | "text" => Ok(ColumnText(parseTextOptions(columnJson)))
-  | "html" => Ok(ColumnHtml(parseHtmlOptions(columnJson)))
-  | "number" => Ok(ColumnNumber(parseNumberOptions(columnJson)))
-  | "boolean" | "bool" => Ok(ColumnBoolean(parseBooleanOptions(columnJson)))
-  | "url" => Ok(ColumnUrl(parseUrlOptions(columnJson)))
-  | "json" => Ok(ColumnJson(parseJsonOptions(columnJson)))
-  | "datetime" => Ok(ColumnDateTime(parseDateOptions(columnJson)))
-  | "list" => Ok(ColumnList(parseListOptions(columnJson)))
-  | "attribute" =>
+type parseColumnFieldTypeVisitor<'a> = {
+  text: 'a => result<columnFieldType, string>,
+  html: 'a => result<columnFieldType, string>,
+  number: 'a => result<columnFieldType, string>,
+  boolean: 'a => result<columnFieldType, string>,
+  url: 'a => result<columnFieldType, string>,
+  json: 'a => result<columnFieldType, string>,
+  datetime: 'a => result<columnFieldType, string>,
+  list: 'a => result<columnFieldType, string>,
+  attribute: 'a => result<columnFieldType, string>,
+}
+
+let parseColumnFieldTypeVisitor: parseColumnFieldTypeVisitor<{..}> = {
+  text: columnJson => Ok(ColumnText(parseTextOptions(columnJson))),
+  html: columnJson => Ok(ColumnHtml(parseHtmlOptions(columnJson))),
+  number: columnJson => Ok(ColumnNumber(parseNumberOptions(columnJson))),
+  boolean: columnJson => Ok(ColumnBoolean(parseBooleanOptions(columnJson))),
+  url: columnJson => Ok(ColumnUrl(parseUrlOptions(columnJson))),
+  json: columnJson => Ok(ColumnJson(parseJsonOptions(columnJson))),
+  datetime: columnJson => Ok(ColumnDateTime(parseDateOptions(columnJson))),
+  list: columnJson => Ok(ColumnList(parseListOptions(columnJson))),
+  attribute: columnJson =>
     switch parseAttributeConfig(columnJson) {
     | Some(cfg) => Ok(ColumnAttribute(cfg))
     | None => Error("attribute column requires an \"attribute\" or \"attributes\" key")
-    }
+    },
+}
+
+let parseColumnFieldTypeDispatch = (columnJson: {..}, typeName: string): result<columnFieldType, string> => {
+  switch typeName {
+  | "text" => parseColumnFieldTypeVisitor.text(columnJson)
+  | "html" => parseColumnFieldTypeVisitor.html(columnJson)
+  | "number" => parseColumnFieldTypeVisitor.number(columnJson)
+  | "boolean" | "bool" => parseColumnFieldTypeVisitor.boolean(columnJson)
+  | "url" => parseColumnFieldTypeVisitor.url(columnJson)
+  | "json" => parseColumnFieldTypeVisitor.json(columnJson)
+  | "datetime" => parseColumnFieldTypeVisitor.datetime(columnJson)
+  | "list" => parseColumnFieldTypeVisitor.list(columnJson)
+  | "attribute" => parseColumnFieldTypeVisitor.attribute(columnJson)
   | "count" => Error("table column type \"count\" is not supported")
   | "table" => Error("nested table columns are not supported")
   | other => Error(`Unknown column type: "${other}"`)
   }
 }
+
+let parseColumnFieldType: ({..}, string) => result<columnFieldType, string> = (columnJson, typeName) =>
+  parseColumnFieldTypeDispatch(columnJson, typeName)
 
 let parseColumnField: {..} => result<columnField, string> = columnJson => {
   switch (dictGet(columnJson, "name"), dictGet(columnJson, "selector")) {

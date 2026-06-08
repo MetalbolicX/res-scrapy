@@ -86,18 +86,20 @@ module DateTimeScalar = MakeScalar({
   let toJson = JSON.Encode.string
 })
 
-let columnTypeToFieldType: columnFieldType => fieldType = columnType =>
-  switch columnType {
-  | ColumnText(opts) => Text(opts)
-  | ColumnAttribute(cfg) => Attribute(cfg)
-  | ColumnHtml(opts) => Html(opts)
-  | ColumnNumber(opts) => Number(opts)
-  | ColumnBoolean(opts) => Boolean(opts)
-  | ColumnUrl(opts) => Url(opts)
-  | ColumnJson(opts) => Json(opts)
-  | ColumnDateTime(opts) => DateTime(opts)
-  | ColumnList(opts) => List(opts)
+let columnTypeToFieldType: columnFieldType => fieldType = columnType => {
+  let visitor: FieldTypeVisitor.columnFieldTypeVisitor<fieldType> = {
+    columnText: opts => Text(opts),
+    columnAttribute: cfg => Attribute(cfg),
+    columnHtml: opts => Html(opts),
+    columnNumber: opts => Number(opts),
+    columnBoolean: opts => Boolean(opts),
+    columnUrl: opts => Url(opts),
+    columnJson: opts => Json(opts),
+    columnDateTime: opts => DateTime(opts),
+    columnList: opts => List(opts),
   }
+  FieldTypeVisitor.visitColumnFieldType(visitor, columnType)
+}
 
 let rec extractValue: (
   NodeHtmlParserBinding.htmlElement,
@@ -105,28 +107,29 @@ let rec extractValue: (
   option<schemaDefaults>,
   bool,
 ) => result<JSON.t, schemaError> = (el, ft, defaults, ignoreErrors) => {
-  switch DefaultsMerger.resolveDefaults(defaults, ft) {
-  | Text(opts) => TextScalar.run(el, opts)
-  | Html(opts) => HtmlScalar.run(el, opts)
-  | Attribute(cfg) => AttributeScalar.run(el, cfg)
-  | Number(opts) => NumberScalar.run(el, opts)
-  | Boolean(opts) =>
-    switch BooleanExtractor.extract(el, opts) {
-    | Ok(Some(b)) => Ok(JSON.Encode.bool(b))
-    | Ok(None) => Ok(JSON.Encode.null)
-    | Error(e) => Error(e)
-    }
-  | Url(opts) => UrlScalar.run(el, opts)
-  | Json(opts) => JsonScalar.run(el, opts)
-  | DateTime(opts) => DateTimeScalar.run(el, opts)
-  | Count(_) =>
-    // Count requires the full element array; callers must use extractValueList.
-    // If somehow routed here, return 1 (the element itself was found).
-    Ok(JSON.Encode.int(1))
-  | List(_) =>
-    // List requires the full element array; callers must use extractValueList.
-    Ok(JSON.Encode.null)
-  | Table(tableOpts) => {
+  let resolved = DefaultsMerger.resolveDefaults(defaults, ft)
+  let extractVisitor: FieldTypeVisitor.fieldTypeVisitor<result<JSON.t, schemaError>> = {
+    text: opts => TextScalar.run(el, opts),
+    html: opts => HtmlScalar.run(el, opts),
+    attribute: cfg => AttributeScalar.run(el, cfg),
+    number: opts => NumberScalar.run(el, opts),
+    boolean: opts =>
+      switch BooleanExtractor.extract(el, opts) {
+      | Ok(Some(b)) => Ok(JSON.Encode.bool(b))
+      | Ok(None) => Ok(JSON.Encode.null)
+      | Error(e) => Error(e)
+      },
+    url: opts => UrlScalar.run(el, opts),
+    json: opts => JsonScalar.run(el, opts),
+    datetime: opts => DateTimeScalar.run(el, opts),
+    count: _ =>
+      // Count requires the full element array; callers must use extractValueList.
+      // If somehow routed here, return 1 (the element itself was found).
+      Ok(JSON.Encode.int(1)),
+    list: _ =>
+      // List requires the full element array; callers must use extractValueList.
+      Ok(JSON.Encode.null),
+    table: tableOpts => {
       let resolvedColumns =
         tableOpts.columns
         ->Iter.values
@@ -233,8 +236,9 @@ let rec extractValue: (
       | Error(e) => Error(e)
       | Ok(arr) => Ok(JSON.Encode.array(arr))
       }
-    }
+    },
   }
+  FieldTypeVisitor.visitFieldType(extractVisitor, resolved)
 }
 
 /** Multi-element dispatch for field types that operate on the whole match set.

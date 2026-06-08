@@ -144,89 +144,91 @@ let mergeJsonOptions = (fieldOpts: option<jsonOptions>, defaultOpts: option<json
     }
   }
 
-let resolveDefaults = (defaults: option<schemaDefaults>, fieldType: fieldType): fieldType =>
-  switch fieldType {
-  | Text(opts) =>
-    Text(
-      mergeTextOptions(
-        opts,
-        switch defaults {
-        | Some(d) => d.text
-        | None => None
-        },
+let resolveDefaults = (defaults: option<schemaDefaults>, fieldType: fieldType): fieldType => {
+  let visitor: FieldTypeVisitor.fieldTypeVisitor<fieldType> = {
+    text: opts =>
+      Text(
+        mergeTextOptions(
+          opts,
+          switch defaults {
+          | Some(d) => d.text
+          | None => None
+          },
+        ),
       ),
-    )
-  | Attribute(cfg) => Attribute(cfg)
-  | Html(opts) =>
-    Html(
-      mergeHtmlOptions(
-        opts,
-        switch defaults {
-        | Some(d) => d.html
-        | None => None
-        },
+    attribute: cfg => Attribute(cfg),
+    html: opts =>
+      Html(
+        mergeHtmlOptions(
+          opts,
+          switch defaults {
+          | Some(d) => d.html
+          | None => None
+          },
+        ),
       ),
-    )
-  | Number(opts) =>
-    Number(
-      mergeNumberOptions(
-        opts,
-        switch defaults {
-        | Some(d) => d.number
-        | None => None
-        },
+    number: opts =>
+      Number(
+        mergeNumberOptions(
+          opts,
+          switch defaults {
+          | Some(d) => d.number
+          | None => None
+          },
+        ),
       ),
-    )
-  | Boolean(opts) =>
-    Boolean(
-      mergeBooleanOptions(
-        opts,
-        switch defaults {
-        | Some(d) => d.boolean
-        | None => None
-        },
+    boolean: opts =>
+      Boolean(
+        mergeBooleanOptions(
+          opts,
+          switch defaults {
+          | Some(d) => d.boolean
+          | None => None
+          },
+        ),
       ),
-    )
-  | Count(opts) =>
-    Count(
-      mergeCountOptions(
-        opts,
-        switch defaults {
-        | Some(d) => d.count
-        | None => None
-        },
+    count: opts =>
+      Count(
+        mergeCountOptions(
+          opts,
+          switch defaults {
+          | Some(d) => d.count
+          | None => None
+          },
+        ),
       ),
-    )
-  | Url(opts) =>
-    Url(
-      mergeUrlOptions(
-        opts,
-        switch defaults {
-        | Some(d) => d.url
-        | None => None
-        },
+    url: opts =>
+      Url(
+        mergeUrlOptions(
+          opts,
+          switch defaults {
+          | Some(d) => d.url
+          | None => None
+          },
+        ),
       ),
-    )
-  | Json(opts) =>
-    Json(
-      mergeJsonOptions(
-        opts,
-        switch defaults {
-        | Some(d) => d.json
-        | None => None
-        },
+    json: opts =>
+      Json(
+        mergeJsonOptions(
+          opts,
+          switch defaults {
+          | Some(d) => d.json
+          | None => None
+          },
+        ),
       ),
-    )
-  | DateTime(opts) =>
-    DateTime(
-      mergeDateOptions(
-        opts,
-        switch defaults {
-        | Some(d) => d.datetime
-        | None => None
-        },
+    datetime: opts =>
+      DateTime(
+        mergeDateOptions(
+          opts,
+          switch defaults {
+          | Some(d) => d.datetime
+          | None => None
+          },
+        ),
       ),
-    )
-  | List(opts) => List(opts)
-  | Table(opts) => Table(opts)
+    list: opts => List(opts),
+    table: opts => Table(opts),
   }
+  FieldTypeVisitor.visitFieldType(visitor, fieldType)
+}
