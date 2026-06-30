@@ -172,16 +172,6 @@ module Fs = {
   @module("node:fs/promises") external appendFile: (string, string) => promise<unit> = "appendFile"
 }
 
-/** Bindings to `node:child_process` for synchronous timeout-bounded execution. */
-module ChildProcess = {
-  type execFileSyncOptions = {
-    encoding?: string,
-    timeout?: int,
-  }
-
-  @module("node:child_process") external execFileSync: (string, array<string>, execFileSyncOptions) => string = "execFileSync"
-}
-
 /** Node.js `node:url` module — URL parsing, resolution, and formatting. */
 module Url = {
   /** URL object returned by the URL constructor. */

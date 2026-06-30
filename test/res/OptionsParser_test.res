@@ -260,3 +260,107 @@ test("OptionsParser.parseTableOptions returns Error for attribute column without
   | Error(msg) => stringContains(msg, "attribute")->isTruthy
   }
 })
+
+/* -------------------------------------------------------------------------- */
+/* Shared Option Parsing — after the refactor, OptionsParser and              */
+/* ConfigParser MUST produce structurally identical textOptions from the same */
+/* raw JSON. These tests pin that contract before OptionFields.res exists.    */
+/* -------------------------------------------------------------------------- */
+
+test("OptionsParser and ConfigParser produce identical textOptions (full payload)", () => {
+  let textJson =
+    "{\"trim\":false,\"normalizeWhitespace\":true,\"lowercase\":true,\"uppercase\":false,\"pattern\":\"([0-9]+)\",\"join\":\",\"}"
+
+  let fromOptions =
+    TestHelpers.objectFromJsonString(`{"textOptions":${textJson}}`)
+    ->OptionsParser.parseTextOptions
+
+  /* ConfigParser side: parsed via parseConfig which exposes the text defaults. */
+  let fromConfigRaw =
+    TestHelpers.objectFromJsonString(
+      `{"config":{"defaults":{"text":${textJson}}}}`,
+    )
+  let fromConfig = ConfigParser.parseConfig(fromConfigRaw)
+
+  switch fromOptions {
+  | Some(opts) =>
+    switch fromConfig.defaults {
+    | Some(d) =>
+      switch d.text {
+      | Some(dText) => {
+          isOptionEqualTo(opts.trim, dText.trim, ~eq=(a, b) => a == b)
+          isOptionEqualTo(opts.normalizeWhitespace, dText.normalizeWhitespace, ~eq=(a, b) => a == b)
+          isOptionEqualTo(opts.lowercase, dText.lowercase, ~eq=(a, b) => a == b)
+          isOptionEqualTo(opts.uppercase, dText.uppercase, ~eq=(a, b) => a == b)
+          isOptionEqualTo(opts.pattern, dText.pattern, ~eq=(a, b) => a == b)
+          isOptionEqualTo(opts.join, dText.join, ~eq=(a, b) => a == b)
+        }
+      | None => failWith("Expected text defaults to be parsed")
+      }
+    | None => failWith("Expected defaults block")
+    }
+  | None => failWith("Expected OptionsParser to produce Some(textOptions)")
+  }
+})
+
+test("OptionsParser and ConfigParser produce identical textOptions (sparse payload)", () => {
+  let textJson = "{\"trim\":true}"
+
+  let fromOptions =
+    TestHelpers.objectFromJsonString(`{"textOptions":${textJson}}`)
+    ->OptionsParser.parseTextOptions
+
+  let fromConfigRaw =
+    TestHelpers.objectFromJsonString(
+      `{"config":{"defaults":{"text":${textJson}}}}`,
+    )
+  let fromConfig = ConfigParser.parseConfig(fromConfigRaw)
+
+  switch fromOptions {
+  | Some(opts) =>
+    switch fromConfig.defaults {
+    | Some(d) =>
+      switch d.text {
+      | Some(dText) => {
+          isOptionEqualTo(Some(true), opts.trim, ~eq=(a, b) => a == b)
+          isOptionEqualTo(opts.trim, dText.trim, ~eq=(a, b) => a == b)
+          isOptionEqualTo(opts.normalizeWhitespace, dText.normalizeWhitespace, ~eq=(a, b) => a == b)
+          isOptionEqualTo(opts.lowercase, dText.lowercase, ~eq=(a, b) => a == b)
+          isOptionEqualTo(opts.uppercase, dText.uppercase, ~eq=(a, b) => a == b)
+          isOptionEqualTo(opts.pattern, dText.pattern, ~eq=(a, b) => a == b)
+          isOptionEqualTo(opts.join, dText.join, ~eq=(a, b) => a == b)
+        }
+      | None => failWith("Expected text defaults to be parsed")
+      }
+    | None => failWith("Expected defaults block")
+    }
+  | None => failWith("Expected OptionsParser to produce Some(textOptions)")
+  }
+})
+
+test("OptionsParser returns None when textOptions key is absent", () => {
+  let field = TestHelpers.objectFromJsonString("{}")
+  isOptionEqualTo(None, OptionsParser.parseTextOptions(field), ~eq=(a, b) => a == b)
+})
+
+test("ConfigParser with empty text defaults yields all-None text options", () => {
+  let fromConfigRaw = TestHelpers.objectFromJsonString(
+    `{"config":{"defaults":{"text":{}}}}`,
+  )
+  let fromConfig = ConfigParser.parseConfig(fromConfigRaw)
+  switch fromConfig.defaults {
+  | Some(d) =>
+    switch d.text {
+    | Some(dText) => {
+        isOptionEqualTo(None, dText.trim, ~eq=(a, b) => a == b)
+        isOptionEqualTo(None, dText.normalizeWhitespace, ~eq=(a, b) => a == b)
+        isOptionEqualTo(None, dText.lowercase, ~eq=(a, b) => a == b)
+        isOptionEqualTo(None, dText.uppercase, ~eq=(a, b) => a == b)
+        isOptionEqualTo(None, dText.pattern, ~eq=(a, b) => a == b)
+        isOptionEqualTo(None, dText.join, ~eq=(a, b) => a == b)
+      }
+    | None => failWith("Expected text defaults to be present")
+    }
+  | None => failWith("Expected defaults block")
+  }
+})

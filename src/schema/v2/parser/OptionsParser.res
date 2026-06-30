@@ -15,15 +15,7 @@ module Iter = NodeJsBinding.Iter
 let parseTextOptions: {..} => option<textOptions> = fieldJson => {
   switch dictGet(fieldJson, "textOptions") {
   | None => None
-  | Some(raw) => {
-      let trim = dictGet(raw, "trim")
-      let normalizeWhitespace = dictGet(raw, "normalizeWhitespace")
-      let lowercase = dictGet(raw, "lowercase")
-      let uppercase = dictGet(raw, "uppercase")
-      let pattern = dictGet(raw, "pattern")
-      let join = dictGet(raw, "join")
-      Some({?trim, ?normalizeWhitespace, ?lowercase, ?uppercase, ?pattern, ?join})
-    }
+  | Some(raw) => Some(OptionFields.parseText(raw))
   }
 }
 

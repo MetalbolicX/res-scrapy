@@ -5,15 +5,7 @@ open OptionsParser
 
 let defaultConfig: schemaConfig = {ignoreErrors: false, limit: 0}
 
-let parseTextDefaults: {..} => textOptions = raw => {
-  let trim = dictGet(raw, "trim")
-  let normalizeWhitespace = dictGet(raw, "normalizeWhitespace")
-  let lowercase = dictGet(raw, "lowercase")
-  let uppercase = dictGet(raw, "uppercase")
-  let pattern = dictGet(raw, "pattern")
-  let join = dictGet(raw, "join")
-  {?trim, ?normalizeWhitespace, ?lowercase, ?uppercase, ?pattern, ?join}
-}
+let parseTextDefaults: {..} => textOptions = raw => OptionFields.parseText(raw)
 
 let parseHtmlDefaults: {..} => htmlOptions = raw => {
   let mode = switch dictGet(raw, "mode") {

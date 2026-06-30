@@ -10,8 +10,17 @@ let toLower: string => string = text => String.toLowerCase(text)
 
 let toUpper: string => string = text => String.toUpperCase(text)
 
-let regexEvalScript =
-  "const mode = process.argv[1]; const text = process.argv[2]; const pattern = process.argv[3]; try { const re = new RegExp(pattern); if (mode === 'test') { process.stdout.write(re.test(text) ? '1' : '0'); } else { const match = re.exec(text); process.stdout.write(match ? match[0] : ''); } } catch { process.stdout.write(''); }"
+/* -------------------------------------------------------------------------- */
+/* In-process regex execution.                                                */
+/*                                                                            */
+/* Previously, every regex call spawned a Node.js child process to avoid      */
+/* catastrophic backtracking hanging the main event loop. We now run regex    */
+/* in-process with two defenses:                                              */
+/*   1. compileSafePattern rejects patterns known to be DoS-prone (backrefs,  */
+/*      lookaheads, nested quantified groups, huge quantifiers, etc.).        */
+/*   2. exec/test calls run synchronously in the parent thread — the safety   */
+/*      net in step 1 keeps the surface small.                                */
+/* -------------------------------------------------------------------------- */
 
 let compileSafePattern: string => option<RegExp.t> = %raw(`
 pattern => {
@@ -42,43 +51,39 @@ pattern => {
 }
 `)
 
-let _makeArgs: (string, string, string, string, string) => array<string> = %raw(`
-(a, b, c, d, e) => [a, b, c, d, e]
-`)
+@send external regexTest: (RegExp.t, string) => bool = "test"
+@send external regexExec: (RegExp.t, string) => Null.t<array<string>> = "exec"
 
-let runRegexInChild = (~mode: string, ~text: string, ~pattern: string): option<string> => {
+/** Run an in-process regex match. Mirrors the prior child-process contract:
+  * returns None when there is no match OR when the matched substring is empty
+  * (matches the "if output === ''" branch in the old implementation). */
+let runRegex: (string, string) => option<string> = (text, pattern) => {
   switch compileSafePattern(pattern) {
   | None => None
-  | Some(_) =>
-    try {
-      let args = _makeArgs("-e", regexEvalScript, mode, text, pattern)
-      let output = NodeJsBinding.ChildProcess.execFileSync(
-        NodeJsBinding.Process.execPath,
-        args,
-        {encoding: "utf8", timeout: 1000},
-      )
-      if output === "" {
-        None
-      } else {
-        Some(output)
+  | Some(re) =>
+    switch regexExec(re, text)->Null.toOption {
+    | None => None
+    | Some(matches) =>
+      switch matches[0] {
+      | Some(m) =>
+        if m === "" {
+          None
+        } else {
+          Some(m)
+        }
+      | None => None
       }
-    } catch {
-    | _ => None
     }
   }
 }
 
-let extractPattern: (string, string) => option<string> = (text, pattern) => {
-  switch runRegexInChild(~mode="extract", ~text, ~pattern) {
-  | Some(output) => Some(output)
-  | None => None
-  }
-}
+let extractPattern: (string, string) => option<string> = (text, pattern) =>
+  runRegex(text, pattern)
 
 let matchesPattern: (string, string) => bool = (text, pattern) =>
-  switch runRegexInChild(~mode="test", ~text, ~pattern) {
-  | Some("1") => true
-  | _ => false
+  switch compileSafePattern(pattern) {
+  | None => false
+  | Some(re) => regexTest(re, text)
   }
 
 let stripNonNumeric: string => string = text => text->String.replaceRegExp(/[^0-9.\-]/g, "")
