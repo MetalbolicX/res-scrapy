@@ -11,21 +11,21 @@ let extractElements: (
 ) => result<array<string>, string> = (ctx, document, selector, extractMode, mode) => {
   let extract = (el: Document.element) =>
     switch extractMode {
-    | OuterHtml => Document.outerHTML(ctx.deps.documentOps, el)
-    | InnerHtml => Document.innerHTML(ctx.deps.documentOps, el)
-    | Text => Document.textContent(ctx.deps.documentOps, el)
+    | OuterHtml => Document.outerHTML(ctx.deps.doc.documentOps, el)
+    | InnerHtml => Document.innerHTML(ctx.deps.doc.documentOps, el)
+    | Text => Document.textContent(ctx.deps.doc.documentOps, el)
     | Attribute(name) =>
-      Document.getAttribute(ctx.deps.documentOps, el, name)->Option.getOr("")
+      Document.getAttribute(ctx.deps.doc.documentOps, el, name)->Option.getOr("")
     }
   switch mode {
   | Single =>
-    switch Document.querySelector(ctx.deps.documentOps, document, selector) {
+    switch Document.querySelector(ctx.deps.doc.documentOps, document, selector) {
     | None => Ok([])
     | Some(el) => Ok([extract(el)])
     }
   | Multiple =>
     Ok(
-      Document.querySelectorAll(ctx.deps.documentOps, document, selector)
+      Document.querySelectorAll(ctx.deps.doc.documentOps, document, selector)
       ->Iter.values
       ->Iter.map(el => extract(el))
       ->Iter.toArray,
@@ -46,6 +46,6 @@ let runSelectorMode = (
  ctx.io.err(AppError.toMessage(AppError.ExtractionError(msg)))
       ctx.io.exit(1)
     }
-  | Ok(contents) => OutputWriter.writeOutput(ctx, options, ctx.deps.stringifyStrings(contents))
+  | Ok(contents) => OutputWriter.writeOutput(ctx, options, ctx.deps.serialize.stringifyStrings(contents))
   }
 }

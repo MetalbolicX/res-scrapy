@@ -24,8 +24,8 @@ let warnIfZipAggregateOnly = (ctx: AppContext.appContext, schema: Schema.schema)
 
 let loadSchema = (ctx: AppContext.appContext, source: ParseCli.schemaSource) =>
   switch source {
-  | InlineJson(raw) => ctx.deps.loadSchema(~isInline=true, raw)
-  | FilePath(path) => ctx.deps.loadSchema(~isInline=false, path)
+  | InlineJson(raw) => ctx.deps.schema.loadSchema(~isInline=true, raw)
+  | FilePath(path) => ctx.deps.schema.loadSchema(~isInline=false, path)
   | TableSelector(_) => Error(FieldTypes.ExtractionError("Unreachable: table mode schema load"))
   }
 
@@ -42,12 +42,12 @@ let runSchemaMode = (
     }
   | Ok(schema) => {
       warnIfZipAggregateOnly(ctx, schema)
-      switch ctx.deps.applySchema(document, schema)->ResultX.mapError(AppError.mapSchemaError) {
+      switch ctx.deps.schema.applySchema(document, schema)->ResultX.mapError(AppError.mapSchemaError) {
       | Error(err) => {
  ctx.io.err(AppError.toMessage(err))
           ctx.io.exit(1)
         }
-      | Ok(json) => OutputWriter.writeOutput(ctx, options, ctx.deps.stringifyJson(json))
+      | Ok(json) => OutputWriter.writeOutput(ctx, options, ctx.deps.serialize.stringifyJson(json))
       }
     }
   }

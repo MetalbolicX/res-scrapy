@@ -121,7 +121,7 @@ let writeOutput = (
     ~target=outputTargetFromOptions(options),
     ~format=options.outputFormat,
     ~jsonText,
-    ~writeFile=ctx.deps.writeFileSync,
+    ~writeFile=ctx.deps.fs.writeFileSync,
     ~out=ctx.io.out,
   ) {
   | Ok(()) => ()

@@ -43,28 +43,42 @@ let simpleDeps = (
   ~schemaLoadResult,
   ~schemaApplyResult,
 ): AppContext.dependencies => {
-  parseCli: () => cliValues,
-  validateArgs: _ => parseResult,
-  readStdin: () => Promise.resolve(stdinResult),
-  documentOps: NodeHtmlDocument.operations,
-  extractTable: (_, _) => extractResult,
-  loadSchema: (~isInline, source) => {
-    let _ = isInline
-    let _ = source
-    schemaLoadResult
+  cli: {
+    parseCli: () => cliValues,
+    validateArgs: _ => parseResult,
+    readStdin: () => Promise.resolve(stdinResult),
+    getCliVersion: () => "test",
   },
-  applySchema: (_, _) => schemaApplyResult,
-  writeFile: (_, _) => Promise.resolve(),
-  appendFile: (_, _) => Promise.resolve(),
-  writeFileSync: (_, _) => (),
-  appendFileSync: (_, _) => (),
-  stringifyJson: NodeJsBinding.jsonStringify,
-  stringifyTableRows: NodeJsBinding.jsonStringify,
-  stringifyStrings: NodeJsBinding.jsonStringify,
-  parseTemplate: _ => Error(TemplateParser.InvalidSyntax("not implemented")),
-  fetchAll: (_, _) => Promise.resolve([]),
-  getCliVersion: () => "test",
-  performanceNow: () => 0.0,
+  fs: {
+    writeFile: (_, _) => Promise.resolve(),
+    appendFile: (_, _) => Promise.resolve(),
+    writeFileSync: (_, _) => (),
+    appendFileSync: (_, _) => (),
+  },
+  serialize: {
+    stringifyJson: NodeJsBinding.jsonStringify,
+    stringifyTableRows: NodeJsBinding.jsonStringify,
+    stringifyStrings: NodeJsBinding.jsonStringify,
+  },
+  doc: {
+    documentOps: NodeHtmlDocument.operations,
+    extractTable: (_, _) => extractResult,
+    parseTemplate: _ => Error(TemplateParser.InvalidSyntax("not implemented")),
+  },
+  schema: {
+    loadSchema: (~isInline, source) => {
+      let _ = isInline
+      let _ = source
+      schemaLoadResult
+    },
+    applySchema: (_, _) => schemaApplyResult,
+  },
+  fetch: {
+    fetchAll: (_, _) => Promise.resolve([]),
+  },
+  perf: {
+    performanceNow: () => 0.0,
+  },
 }
 
 testAsync("mainWithContext writes selector output", done_ => {
@@ -104,16 +118,20 @@ testAsync("mainWithContext reports write error when writeFile throws", done_ => 
   let (push, getEvents) = makeState()
   let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> =
     Ok({selector: ".item", extract: Text, mode: Multiple, output: "/tmp/res-scrapy-write-fail", outputFormat: Json, warnings: [], concurrency: 5, timeoutSeconds: 30, retryCount: 3, delayMs: 0, requestHeaders: []})
-  let deps = {
-    ...simpleDeps(
-      ~cliValues={selector: ".item", mode: true, extract: "text", output: "/tmp/res-scrapy-write-fail", format: "json"},
-      ~parseResult,
-      ~stdinResult=Ok("<div class='item'>A</div><div class='item'>B</div>"),
-      ~extractResult=Ok([]),
-      ~schemaLoadResult=Error(FileReadError("unused")),
-      ~schemaApplyResult=Error(ExtractionError("unused")),
-    ),
-    writeFileSync: (_, _) => throwError("disk full"),
+  let depsBase = simpleDeps(
+    ~cliValues={selector: ".item", mode: true, extract: "text", output: "/tmp/res-scrapy-write-fail", format: "json"},
+    ~parseResult,
+    ~stdinResult=Ok("<div class='item'>A</div><div class='item'>B</div>"),
+    ~extractResult=Ok([]),
+    ~schemaLoadResult=Error(FileReadError("unused")),
+    ~schemaApplyResult=Error(ExtractionError("unused")),
+  )
+  let deps: AppContext.dependencies = {
+    ...depsBase,
+    fs: {
+      ...depsBase.fs,
+      writeFileSync: (_, _) => throwError("disk full"),
+    },
   }
   let ctx = mkContext(~deps, ~push)
 
@@ -154,7 +172,10 @@ testAsync("mainWithContext reports NDJSON error when result is not an array", do
   )
   let deps: AppContext.dependencies = {
     ...depsBase,
-    stringifyStrings: _ => "{\"notArray\":true}",
+    serialize: {
+      ...depsBase.serialize,
+      stringifyStrings: _ => "{\"notArray\":true}",
+    },
   }
   let ctx = mkContext(~deps, ~push)
 
@@ -216,16 +237,20 @@ testAsync("mainWithContext reports cli parse errors", done_ => {
 
 testAsync("mainWithContext catches parseCli exceptions", done_ => {
   let (push, getEvents) = makeState()
+  let depsBase = simpleDeps(
+    ~cliValues={},
+    ~parseResult=Ok({selector: ".item", extract: Text, mode: Single, outputFormat: Json, warnings: [], concurrency: 5, timeoutSeconds: 30, retryCount: 3, delayMs: 0, requestHeaders: []}),
+    ~stdinResult=Ok("<div class='item'>A</div>"),
+    ~extractResult=Ok([]),
+    ~schemaLoadResult=Error(FileReadError("unused")),
+    ~schemaApplyResult=Error(ExtractionError("unused")),
+  )
   let deps: AppContext.dependencies = {
-    ...simpleDeps(
-      ~cliValues={},
-      ~parseResult=Ok({selector: ".item", extract: Text, mode: Single, outputFormat: Json, warnings: [], concurrency: 5, timeoutSeconds: 30, retryCount: 3, delayMs: 0, requestHeaders: []}),
-      ~stdinResult=Ok("<div class='item'>A</div>"),
-      ~extractResult=Ok([]),
-      ~schemaLoadResult=Error(FileReadError("unused")),
-      ~schemaApplyResult=Error(ExtractionError("unused")),
-    ),
-    parseCli: () => throwError("bad args"),
+    ...depsBase,
+    cli: {
+      ...depsBase.cli,
+      parseCli: () => throwError("bad args"),
+    },
   }
   let ctx = mkContext(~deps, ~push)
 
@@ -261,16 +286,20 @@ testAsync("write error: permission denied (EACCES) exits with code 1", done_ => 
   let (push, getEvents) = makeState()
   let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> =
     Ok({selector: ".item", extract: Text, mode: Multiple, output: "/root/forbidden/output.json", outputFormat: Json, warnings: [], concurrency: 5, timeoutSeconds: 30, retryCount: 3, delayMs: 0, requestHeaders: []})
-  let deps = {
-    ...simpleDeps(
-      ~cliValues={selector: ".item", mode: true, extract: "text", output: "/root/forbidden/output.json", format: "json"},
-      ~parseResult,
-      ~stdinResult=Ok("<div class='item'>A</div>"),
-      ~extractResult=Ok([]),
-      ~schemaLoadResult=Error(FileReadError("unused")),
-      ~schemaApplyResult=Error(ExtractionError("unused")),
-    ),
-    writeFileSync: (_, _) => throwSystemError("EACCES", "EACCES: permission denied, open '/root/forbidden/output.json'"),
+  let depsBase = simpleDeps(
+    ~cliValues={selector: ".item", mode: true, extract: "text", output: "/root/forbidden/output.json", format: "json"},
+    ~parseResult,
+    ~stdinResult=Ok("<div class='item'>A</div>"),
+    ~extractResult=Ok([]),
+    ~schemaLoadResult=Error(FileReadError("unused")),
+    ~schemaApplyResult=Error(ExtractionError("unused")),
+  )
+  let deps: AppContext.dependencies = {
+    ...depsBase,
+    fs: {
+      ...depsBase.fs,
+      writeFileSync: (_, _) => throwSystemError("EACCES", "EACCES: permission denied, open '/root/forbidden/output.json'"),
+    },
   }
   let ctx = mkContext(~deps, ~push)
 
@@ -302,16 +331,20 @@ testAsync("write error: non-writable directory path (EISDIR) exits with code 1",
   let (push, getEvents) = makeState()
   let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> =
     Ok({selector: ".item", extract: Text, mode: Single, output: "/some/directory/path", outputFormat: Json, warnings: [], concurrency: 5, timeoutSeconds: 30, retryCount: 3, delayMs: 0, requestHeaders: []})
-  let deps = {
-    ...simpleDeps(
-      ~cliValues={selector: ".item", mode: false, extract: "text", output: "/some/directory/path", format: "json"},
-      ~parseResult,
-      ~stdinResult=Ok("<div class='item'>Only</div>"),
-      ~extractResult=Ok([]),
-      ~schemaLoadResult=Error(FileReadError("unused")),
-      ~schemaApplyResult=Error(ExtractionError("unused")),
-    ),
-    writeFileSync: (_, _) => throwSystemError("EISDIR", "EISDIR: illegal operation on a directory, open '/some/directory/path'"),
+  let depsBase = simpleDeps(
+    ~cliValues={selector: ".item", mode: false, extract: "text", output: "/some/directory/path", format: "json"},
+    ~parseResult,
+    ~stdinResult=Ok("<div class='item'>Only</div>"),
+    ~extractResult=Ok([]),
+    ~schemaLoadResult=Error(FileReadError("unused")),
+    ~schemaApplyResult=Error(ExtractionError("unused")),
+  )
+  let deps: AppContext.dependencies = {
+    ...depsBase,
+    fs: {
+      ...depsBase.fs,
+      writeFileSync: (_, _) => throwSystemError("EISDIR", "EISDIR: illegal operation on a directory, open '/some/directory/path'"),
+    },
   }
   let ctx = mkContext(~deps, ~push)
 
@@ -343,16 +376,20 @@ testAsync("write error: permission denied for NDJSON output exits with code 1", 
   let (push, getEvents) = makeState()
   let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> =
     Ok({selector: ".item", extract: Text, mode: Single, output: "/root/forbidden/output.ndjson", outputFormat: Ndjson, warnings: [], concurrency: 5, timeoutSeconds: 30, retryCount: 3, delayMs: 0, requestHeaders: []})
-  let deps = {
-    ...simpleDeps(
-      ~cliValues={selector: ".item", mode: false, extract: "text", output: "/root/forbidden/output.ndjson", format: "ndjson"},
-      ~parseResult,
-      ~stdinResult=Ok("<div class='item'>Only</div>"),
-      ~extractResult=Ok([]),
-      ~schemaLoadResult=Error(FileReadError("unused")),
-      ~schemaApplyResult=Error(ExtractionError("unused")),
-    ),
-    writeFileSync: (_, _) => throwSystemError("EACCES", "EACCES: permission denied, open '/root/forbidden/output.ndjson'"),
+  let depsBase = simpleDeps(
+    ~cliValues={selector: ".item", mode: false, extract: "text", output: "/root/forbidden/output.ndjson", format: "ndjson"},
+    ~parseResult,
+    ~stdinResult=Ok("<div class='item'>Only</div>"),
+    ~extractResult=Ok([]),
+    ~schemaLoadResult=Error(FileReadError("unused")),
+    ~schemaApplyResult=Error(ExtractionError("unused")),
+  )
+  let deps: AppContext.dependencies = {
+    ...depsBase,
+    fs: {
+      ...depsBase.fs,
+      writeFileSync: (_, _) => throwSystemError("EACCES", "EACCES: permission denied, open '/root/forbidden/output.ndjson'"),
+    },
   }
   let ctx = mkContext(~deps, ~push)
 
@@ -386,16 +423,20 @@ testAsync("mainWithContext catches HTML parse exceptions", done_ => {
     ...NodeHtmlDocument.operations,
     parse: _ => throwError("broken html"),
   }
+  let depsBase = simpleDeps(
+    ~cliValues={selector: ".item", extract: "text"},
+    ~parseResult=Ok({selector: ".item", extract: Text, mode: Single, outputFormat: Json, warnings: [], concurrency: 5, timeoutSeconds: 30, retryCount: 3, delayMs: 0, requestHeaders: []}),
+    ~stdinResult=Ok("<div class='item'>A</div>"),
+    ~extractResult=Ok([]),
+    ~schemaLoadResult=Error(FileReadError("unused")),
+    ~schemaApplyResult=Error(ExtractionError("unused")),
+  )
   let deps: AppContext.dependencies = {
-    ...simpleDeps(
-      ~cliValues={selector: ".item", extract: "text"},
-      ~parseResult=Ok({selector: ".item", extract: Text, mode: Single, outputFormat: Json, warnings: [], concurrency: 5, timeoutSeconds: 30, retryCount: 3, delayMs: 0, requestHeaders: []}),
-      ~stdinResult=Ok("<div class='item'>A</div>"),
-      ~extractResult=Ok([]),
-      ~schemaLoadResult=Error(FileReadError("unused")),
-      ~schemaApplyResult=Error(ExtractionError("unused")),
-    ),
-    documentOps: throwingOps,
+    ...depsBase,
+    doc: {
+      ...depsBase.doc,
+      documentOps: throwingOps,
+    },
   }
   let ctx = mkContext(~deps, ~push)
 

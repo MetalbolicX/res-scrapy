@@ -63,7 +63,7 @@ let runUrlMode = async (
   options: ParseCli.parseOptions,
 ) => {
   // Parse URL template
-  let urls = switch ctx.deps.parseTemplate(urlTemplate)->ResultX.mapError(AppError.mapTemplateError) {
+  let urls = switch ctx.deps.doc.parseTemplate(urlTemplate)->ResultX.mapError(AppError.mapTemplateError) {
   | Error(err) => {
       ctx.io.err(AppError.toMessage(err))
       ctx.io.exit(1)
@@ -78,10 +78,10 @@ let runUrlMode = async (
     ctx.io.exit(1)
   } else {
     // Start timing
-    let startTime = ctx.deps.performanceNow()
+    let startTime = ctx.deps.perf.performanceNow()
 
     // Fetch all pages
-    let userAgent = options.userAgent->Option.getOr(`res-scrapy/${ctx.deps.getCliVersion()}`)
+    let userAgent = options.userAgent->Option.getOr(`res-scrapy/${ctx.deps.cli.getCliVersion()}`)
     let fetchOptions: Fetcher.fetchOptions = {
       concurrency: options.concurrency,
       userAgent,
@@ -90,7 +90,7 @@ let runUrlMode = async (
       delayMs: options.delayMs,
       headers: options.requestHeaders->Array.map(h => (h.name, h.value)),
     }
-    let fetchResults = await ctx.deps.fetchAll(urls, fetchOptions)
+    let fetchResults = await ctx.deps.fetch.fetchAll(urls, fetchOptions)
 
     // Initialise stats (FetchStatsManager) and output accumulators
     let mgr = FetchStatsManager.create()
@@ -111,9 +111,9 @@ let runUrlMode = async (
           }
           FetchStatsManager.recordFailure(mgr, ~url, ~reason)
         }
-      | Ok(html) => {
+        | Ok(html) => {
           // Parse document
-          switch Document.parseDocumentSafely(ctx.deps.documentOps, html) {
+          switch Document.parseDocumentSafely(ctx.deps.doc.documentOps, html) {
           | Error(parseErr) =>
             FetchStatsManager.recordFailure(
               mgr,
@@ -123,16 +123,16 @@ let runUrlMode = async (
           | Ok(document) => {
               // Extract data
               let extractionResult = switch ExtractionMode.fromOptions(options) {
-              | TableMode(selector) => ctx.deps.extractTable(document, selector)->Result.map(ctx.deps.stringifyTableRows)
+              | TableMode(selector) => ctx.deps.doc.extractTable(document, selector)->Result.map(ctx.deps.serialize.stringifyTableRows)
               | SchemaMode(source) =>
                 SchemaRunner.loadSchema(ctx, source)
-                ->ResultX.flatMap(schema => ctx.deps.applySchema(document, schema))
-                ->Result.map(ctx.deps.stringifyJson)
+                ->ResultX.flatMap(schema => ctx.deps.schema.applySchema(document, schema))
+                ->Result.map(ctx.deps.serialize.stringifyJson)
                 ->Result.mapError(formatSchemaFailureReason)
               | SelectorMode({selector, extract: extractMode, mode}) =>
                   switch SelectorExtractor.extractElements(ctx, document, selector, extractMode, mode) {
                   | Error(msg) => Error(msg)
-                  | Ok(contents) => Ok(ctx.deps.stringifyStrings(contents))
+                  | Ok(contents) => Ok(ctx.deps.serialize.stringifyStrings(contents))
                   }
               }
 
@@ -153,14 +153,14 @@ let runUrlMode = async (
                     | (None, _) =>
                       UrlOutputWriter.writeStdoutNdjson(
                         ~out=ctx.io.out,
-                        ~stringifyJson=ctx.deps.stringifyJson,
+                        ~stringifyJson=ctx.deps.serialize.stringifyJson,
                         ~json,
                       )
                     | (Some(path), Ndjson) => {
                         let promise = UrlOutputWriter.appendNdjsonToFile(
-                          ~appendFile=ctx.deps.appendFile,
+                          ~appendFile=ctx.deps.fs.appendFile,
                           ~err=ctx.io.err,
-                          ~stringifyJson=ctx.deps.stringifyJson,
+                          ~stringifyJson=ctx.deps.serialize.stringifyJson,
                           ~path,
                           ~json,
                         )
@@ -203,7 +203,7 @@ let runUrlMode = async (
     }
 
     // Calculate duration
-    let endTime = ctx.deps.performanceNow()
+    let endTime = ctx.deps.perf.performanceNow()
     let duration = endTime -. startTime
     FetchStatsManager.setDuration(mgr, duration)
 
@@ -212,9 +212,9 @@ let runUrlMode = async (
     | (Some(path), Json) => {
         let flatResults = allResults.contents->List.reverse->List.toArray->Array.flat
         switch UrlOutputWriter.writeFileJsonSync(
-          ~writeFileSync=ctx.deps.writeFileSync,
+          ~writeFileSync=ctx.deps.fs.writeFileSync,
           ~err=ctx.io.err,
-          ~stringifyJson=ctx.deps.stringifyJson,
+          ~stringifyJson=ctx.deps.serialize.stringifyJson,
           ~path,
           ~rows=flatResults,
         ) {

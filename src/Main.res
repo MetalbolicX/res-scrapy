@@ -5,7 +5,7 @@ let exitWithError = (ctx: AppContext.appContext, err: AppError.appError) => {
 
 let parseCliSafely = (ctx: AppContext.appContext): result<ParseCli.parseOptions, AppError.appError> => {
   try {
-    ctx.deps.parseCli()->ctx.deps.validateArgs->ResultX.mapError(AppError.mapParseError)
+    ctx.deps.cli.parseCli()->ctx.deps.cli.validateArgs->ResultX.mapError(AppError.mapParseError)
   } catch {
   | exn => Error(AppError.CliError(`Invalid CLI arguments: ${ExnUtils.message(exn)}`))
   }
@@ -30,11 +30,11 @@ let mainWithContext: AppContext.appContext => promise<unit> = async ctx => {
           }
         | None => {
             // Stdin mode: existing behavior
-            let stdinResult = await ctx.deps.readStdin()
+            let stdinResult = await ctx.deps.cli.readStdin()
             switch stdinResult->ResultX.mapError(AppError.mapStdInError) {
             | Error(err) => exitWithError(ctx, err)
             | Ok(html) => {
-                switch Document.parseDocumentSafely(ctx.deps.documentOps, html) {
+                switch Document.parseDocumentSafely(ctx.deps.doc.documentOps, html) {
                 | Error(err) => exitWithError(ctx, err)
                 | Ok(document) =>
                   switch ExtractionMode.fromOptions(options) {

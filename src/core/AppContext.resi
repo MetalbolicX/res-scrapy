@@ -1,22 +1,50 @@
-type dependencies = {
+type cliDeps = {
   parseCli: unit => NodeJsBinding.Util.cliValues,
   validateArgs: NodeJsBinding.Util.cliValues => result<ParseCli.parseOptions, ParseCli.parseError>,
   readStdin: unit => promise<Result.t<string, StdIn.stdInError>>,
-  documentOps: Document.operations,
-  extractTable: (Document.document, string) => result<array<dict<string>>, string>,
-  loadSchema: (~isInline: bool, string) => result<Schema.schema, FieldTypes.schemaError>,
-  applySchema: (Document.document, Schema.schema) => result<JSON.t, FieldTypes.schemaError>,
+  getCliVersion: unit => string,
+}
+
+type fsDeps = {
   writeFile: (string, string) => promise<unit>,
   appendFile: (string, string) => promise<unit>,
   writeFileSync: (string, string) => unit,
   appendFileSync: (string, string) => unit,
+}
+
+type serializeDeps = {
   stringifyJson: JSON.t => string,
   stringifyTableRows: array<dict<string>> => string,
   stringifyStrings: array<string> => string,
+}
+
+type docDeps = {
+  documentOps: Document.operations,
+  extractTable: (Document.document, string) => result<array<dict<string>>, string>,
   parseTemplate: string => result<array<string>, TemplateParser.parseError>,
+}
+
+type schemaDeps = {
+  loadSchema: (~isInline: bool, string) => result<Schema.schema, FieldTypes.schemaError>,
+  applySchema: (Document.document, Schema.schema) => result<JSON.t, FieldTypes.schemaError>,
+}
+
+type fetchDeps = {
   fetchAll: (array<string>, Fetcher.fetchOptions) => promise<array<Fetcher.fetchResult>>,
-  getCliVersion: unit => string,
+}
+
+type perfDeps = {
   performanceNow: unit => float,
+}
+
+type dependencies = {
+  cli: cliDeps,
+  fs: fsDeps,
+  serialize: serializeDeps,
+  doc: docDeps,
+  schema: schemaDeps,
+  fetch: fetchDeps,
+  perf: perfDeps,
 }
 
 type io = {
