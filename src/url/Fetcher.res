@@ -248,15 +248,22 @@ let fetchAll: (array<string>, fetchOptions) => promise<array<fetchResult>> = asy
 
   let fetchWithSemaphore = async url => {
     await acquire(sem)
-    await acquireStartSlot(limiter)
-    let result = await fetchWithRetry(url, options.userAgent, options.timeoutSeconds, options.retryCount, options.headers)
+    let result = await acquireStartSlot(limiter)->Promise.then(_ =>
+      fetchWithRetry(url, options.userAgent, options.timeoutSeconds, options.retryCount, options.headers)
+    )
     release(sem)
     {url, result}
   }
 
-  let promises = urls->Array.map(fetchWithSemaphore)
-  let results = await Promise.all(promises)
-  results
+  let promises = urls->Array.map(url =>
+    fetchWithSemaphore(url)->Promise.catch(exn =>
+      Promise.resolve({
+        url,
+        result: Error(NetworkError(`Unexpected rejection: ${ExnUtils.message(exn)}`)),
+      })
+    )
+  )
+  await Promise.all(promises)
 }
 
 /**

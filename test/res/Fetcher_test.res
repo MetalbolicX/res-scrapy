@@ -131,3 +131,47 @@ test("Fetcher timeout classification ignores error message text", () => {
   | _ => failWith("Expected NetworkError")
   }
 })
+
+testAsync("fetchAll returns all results even when some URLs fail", planned => {
+  let options: Fetcher.fetchOptions = {
+    concurrency: 3,
+    userAgent: "test-agent/1.0",
+    timeoutSeconds: 2,
+    retryCount: 0,
+    delayMs: 0,
+    headers: [],
+  }
+  Fetcher.fetchAll(
+    [
+      "http://127.0.0.1:9",
+      "http://127.0.0.1:9",
+      "https://example.com/",
+    ],
+    options,
+  )
+  ->Promise.then(results => {
+    (results->Array.length == 3)->isTruthy
+    let countSuccess = results->Array.filter(r =>
+      switch r.result {
+      | Ok(_) => true
+      | Error(_) => false
+      }
+    )->Array.length
+    let countFailure = results->Array.filter(r =>
+      switch r.result {
+      | Ok(_) => false
+      | Error(_) => true
+      }
+    )->Array.length
+    (countSuccess >= 1)->isTruthy
+    (countFailure >= 1)->isTruthy
+    planned(~planned=3, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("fetchAll threw unexpectedly")
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
