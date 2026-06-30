@@ -87,77 +87,99 @@ let extract: (
 
   let rows = resolveRows(el, tableOpts.rowSelector)
 
-  let rowsResult: result<array<JSON.t>, schemaError> = rows
-    ->Iter.values
-    ->Iter.reduce((acc, rowEl) => {
-      switch acc {
-      | Error(e) => Error(e)
-      | Ok(outputRows) => {
-          let pairsResult: result<array<(string, JSON.t)>, schemaError> =
-            resolvedColumns
-            ->Iter.values
-            ->Iter.reduce((pAcc, (col, resolvedFieldType, nestedDefaults)) => {
-              switch pAcc {
-              | Error(e) => Error(e)
-              | Ok(pairs) => {
-                  let value: result<JSON.t, schemaError> = switch resolvedFieldType {
-                  | List(opts) => {
-                      let allEls = rowEl->NodeHtmlParserBinding.querySelectorAll(col.selector)
-                      switch ListExtractor.extract(allEls, opts) {
-                      | Some(json) => Ok(json)
-                      | None => Ok(JSON.Encode.null)
-                      }
-                    }
-                  | _ =>
-                    switch rowEl
-                    ->NodeHtmlParserBinding.querySelector(col.selector)
-                    ->Nullable.toOption {
-                    | Some(colEl) =>
-                      extractCell(colEl, resolvedFieldType, nestedDefaults, ignoreErrors)
-                    | None =>
-                      if col.required && ignoreErrors == false {
-                        Error(RequiredFieldMissing({fieldName: col.name, selector: col.selector}))
-                      } else {
-                        Ok(
-                          switch col.default {
-                          | Some(d) => d
-                          | None => JSON.Encode.null
-                          },
-                        )
-                      }
-                    }
+  let preQueriedCols = resolvedColumns->Array.map(((col, resolvedFieldType, nestedDefaults)) => {
+    let isList = switch resolvedFieldType {
+    | List(_) => true
+    | _ => false
+    }
+    let perRowEls = rows->Array.map(rowEl =>
+      if isList {
+        NodeHtmlParserBinding.querySelectorAll(rowEl, col.selector)
+      } else {
+        switch rowEl->NodeHtmlParserBinding.querySelector(col.selector)->Nullable.toOption {
+        | Some(el) => [el]
+        | None => []
+        }
+      }
+    )
+    (col, resolvedFieldType, nestedDefaults, perRowEls)
+  })
+
+  let outputRows: array<JSON.t> = []
+  let rowCount = Array.length(rows)
+  let rowIdx = ref(0)
+  let loopResult: ref<result<unit, schemaError>> = ref(Ok())
+
+  while rowIdx.contents < rowCount {
+    switch loopResult.contents {
+    | Error(_) => rowIdx := rowCount
+    | Ok(_) => {
+        let pairsResult: result<array<(string, JSON.t)>, schemaError> = {
+          let pairs: array<(string, JSON.t)> = []
+          let pairsError: ref<option<schemaError>> = ref(None)
+          preQueriedCols->Array.forEach(((col, resolvedFieldType, nestedDefaults, perRowEls)) => {
+            switch pairsError.contents {
+            | Some(_) => ()
+            | None => {
+                let rowEls = Array.get(perRowEls, rowIdx.contents)->Option.getOr([])
+                let value: result<JSON.t, schemaError> = switch resolvedFieldType {
+                | List(opts) =>
+                  switch ListExtractor.extract(rowEls, opts) {
+                  | Some(json) => Ok(json)
+                  | None => Ok(JSON.Encode.null)
                   }
-                  switch value {
-                  | Error(e) =>
-                    if ignoreErrors {
-                      let fallback = switch col.default {
-                      | Some(d) => d
-                      | None => JSON.Encode.null
-                      }
-                      pairs->Array.push((col.name, fallback))
-                      Ok(pairs)
+                | _ =>
+                  let maybeEl = Array.get(rowEls, 0)
+                  switch maybeEl {
+                  | Some(colEl) =>
+                    extractCell(colEl, resolvedFieldType, nestedDefaults, ignoreErrors)
+                  | None =>
+                    if col.required && ignoreErrors == false {
+                      Error(RequiredFieldMissing({fieldName: col.name, selector: col.selector}))
                     } else {
-                      Error(e)
-                    }
-                  | Ok(v) => {
-                      pairs->Array.push((col.name, v))
-                      Ok(pairs)
+                      Ok(
+                        switch col.default {
+                        | Some(d) => d
+                        | None => JSON.Encode.null
+                        },
+                      )
                     }
                   }
                 }
+                switch value {
+                | Error(e) =>
+                  if ignoreErrors {
+                    let fallback = switch col.default {
+                    | Some(d) => d
+                    | None => JSON.Encode.null
+                    }
+                    pairs->Array.push((col.name, fallback))
+                  } else {
+                    pairsError := Some(e)
+                  }
+                | Ok(v) => pairs->Array.push((col.name, v))
+                }
               }
-            }, Ok([]))
-
-          switch pairsResult {
-          | Error(e) => Error(e)
-          | Ok(pairs) => {
-              outputRows->Array.push(JSON.Encode.object(Dict.fromArray(pairs)))
-              Ok(outputRows)
             }
+          })
+          switch pairsError.contents {
+          | Some(e) => Error(e)
+          | None => Ok(pairs)
           }
         }
+        switch pairsResult {
+        | Error(e) => loopResult := Error(e)
+        | Ok(pairs) => outputRows->Array.push(JSON.Encode.object(Dict.fromArray(pairs)))
+        }
+        rowIdx := rowIdx.contents + 1
       }
-    }, Ok([]))
+    }
+  }
+
+  let rowsResult = switch loopResult.contents {
+  | Error(e) => Error(e)
+  | Ok(_) => Ok(outputRows)
+  }
 
   switch rowsResult {
   | Error(e) => Error(e)

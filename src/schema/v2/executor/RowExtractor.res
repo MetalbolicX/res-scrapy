@@ -45,25 +45,41 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
     })
     ->Iter.toArray
 
-  let results: result<array<JSON.t>, schemaError> = limitedRows->Iter.values->Iter.reduce((
-    acc,
-    rowEl,
-  ) => {
-    switch acc {
-    | Error(e) => Error(e)
-    | Ok(outputRows) => {
-        let fieldResult: result<
-          array<(string, JSON.t)>,
-          schemaError,
-        > = resolvedFields->Iter.values->Iter.reduce((fAcc, (name, field, resolvedFieldType, nestedDefaults)) => {
-          switch fAcc {
-          | Error(e) => Error(e)
-          | Ok(pairs) => {
-                let value: result<JSON.t, schemaError> = if isMultiElementType(resolvedFieldType) {
-                  // Multi-element path: pass all matched elements to extractValueList.
-                  let allEls = NodeHtmlParserBinding.querySelectorAll(rowEl, field.selector)
+  let preQueriedFields = resolvedFields->Array.map(((name, field, resolvedFieldType, nestedDefaults)) => {
+    let isMulti = isMultiElementType(resolvedFieldType)
+    let perRowEls = limitedRows->Array.map(rowEl =>
+      if isMulti {
+        NodeHtmlParserBinding.querySelectorAll(rowEl, field.selector)
+      } else {
+        switch NodeHtmlParserBinding.querySelector(rowEl, field.selector)->Nullable.toOption {
+        | Some(el) => [el]
+        | None => []
+        }
+      }
+    )
+    (name, field, resolvedFieldType, nestedDefaults, perRowEls)
+  })
+
+  let outputRows: array<JSON.t> = []
+  let rowCount = Array.length(limitedRows)
+  let rowIdx = ref(0)
+  let loopResult: ref<result<unit, schemaError>> = ref(Ok())
+
+  while rowIdx.contents < rowCount {
+    switch loopResult.contents {
+    | Error(_) => rowIdx := rowCount
+    | Ok(_) => {
+        let pairsResult: result<array<(string, JSON.t)>, schemaError> = {
+          let pairs: array<(string, JSON.t)> = []
+          let fieldError: ref<option<schemaError>> = ref(None)
+          preQueriedFields->Array.forEach(((name, field, resolvedFieldType, nestedDefaults, perRowEls)) => {
+            switch fieldError.contents {
+            | Some(_) => ()
+            | None => {
+                let rowEls = Array.get(perRowEls, rowIdx.contents)->Option.getOr([])
+                let value = if isMultiElementType(resolvedFieldType) {
                   ExtractorRegistry.extractValueList(
-                    allEls,
+                    rowEls,
                     resolvedFieldType,
                     None,
                     schema.config.ignoreErrors,
@@ -72,8 +88,7 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
                     field.selector,
                   )
                 } else {
-                  let maybeEl =
-                    NodeHtmlParserBinding.querySelector(rowEl, field.selector)->Nullable.toOption
+                  let maybeEl = Array.get(rowEls, 0)
                   ExtractorRegistry.extractValueOrAbsent(
                     maybeEl,
                     resolvedFieldType,
@@ -85,26 +100,31 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
                     schema.config.ignoreErrors,
                   )
                 }
-              switch value {
-              | Error(e) => Error(e)
-              | Ok(v) => {
-                  pairs->Array.push((name, v))
-                  Ok(pairs)
+                switch value {
+                | Error(e) => fieldError := Some(e)
+                | Ok(v) => pairs->Array.push((name, v))
                 }
               }
             }
-          }
-        }, Ok([]))
-        switch fieldResult {
-        | Error(e) => Error(e)
-        | Ok(pairs) => {
-            outputRows->Array.push(JSON.Encode.object(Dict.fromArray(pairs)))
-            Ok(outputRows)
+          })
+          switch fieldError.contents {
+          | Some(e) => Error(e)
+          | None => Ok(pairs)
           }
         }
+        switch pairsResult {
+        | Error(e) => loopResult := Error(e)
+        | Ok(pairs) => outputRows->Array.push(JSON.Encode.object(Dict.fromArray(pairs)))
+        }
+        rowIdx := rowIdx.contents + 1
       }
     }
-  }, Ok([]))
+  }
+
+  let results = switch loopResult.contents {
+  | Error(e) => Error(e)
+  | Ok(_) => Ok(outputRows)
+  }
 
   switch results {
   | Error(e) => Error(e)
