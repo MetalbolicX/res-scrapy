@@ -59,6 +59,23 @@ let isRetryable: fetchError => bool = err =>
   }
 
 /**
+  * Classifies a fetch failure based on whether the request signal was aborted
+  * (e.g. by the timeout controller). Replaces fragile string-matching on the
+  * exception message, which broke when the underlying runtime changed its
+  * error text.
+  */
+let classifyError = (
+  ~message: string,
+  ~isAborted: bool,
+  ~timeoutSeconds: int,
+): result<'a, fetchError> =>
+  if isAborted {
+    Error(Timeout(`timeout after ${Int.toString(timeoutSeconds)}s`))
+  } else {
+    Error(NetworkError(message))
+  }
+
+/**
   * Delays for the specified milliseconds.
   */
 let delay: int => promise<unit> = ms =>
@@ -134,12 +151,11 @@ let fetchOnce: (string, string, int, array<(string, string)>) => promise<result<
       | None => "Unknown error"
       }
 
-      // Detect timeout
-      if String.includes(message, "abort") || String.includes(message, "timeout") {
-        Error(Timeout(`timeout after ${Int.toString(timeoutMs / 1000)}s`))
-      } else {
-        Error(NetworkError(message))
-      }
+      // Classify via the signal state, not the exception message text.
+      let isAborted = NodeJsBinding.Fetch.AbortSignal.aborted(
+        NodeJsBinding.Fetch.AbortSignal.signal(controller),
+      )
+      classifyError(~message, ~isAborted, ~timeoutSeconds)
     }
   }
 }

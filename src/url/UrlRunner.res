@@ -16,6 +16,27 @@ let countRows: JSON.t => int = json => {
   }
 }
 
+/**
+  * Formats an `AppError.appError` from `parseDocumentSafely` into the
+  * `reason` string expected by `Reporter.recordFailure`. Preserves the
+  * underlying message instead of using a hardcoded fallback.
+  */
+let formatParseFailureReason = (err: AppError.appError): string =>
+  AppError.toMessage(err)
+
+/**
+  * Formats a string error from an extraction step (table / selector) into
+  * the `reason` string. Pass-through so the caller never loses context.
+  */
+let formatExtractionFailureReason = (err: string): string => err
+
+/**
+  * Formats a `FieldTypes.schemaError` from schema loading / application into
+  * the `reason` string expected by `Reporter.recordFailure`.
+  */
+let formatSchemaFailureReason = (err: FieldTypes.schemaError): string =>
+  AppError.toMessage(AppError.mapSchemaError(err))
+
 /** Writes NDJSON to stdout by iterating over a JSON array. */
 let writeNdjsonToStdout: (AppContext.appContext, JSON.t) => unit = (ctx, json) => {
   let rows = extractJsonArray(json)
@@ -94,8 +115,12 @@ let runUrlMode = async (
       | Ok(html) => {
           // Parse document
           switch Document.parseDocumentSafely(ctx.deps.documentOps, html) {
-          | Error(_err) => {
-              stats := Reporter.recordFailure(stats.contents, ~url, ~reason="Failed to parse HTML")
+          | Error(parseErr) => {
+              stats := Reporter.recordFailure(
+                stats.contents,
+                ~url,
+                ~reason=formatParseFailureReason(parseErr),
+              )
             }
           | Ok(document) => {
               // Extract data
@@ -105,7 +130,7 @@ let runUrlMode = async (
                 SchemaRunner.loadSchema(ctx, source)
                 ->ResultX.flatMap(schema => ctx.deps.applySchema(document, schema))
                 ->Result.map(ctx.deps.stringifyJson)
-                ->Result.mapError(_ => "Schema error")
+                ->Result.mapError(formatSchemaFailureReason)
               | SelectorMode({selector, extract: extractMode, mode}) =>
                   switch SelectorExtractor.extractElements(ctx, document, selector, extractMode, mode) {
                   | Error(msg) => Error(msg)
@@ -114,8 +139,12 @@ let runUrlMode = async (
               }
 
               switch extractionResult {
-              | Error(_err) => {
-                  stats := Reporter.recordFailure(stats.contents, ~url, ~reason="Extraction failed")
+              | Error(extractErr) => {
+                  stats := Reporter.recordFailure(
+                    stats.contents,
+                    ~url,
+                    ~reason=formatExtractionFailureReason(extractErr),
+                  )
                 }
               | Ok(jsonText) => {
                   // Parse JSON to count rows

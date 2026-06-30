@@ -1,5 +1,6 @@
 open Test
 open Assertions
+open TestHelpers
 
 let parseSchema = raw =>
   switch SchemaV2.loadSchema(~isInline=true, raw) {
@@ -185,4 +186,31 @@ test("file read error for missing schema file propagates correctly", () => {
   | Ok(_) => failWith("Expected FileReadError for missing schema file")
   | Error(_) => failWith("Expected FileReadError")
   }
+})
+
+test("UrlRunner parseFailureReason preserves AppError message", () => {
+  let err: AppError.appError = AppError.InputError("custom parse failure: bad HTML")
+  let reason = UrlRunner.formatParseFailureReason(err)
+  isTextEqualTo("custom parse failure: bad HTML", reason)
+})
+
+test("UrlRunner extractionFailureReason preserves underlying string", () => {
+  let reason = UrlRunner.formatExtractionFailureReason("custom extract failure: schema mismatch")
+  isTextEqualTo("custom extract failure: schema mismatch", reason)
+})
+
+test("UrlRunner schemaFailureReason maps schema error to human message", () => {
+  let err: FieldTypes.schemaError = FieldTypes.RequiredFieldMissing({
+    fieldName: "price",
+    selector: ".price",
+  })
+  let reason = UrlRunner.formatSchemaFailureReason(err)
+  stringContains(reason, "price")->isTruthy
+  stringContains(reason, ".price")->isTruthy
+})
+
+test("UrlRunner schemaFailureReason preserves InvalidJson message", () => {
+  let err: FieldTypes.schemaError = FieldTypes.InvalidJson("bad json at line 5")
+  let reason = UrlRunner.formatSchemaFailureReason(err)
+  stringContains(reason, "bad json at line 5")->isTruthy
 })

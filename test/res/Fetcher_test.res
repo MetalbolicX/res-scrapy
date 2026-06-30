@@ -1,6 +1,7 @@
 open Test
 open Assertions
 open TestHelpers
+open NodeJsBinding.Fetch
 
 test("isRetryable returns true for NetworkError", () => {
   isTruthy(Fetcher.isRetryable(NetworkError("connection refused")))
@@ -83,4 +84,50 @@ test("fetchErrorToMessage formats ParseError", () => {
   let msg = Fetcher.fetchErrorToMessage(ParseError("invalid html"))
   stringContains(msg, "invalid html")->isTruthy
   stringContains(msg, "Parse error")->isTruthy
+})
+
+test("AbortSignal aborted is false before abort()", () => {
+  let controller = AbortSignal.makeController()
+  let signal = AbortSignal.signal(controller)
+  isTruthy(AbortSignal.aborted(signal) == false)
+})
+
+test("AbortSignal aborted is true after abort()", () => {
+  let controller = AbortSignal.makeController()
+  let signal = AbortSignal.signal(controller)
+  AbortSignal.abort(controller)
+  isTruthy(AbortSignal.aborted(signal) == true)
+})
+
+test("Fetcher classifies error as Timeout when signal is aborted", () => {
+  let controller = AbortSignal.makeController()
+  let signal = AbortSignal.signal(controller)
+  AbortSignal.abort(controller)
+  let result = Fetcher.classifyError(~message="some unrelated error text", ~isAborted=AbortSignal.aborted(signal), ~timeoutSeconds=5)
+  switch result {
+  | Error(Timeout(msg)) =>
+    stringContains(msg, "5")->isTruthy
+    stringContains(msg, "timeout")->isTruthy
+  | _ => failWith("Expected Timeout variant when signal is aborted")
+  }
+})
+
+test("Fetcher classifies error as NetworkError when signal is not aborted", () => {
+  let result = Fetcher.classifyError(~message="connection refused", ~isAborted=false, ~timeoutSeconds=30)
+  switch result {
+  | Error(NetworkError(msg)) =>
+    stringContains(msg, "connection refused")->isTruthy
+  | _ => failWith("Expected NetworkError variant when signal is not aborted")
+  }
+})
+
+test("Fetcher timeout classification ignores error message text", () => {
+  // Critical: even if the error message contains "abort" or "timeout", if the
+  // signal was not aborted, the error should be classified as NetworkError.
+  let result = Fetcher.classifyError(~message="abort controller failure", ~isAborted=false, ~timeoutSeconds=10)
+  switch result {
+  | Error(NetworkError(_)) => passWith("NetworkError returned despite 'abort' in message")
+  | Error(Timeout(_)) => failWith("Should not classify as Timeout when signal is not aborted")
+  | _ => failWith("Expected NetworkError")
+  }
 })

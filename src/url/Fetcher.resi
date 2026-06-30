@@ -39,6 +39,12 @@ let isRetryable: fetchError => bool
 
 /**
   * @internal Exported for unit testing only.
+  * Classifies a fetch failure based on whether the request signal was aborted.
+  */
+let classifyError: (~message: string, ~isAborted: bool, ~timeoutSeconds: int) => result<'a, fetchError>
+
+/**
+  * @internal Exported for unit testing only.
   * Calculates exponential backoff delay for a retry attempt.
   */
 let backoffDelay: int => int

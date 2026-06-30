@@ -235,10 +235,14 @@ module Fetch = {
   module AbortSignal = {
     type t
     type controller
-    
+
     @new external makeController: unit => controller = "AbortController"
     @get external signal: controller => t = "signal"
     @send external abort: controller => unit = "abort"
+    /** True when the signal has been aborted (e.g. via the timeout controller).
+      * Used to classify fetch failures as timeouts instead of fragile message
+      * string-matching on the exception. */
+    @get external aborted: t => bool = "aborted"
   }
 
   /** Represents an HTTP response from `fetch`. */

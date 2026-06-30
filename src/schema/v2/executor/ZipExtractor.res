@@ -64,10 +64,16 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
   | n => n < rowCount ? n : rowCount
   }
 
-  let rec buildRows = (idx: int, rows: array<JSON.t>): result<array<JSON.t>, schemaError> => {
-    if idx >= limitedCount {
-      Ok(rows)
-    } else {
+  let buildRows = (): result<array<JSON.t>, schemaError> => {
+    let rows: array<JSON.t> = []
+    let idx = ref(0)
+    let loopResult: ref<result<unit, schemaError>> = ref(Ok())
+    while idx.contents < limitedCount && {
+      switch loopResult.contents {
+      | Error(_) => false
+      | Ok(_) => true
+      }
+    } {
       let fieldResult: result<array<(string, JSON.t)>, schemaError> =
         fieldLists->Iter.values->Iter.reduce((fAcc, (name, field, resolvedFieldType, nestedDefaults, els)) => {
           switch fAcc {
@@ -79,7 +85,7 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
                 | None => Ok(JSON.Encode.null)
                 }
               } else {
-                switch Array.get(els, idx) {
+                switch Array.get(els, idx.contents) {
                 | Some(el) =>
                   ExtractorRegistry.extractValue(
                     el,
@@ -109,16 +115,20 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
           }
         }, Ok([]))
       switch fieldResult {
-      | Error(e) => Error(e)
+      | Error(e) => loopResult := Error(e)
       | Ok(pairs) => {
           rows->Array.push(JSON.Encode.object(Dict.fromArray(pairs)))
-          buildRows(idx + 1, rows)
+          idx := idx.contents + 1
         }
       }
     }
+    switch loopResult.contents {
+    | Error(e) => Error(e)
+    | Ok(_) => Ok(rows)
+    }
   }
 
-  let results: result<array<JSON.t>, schemaError> = buildRows(0, [])
+  let results: result<array<JSON.t>, schemaError> = buildRows()
 
   switch results {
   | Error(e) => Error(e)
