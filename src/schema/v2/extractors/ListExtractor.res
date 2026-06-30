@@ -1,10 +1,20 @@
 /** List extractor — collects values from an array of HTML elements.
   *
   * itemType controls how each element's value is extracted:
-  *   ListText             → textContent (trimmed)
-  *   ListHtml             → innerHTML
-  *   ListAttribute(name)  → named attribute value
-  *   ListUrl              → href/src attribute (same logic as UrlExtractor)
+  *   ListText             → delegates to TextExtractor (trim+filter-empty)
+  *   ListHtml             → reads innerHTML directly (filter-empty only;
+  *                          preserves raw whitespace so <li>  </li> is NOT
+  *                          silently dropped — html may carry structural
+  *                          whitespace that callers want)
+  *   ListAttribute(name)  → delegates to AttributeExtractor (First mode);
+  *                          list-level trim+filter-empty applied post-hoc
+  *   ListUrl              → delegates to UrlExtractor (no extra options;
+  *                          extractor handles URL validation/resolve)
+  *
+  * This module no longer duplicates per-element extraction logic — each
+  * branch is a thin wrapper over the canonical named extractor, with the
+  * list-level normalisation (trim+filter-empty) applied as a post-step
+  * when the named extractor does not already cover it.
   *
   * Post-processing (in order): filter → unique → limit → join/array output.
   */
@@ -12,24 +22,30 @@ open FieldTypes
 
 module Iter = NodeJsBinding.Iter
 
-// @get external textContent: NodeHtmlParserBinding.htmlElement => string = "textContent"
-// @get external innerHTML: NodeHtmlParserBinding.htmlElement => string = "innerHTML"
+/* listTrim applies the trim+filter-empty normalisation that list semantics
+   require. TextExtractor already trims and filters empty, and UrlExtractor
+   handles URL-level filtering; AttributeExtractor's First mode returns raw
+   values, so we apply listTrim there. */
+let listTrim = (s: string): option<string> => {
+  let t = String.trim(s)
+  if String.length(t) === 0 {
+    None
+  } else {
+    Some(t)
+  }
+}
 
 let extractItemValue: (NodeHtmlParserBinding.htmlElement, listItemType) => option<string> = (
   el,
   itemType,
 ) => {
   switch itemType {
-  | ListText => {
-      let t = String.trim(el.textContent)
-      if String.length(t) === 0 {
-        None
-      } else {
-        Some(t)
-      }
-    }
+  | ListText =>
+    // TextExtractor already trims base textContent and returns None on empty.
+    TextExtractor.extract(el, None)
   | ListHtml => {
       let h = el.innerHTML
+      // Preserve existing semantics: filter empty innerHTML only (no trim).
       if String.length(h) === 0 {
         None
       } else {
@@ -37,18 +53,10 @@ let extractItemValue: (NodeHtmlParserBinding.htmlElement, listItemType) => optio
       }
     }
   | ListAttribute(name) =>
-    switch NodeHtmlParserBinding.getAttribute(el, name)->Nullable.toOption {
-    | None => None
-    | Some(v) =>
-      let t = String.trim(v)
-      if String.length(t) === 0 {
-        None
-      } else {
-        Some(t)
-      }
-    }
+    AttributeExtractor.extract(el, {names: [name], mode: First})
+    ->Option.flatMap(listTrim)
   | ListUrl =>
-    // Reuse UrlExtractor with no options (extracts href/src, validates)
+    // UrlExtractor with no options: extracts href/src, validates.
     UrlExtractor.extract(el, None)
   }
 }

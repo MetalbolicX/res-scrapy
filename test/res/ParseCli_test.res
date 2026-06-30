@@ -636,3 +636,308 @@ test("runArgsValidation warns that --delay is ignored without --url", () => {
   | Error(_) => failWith("Expected warning for --delay without --url")
   }
 })
+
+/* ============================================================================
+   Phase 3 PR 2b: Exact error/warning string preservation
+   These tests pin the exact strings that the Flat Validation Pipeline refactor
+   (3.2) must preserve. Any drift in the message text fails the test.
+   ============================================================================ */
+
+let getInvalidMsg = e =>
+  switch e {
+  | InvalidConcurrency(m)
+  | InvalidTimeout(m)
+  | InvalidRetry(m)
+  | InvalidDelay(m)
+  | InvalidHeader(m)
+  | InvalidUrlMode(m) => Some(m)
+  | ParseError({message: m}) => Some(m)
+  | _ => None
+  }
+
+let parseErrOf = e =>
+  switch e {
+  | ParseError({message: m}) => Some(m)
+  | _ => None
+  }
+
+test("PR 2b preserves exact concurrency out-of-range error message", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    concurrency: "21",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch getInvalidMsg(e) {
+    | Some(m) => isTextEqualTo("Concurrency must be between 1 and 20, got 21", m)
+    | None => failWith("Expected concurrency error")
+    }
+  | Ok(_) => failWith("Expected InvalidConcurrency for concurrency > 20")
+  }
+})
+
+test("PR 2b preserves exact non-numeric concurrency error message", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    concurrency: "abc",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch getInvalidMsg(e) {
+    | Some(m) =>
+      isTextEqualTo("Invalid concurrency value \"abc\". Expected a number between 1 and 20", m)
+    | None => failWith("Expected concurrency error")
+    }
+  | Ok(_) => failWith("Expected InvalidConcurrency for non-numeric value")
+  }
+})
+
+test("PR 2b preserves exact timeout <1 error message", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    timeout: "0",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch getInvalidMsg(e) {
+    | Some(m) => isTextEqualTo("Timeout must be >= 1 second, got 0", m)
+    | None => failWith("Expected timeout error")
+    }
+  | Ok(_) => failWith("Expected InvalidTimeout")
+  }
+})
+
+test("PR 2b preserves exact non-numeric timeout error message", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    timeout: "abc",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch getInvalidMsg(e) {
+    | Some(m) =>
+      isTextEqualTo(
+        "Invalid timeout value \"abc\". Expected a number of seconds (>= 1)",
+        m,
+      )
+    | None => failWith("Expected timeout error")
+    }
+  | Ok(_) => failWith("Expected InvalidTimeout")
+  }
+})
+
+test("PR 2b preserves exact retry <1 error message", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    retry: "0",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch getInvalidMsg(e) {
+    | Some(m) => isTextEqualTo("Retry count must be >= 1, got 0", m)
+    | None => failWith("Expected retry error")
+    }
+  | Ok(_) => failWith("Expected InvalidRetry")
+  }
+})
+
+test("PR 2b preserves exact non-numeric retry error message", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    retry: "abc",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch getInvalidMsg(e) {
+    | Some(m) =>
+      isTextEqualTo("Invalid retry value \"abc\". Expected a number (>= 1)", m)
+    | None => failWith("Expected retry error")
+    }
+  | Ok(_) => failWith("Expected InvalidRetry")
+  }
+})
+
+test("PR 2b preserves exact delay <0 error message", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    delay: "-5",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch getInvalidMsg(e) {
+    | Some(m) => isTextEqualTo("Delay must be >= 0 ms, got -5", m)
+    | None => failWith("Expected delay error")
+    }
+  | Ok(_) => failWith("Expected InvalidDelay")
+  }
+})
+
+test("PR 2b preserves exact non-numeric delay error message", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    delay: "abc",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch getInvalidMsg(e) {
+    | Some(m) =>
+      isTextEqualTo("Invalid delay value \"abc\". Expected milliseconds (>= 0)", m)
+    | None => failWith("Expected delay error")
+    }
+  | Ok(_) => failWith("Expected InvalidDelay")
+  }
+})
+
+test("PR 2b preserves exact empty attr extract error message", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    extract: "attr:",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch parseErrOf(e) {
+    | Some(m) =>
+      isTextEqualTo(
+        "Invalid --extract value \"attr:\". Expected format: attr:<name>",
+        m,
+      )
+    | None => failWith("Expected ParseError")
+    }
+  | Ok(_) => failWith("Expected ParseError for empty attr")
+  }
+})
+
+test("PR 2b preserves exact unknown extract mode error message", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    extract: "garbage",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch parseErrOf(e) {
+    | Some(m) =>
+      isTextEqualTo(
+        "Invalid --extract value \"garbage\". Valid values are: outerHtml, innerHtml, text, attr:<name>",
+        m,
+      )
+    | None => failWith("Expected ParseError")
+    }
+  | Ok(_) => failWith("Expected ParseError for unknown extract mode")
+  }
+})
+
+test("PR 2b preserves exact invalid --format error message", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    output: "./out",
+    format: "xml",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch parseErrOf(e) {
+    | Some(m) =>
+      isTextEqualTo(
+        "Invalid --format value \"xml\". Valid values are: json, ndjson",
+        m,
+      )
+    | None => failWith("Expected ParseError")
+    }
+  | Ok(_) => failWith("Expected ParseError for invalid format")
+  }
+})
+
+test("PR 2b preserves exact empty user-agent error message", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    userAgent: "",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch parseErrOf(e) {
+    | Some(m) =>
+      isTextEqualTo(
+        "Invalid --user-agent value \"\". Expected a non-empty string.",
+        m,
+      )
+    | None => failWith("Expected ParseError")
+    }
+  | Ok(_) => failWith("Expected ParseError for empty user-agent")
+  }
+})
+
+test("PR 2b preserves exact MissingSelector error message", () => {
+  switch runArgsValidation(emptyValues) {
+  | Error(MissingSelector(m)) => isTextEqualTo("Selector is required (--selector/-s)", m)
+  | _ => failWith("Expected MissingSelector")
+  }
+})
+
+test("PR 2b preserves exact URL mode missing selector error message", () => {
+  let values = {
+    ...emptyValues,
+    url: "https://example.com/{1..3}",
+  }
+  switch runArgsValidation(values) {
+  | Error(InvalidUrlMode(m)) =>
+    isTextEqualTo(
+      "When using --url, an extraction flag is required (--selector/-s, --schemaPath/-p, or --table/-t)",
+      m,
+    )
+  | _ => failWith("Expected InvalidUrlMode for URL without selector")
+  }
+})
+
+test("PR 2b preserves exact --format-ignored warning message when no --output", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    format: "ndjson",
+  }
+  switch runArgsValidation(values) {
+  | Ok(opts) => {
+      let prefixWarning = opts.warnings->Array.some(w =>
+        stringContains(w, "Warning: --format is ignored unless --output is provided") &&
+        stringContains(w, "stdout always uses JSON array format.")
+      )
+      isTruthy(prefixWarning)
+    }
+  | Error(_) => failWith("Expected warning for --format without --output")
+  }
+})
+
+test("PR 2b preserves comma-separated list of fetch flags in single warning", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    userAgent: "Bot",
+    timeout: "10",
+    header: ["Accept: text/html"],
+  }
+  switch runArgsValidation(values) {
+  | Ok(opts) => {
+      let fetchWarning = opts.warnings->Array.find(w =>
+        stringContains(w, "ignored in stdin mode")
+      )
+      switch fetchWarning {
+      | Some(w) =>
+        isTruthy(stringContains(w, "--user-agent"))
+        isTruthy(stringContains(w, "--timeout"))
+        isTruthy(stringContains(w, "--header"))
+      | None => failWith("Expected single fetch-flag warning")
+      }
+    }
+  | Error(_) => failWith("Expected fetch-flag warning aggregation")
+  }
+})

@@ -144,202 +144,324 @@ let parseRequestHeaders = (
   }
 }
 
+/* ============================================================================
+   Phase 3 PR 2b: Flat Validation Pipeline
+   Each validation step is a small function returning `result`. The main
+   pipeline composes them with ResultX.flatMap instead of deeply nested
+   switches. Every existing error/warning string is preserved verbatim.
+   ============================================================================ */
+
+let validateUserAgent: option<string> => result<option<string>, parseError> = ua => {
+  switch ua {
+  | Some(s) if s == "" =>
+    Error(ParseError({message: "Invalid --user-agent value \"\". Expected a non-empty string.", details: None}))
+  | Some(s) => Ok(Some(s))
+  | None => Ok(None)
+  }
+}
+
+let validateUrl: option<string> => result<option<string>, parseError> = url => {
+  switch url {
+  | Some(s) if s != "" => Ok(Some(s))
+  | _ => Ok(None)
+  }
+}
+
+let validateConcurrency: option<string> => result<int, parseError> = input => {
+  switch input {
+  | Some(s) =>
+    switch Int.fromString(s) {
+    | Some(n) if n >= 1 && n <= 20 => Ok(n)
+    | Some(n) => Error(InvalidConcurrency(`Concurrency must be between 1 and 20, got ${Int.toString(n)}`))
+    | None => Error(InvalidConcurrency(`Invalid concurrency value "${s}". Expected a number between 1 and 20`))
+    }
+  | None => Ok(5)
+  }
+}
+
+let validateTimeout: option<string> => result<int, parseError> = input => {
+  switch input {
+  | Some(s) =>
+    switch Int.fromString(s) {
+    | Some(n) if n >= 1 => Ok(n)
+    | Some(n) => Error(InvalidTimeout(`Timeout must be >= 1 second, got ${Int.toString(n)}`))
+    | None => Error(InvalidTimeout(`Invalid timeout value "${s}". Expected a number of seconds (>= 1)`))
+    }
+  | None => Ok(30)
+  }
+}
+
+let validateRetry: option<string> => result<int, parseError> = input => {
+  switch input {
+  | Some(s) =>
+    switch Int.fromString(s) {
+    | Some(n) if n >= 1 => Ok(n)
+    | Some(n) => Error(InvalidRetry(`Retry count must be >= 1, got ${Int.toString(n)}`))
+    | None => Error(InvalidRetry(`Invalid retry value "${s}". Expected a number (>= 1)`))
+    }
+  | None => Ok(3)
+  }
+}
+
+let validateDelay: option<string> => result<int, parseError> = input => {
+  switch input {
+  | Some(s) =>
+    switch Int.fromString(s) {
+    | Some(n) if n >= 0 => Ok(n)
+    | Some(n) => Error(InvalidDelay(`Delay must be >= 0 ms, got ${Int.toString(n)}`))
+    | None => Error(InvalidDelay(`Invalid delay value "${s}". Expected milliseconds (>= 0)`))
+    }
+  | None => Ok(0)
+  }
+}
+
+let validateTableSelector: (option<string>, bool) => option<schemaSource> = (selector, tableOpt) => {
+  if tableOpt {
+    let sel = selector->Option.getOr("table")
+    Some(TableSelector(sel == "" ? "table" : sel))
+  } else {
+    None
+  }
+}
+
+let validateSchemaSource: (option<string>, option<string>, option<schemaSource>) => result<
+  option<schemaSource>,
+  parseError,
+> = (schemaOpt, schemaPathOpt, tableSource) => {
+  switch tableSource {
+  | Some(_) as t => Ok(t)
+  | None =>
+    switch (schemaOpt, schemaPathOpt) {
+    | (Some(s), _) if s != "" => Ok(Some(InlineJson(s)))
+    | (_, Some(p)) if p != "" => Ok(Some(FilePath(p)))
+    | _ => Ok(None)
+    }
+  }
+}
+
+let validateOutputPath: option<string> => option<string> = outputOpt => {
+  switch outputOpt {
+  | Some(path) if path != "" => Some(path)
+  | _ => None
+  }
+}
+
+/* Pure decision: should the --format flag trigger a warning?
+   Kept verbatim with the previous inline expression so the exact warning
+   string is preserved. */
+let formatWarning: (option<string>, option<string>) => array<string> = (outputOpt, formatOpt) => {
+  switch (outputOpt, formatOpt) {
+  | (None, Some(fmt)) if fmt != "json" => [
+      "Warning: --format is ignored unless --output is provided; stdout always uses JSON array format.",
+    ]
+  | _ => []
+  }
+}
+
+/* Pure: produce the list of fetch-related flag names that were set on the CLI. */
+let fetchFlagNames: NodeJsBinding.Util.cliValues => array<string> = values => {
+  let names: ref<array<string>> = ref([])
+  switch values.userAgent {
+  | Some(_) => names := names.contents->Array.concat(["--user-agent"])
+  | None => ()
+  }
+  switch values.timeout {
+  | Some(_) => names := names.contents->Array.concat(["--timeout"])
+  | None => ()
+  }
+  switch values.retry {
+  | Some(_) => names := names.contents->Array.concat(["--retry"])
+  | None => ()
+  }
+  switch values.delay {
+  | Some(_) => names := names.contents->Array.concat(["--delay"])
+  | None => ()
+  }
+  switch values.header {
+  | Some(_) => names := names.contents->Array.concat(["--header"])
+  | None => ()
+  }
+  switch values.cookie {
+  | Some(_) => names := names.contents->Array.concat(["--cookie"])
+  | None => ()
+  }
+  names.contents
+}
+
+let fetchWarning: (option<string>, array<string>) => array<string> = (urlOpt, flags) => {
+  switch (urlOpt, Array.length(flags)) {
+  | (None, n) if n > 0 => [
+      `Warning: ${Array.join(flags, ", ")} is ignored in stdin mode (no --url provided).`,
+    ]
+  | _ => []
+  }
+}
+
+let validateOutputFormat: (option<string>, option<string>) => result<outputFormat, parseError> = (
+  outputOpt,
+  formatOpt,
+) => {
+  switch outputOpt {
+  | None => Ok(Json)
+  | Some(_) =>
+    switch formatOpt {
+    | Some("json") | None => Ok(Json)
+    | Some("ndjson") => Ok(Ndjson)
+    | Some(s) =>
+      Error(ParseError({message: `Invalid --format value "${s}". Valid values are: json, ndjson`, details: None}))
+    }
+  }
+}
+
+let validateSelector: (option<string>, option<string>, option<schemaSource>) => result<string, parseError> = (
+  urlOpt,
+  selectorOpt,
+  schemaSrc,
+) => {
+  switch (urlOpt, schemaSrc) {
+  | (Some(_), Some(_)) => Ok(selectorOpt->Option.getOr(""))
+  | (Some(_), None) =>
+    switch selectorOpt {
+    | None | Some("") =>
+      Error(InvalidUrlMode("When using --url, an extraction flag is required (--selector/-s, --schemaPath/-p, or --table/-t)"))
+    | Some(s) => Ok(s)
+    }
+  | (None, Some(_)) => Ok(selectorOpt->Option.getOr(""))
+  | (None, None) =>
+    switch selectorOpt {
+    | None | Some("") => Error(MissingSelector("Selector is required (--selector/-s)"))
+    | Some(s) => Ok(s)
+    }
+  }
+}
+
+let validateExtract: option<string> => result<extractMode, parseError> = extractOpt => {
+  switch extractOpt->Option.getOr("outerHtml") {
+  | "outerHtml" => Ok(OuterHtml)
+  | "innerHtml" => Ok(InnerHtml)
+  | "text" => Ok(Text)
+  | s if String.startsWith(s, "attr:") => {
+      let attr = String.slice(s, ~start=5, ~end=String.length(s))
+      if attr == "" {
+        Error(ParseError({message: "Invalid --extract value \"attr:\". Expected format: attr:<name>", details: None}))
+      } else {
+        Ok(Attribute(attr))
+      }
+    }
+  | s =>
+    Error(ParseError({message: `Invalid --extract value "${s}". Valid values are: outerHtml, innerHtml, text, attr:<name>`, details: None}))
+  }
+}
+
+/* Convenience record bundling all the validated scalars so the final
+   pipeline block can build the parseOptions without repattern-matching. */
+type validatedScalars = {
+  userAgent: option<string>,
+  url: option<string>,
+  concurrency: int,
+  timeoutSeconds: int,
+  retryCount: int,
+  delayMs: int,
+}
+
+let validateScalars: NodeJsBinding.Util.cliValues => result<validatedScalars, parseError> = values => {
+  validateUserAgent(values.userAgent)
+  ->ResultX.flatMap(userAgent =>
+    validateUrl(values.url)
+    ->ResultX.flatMap(url =>
+      validateConcurrency(values.concurrency)
+      ->ResultX.flatMap(concurrency =>
+        validateTimeout(values.timeout)
+        ->ResultX.flatMap(timeoutSeconds =>
+          validateRetry(values.retry)
+          ->ResultX.flatMap(retryCount =>
+            validateDelay(values.delay)
+            ->Result.map(delayMs => {
+              userAgent,
+              url,
+              concurrency,
+              timeoutSeconds,
+              retryCount,
+              delayMs,
+            })
+          )
+        )
+      )
+    )
+  )
+}
+
+/* Composes request-headers validation with warning computation that depends
+   on the parsed headers. */
+let validateHeadersAndWarnings: (
+  NodeJsBinding.Util.cliValues,
+  option<string>,
+  array<string>,
+) => result<(array<headerEntry>, array<string>), parseError> = (
+  values,
+  urlOpt,
+  fetchFlags,
+) => {
+  parseRequestHeaders(values.header, values.cookie)
+  ->Result.map(requestHeaders => {
+    let formatWarnings = formatWarning(values.output, values.format)
+    let fetchWarnings = fetchWarning(urlOpt, fetchFlags)
+    (requestHeaders, formatWarnings->Array.concat(fetchWarnings))
+  })
+}
+
 /**
   * Validates the command line arguments and returns either a parseOptions object or a parseError
   * Checks that the selector is provided and not empty
   * Checks that the mode is valid if provided, defaulting to "single"
- */
+  *
+  * Flat-pipeline implementation: each validation step is a small function
+  * returning `result`; this entry-point composes them with ResultX.flatMap
+  * instead of nested switches.
+  */
 let runArgsValidation: NodeJsBinding.Util.cliValues => result<parseOptions, parseError> = values => {
-  switch parseRequestHeaders(values.header, values.cookie) {
-  | Error(e) => Error(e)
-  | Ok(requestHeaders) =>
-    switch values.userAgent {
-    | Some(ua) if ua == "" =>
-      Error(ParseError({message: "Invalid --user-agent value \"\". Expected a non-empty string.", details: None}))
-    | _ => {
-        let userAgent = switch values.userAgent {
-        | Some(ua) if ua != "" => Some(ua)
-        | _ => None
-        }
-        let url = switch values.url {
-        | Some(u) if u != "" => Some(u)
-        | _ => None
-        }
+  let fetchFlags = fetchFlagNames(values)
 
-        let concurrencyResult: result<int, parseError> = switch values.concurrency {
-        | Some(s) =>
-          switch Int.fromString(s) {
-          | Some(n) if n >= 1 && n <= 20 => Ok(n)
-          | Some(n) => Error(InvalidConcurrency(`Concurrency must be between 1 and 20, got ${Int.toString(n)}`))
-          | None => Error(InvalidConcurrency(`Invalid concurrency value "${s}". Expected a number between 1 and 20`))
-          }
-        | None => Ok(5)
-        }
+  validateScalars(values)
+  ->ResultX.flatMap(scalars => {
+    let {userAgent, url, concurrency, timeoutSeconds, retryCount, delayMs} = scalars
 
-        switch concurrencyResult {
-        | Error(e) => Error(e)
-        | Ok(concurrency) => {
-            let timeoutResult: result<int, parseError> = switch values.timeout {
-            | Some(s) =>
-              switch Int.fromString(s) {
-              | Some(n) if n >= 1 => Ok(n)
-              | Some(n) => Error(InvalidTimeout(`Timeout must be >= 1 second, got ${Int.toString(n)}`))
-              | None => Error(InvalidTimeout(`Invalid timeout value "${s}". Expected a number of seconds (>= 1)`))
+    let tableSource = validateTableSelector(values.selector, values.table->Option.getOr(false))
+
+    validateSchemaSource(values.schema, values.schemaPath, tableSource)
+    ->ResultX.flatMap(schemaSource =>
+      validateHeadersAndWarnings(values, url, fetchFlags)
+      ->ResultX.flatMap(((requestHeaders, warnings)) => {
+        let output = validateOutputPath(values.output)
+
+        validateOutputFormat(output, values.format)
+        ->ResultX.flatMap(outputFormat =>
+          validateSelector(url, values.selector, schemaSource)
+          ->ResultX.flatMap(selector =>
+            validateExtract(values.extract)
+            ->Result.map(extract => {
+              let modeFromBoolValue = values.mode->Option.getOr(false)
+              let mode = modeFromBool(modeFromBoolValue)
+              {
+                selector,
+                extract,
+                mode,
+                ?schemaSource,
+                ?output,
+                outputFormat,
+                warnings,
+                ?url,
+                concurrency,
+                ?userAgent,
+                timeoutSeconds,
+                retryCount,
+                delayMs,
+                requestHeaders,
               }
-            | None => Ok(30)
-            }
-            switch timeoutResult {
-            | Error(e) => Error(e)
-            | Ok(timeoutSeconds) => {
-                let retryResult: result<int, parseError> = switch values.retry {
-                | Some(s) =>
-                  switch Int.fromString(s) {
-                  | Some(n) if n >= 1 => Ok(n)
-                  | Some(n) => Error(InvalidRetry(`Retry count must be >= 1, got ${Int.toString(n)}`))
-                  | None => Error(InvalidRetry(`Invalid retry value "${s}". Expected a number (>= 1)`))
-                  }
-                | None => Ok(3)
-                }
-                switch retryResult {
-                | Error(e) => Error(e)
-                | Ok(retryCount) => {
-                    let delayResult: result<int, parseError> = switch values.delay {
-                    | Some(s) =>
-                      switch Int.fromString(s) {
-                      | Some(n) if n >= 0 => Ok(n)
-                      | Some(n) => Error(InvalidDelay(`Delay must be >= 0 ms, got ${Int.toString(n)}`))
-                      | None => Error(InvalidDelay(`Invalid delay value "${s}". Expected milliseconds (>= 0)`))
-                      }
-                    | None => Ok(0)
-                    }
-                    switch delayResult {
-                    | Error(e) => Error(e)
-                    | Ok(delayMs) => {
-                        let tableSource: option<schemaSource> = switch values.table {
-                        | Some(true) => {
-                            let sel = values.selector->Option.getOr("table")
-                            Some(TableSelector(sel == "" ? "table" : sel))
-                          }
-                        | _ => None
-                        }
-                        let schemaSource: option<schemaSource> = switch tableSource {
-                        | Some(_) as t => t
-                        | None =>
-                          switch (values.schema, values.schemaPath) {
-                          | (Some(s), _) if s != "" => Some(InlineJson(s))
-                          | (_, Some(p)) if p != "" => Some(FilePath(p))
-                          | _ => None
-                          }
-                        }
-                        let output = switch values.output {
-                        | Some(path) if path != "" => Some(path)
-                        | _ => None
-                        }
-                        let warnings = {
-                          let formatWarnings = switch (output, values.format) {
-                          | (None, Some(fmt)) if fmt != "json" =>
-                            ["Warning: --format is ignored unless --output is provided; stdout always uses JSON array format."]
-                          | _ => []
-                          }
-                          let fetchFlagNames = {
-                            let names: array<string> = []
-                            switch userAgent { | Some(_) => names->Array.push("--user-agent") | None => () }
-                            switch values.timeout { | Some(_) => names->Array.push("--timeout") | None => () }
-                            switch values.retry { | Some(_) => names->Array.push("--retry") | None => () }
-                            switch values.delay { | Some(_) => names->Array.push("--delay") | None => () }
-                            switch values.header { | Some(_) => names->Array.push("--header") | None => () }
-                            switch values.cookie { | Some(_) => names->Array.push("--cookie") | None => () }
-                            names
-                          }
-                          let fetchWarnings = switch (url, fetchFlagNames->Array.length) {
-                          | (None, n) if n > 0 => [
-                              `Warning: ${fetchFlagNames->Array.join(", ")} is ignored in stdin mode (no --url provided).`,
-                            ]
-                          | _ => []
-                          }
-                          Array.concat(formatWarnings, fetchWarnings)
-                        }
-                        let outputFormatResult: result<outputFormat, parseError> = switch output {
-                        | None => Ok(Json)
-                        | Some(_) =>
-                          switch values.format {
-                          | Some("json") | None => Ok(Json)
-                          | Some("ndjson") => Ok(Ndjson)
-                          | Some(s) =>
-                            Error(ParseError({message: `Invalid --format value "${s}". Valid values are: json, ndjson`, details: None}))
-                          }
-                        }
-                        let selectorResult: result<string, parseError> = switch (url, schemaSource) {
-                        | (Some(_), Some(_)) => Ok(values.selector->Option.getOr(""))
-                        | (Some(_), None) =>
-                          switch values.selector {
-                          | None | Some("") =>
-                            Error(InvalidUrlMode("When using --url, an extraction flag is required (--selector/-s, --schemaPath/-p, or --table/-t)"))
-                          | Some(s) => Ok(s)
-                          }
-                        | (None, Some(_)) => Ok(values.selector->Option.getOr(""))
-                        | (None, None) =>
-                          switch values.selector {
-                          | None | Some("") => Error(MissingSelector("Selector is required (--selector/-s)"))
-                          | Some(s) => Ok(s)
-                          }
-                        }
-                        switch selectorResult {
-                        | Error(e) => Error(e)
-                        | Ok(selector) => {
-                            let extractResult: result<extractMode, parseError> = switch values.extract->Option.getOr("outerHtml") {
-                            | "outerHtml" => Ok(OuterHtml)
-                            | "innerHtml" => Ok(InnerHtml)
-                            | "text" => Ok(Text)
-                            | s if String.startsWith(s, "attr:") => {
-                                let attr = String.slice(s, ~start=5, ~end=String.length(s))
-                                if attr == "" {
-                                  Error(ParseError({message: "Invalid --extract value \"attr:\". Expected format: attr:<name>", details: None}))
-                                } else {
-                                  Ok(Attribute(attr))
-                                }
-                              }
-                            | s =>
-                              Error(ParseError({message: `Invalid --extract value "${s}". Valid values are: outerHtml, innerHtml, text, attr:<name>`, details: None}))
-                            }
-                            switch extractResult {
-                            | Error(e) => Error(e)
-                            | Ok(extract) =>
-                              switch outputFormatResult {
-                              | Error(e) => Error(e)
-                              | Ok(outputFormat) => {
-                                  let modeFromBoolValue = values.mode->Option.getOr(false)
-                                  let mode = modeFromBool(modeFromBoolValue)
-                                  Ok({
-                                    selector,
-                                    extract,
-                                    mode,
-                                    ?schemaSource,
-                                    ?output,
-                                    outputFormat,
-                                    warnings,
-                                    ?url,
-                                    concurrency,
-                                    ?userAgent,
-                                    timeoutSeconds,
-                                    retryCount,
-                                    delayMs,
-                                    requestHeaders,
-                                  })
-                                }
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
+            })
+          )
+        )
+      })
+    )
+  })
 }
