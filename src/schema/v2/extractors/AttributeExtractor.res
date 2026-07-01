@@ -19,8 +19,7 @@ let extract: (NodeHtmlParserBinding.htmlElement, attributeConfig) => option<stri
     | None => None
     | Some(name) => getAttrRaw(el, name)
     }
-  | FirstNonEmpty =>
-    cfg.names->Iter.values->Iter.reduce((acc, name) => {
+  | FirstNonEmpty => cfg.names->Iter.values->Iter.reduce((acc, name) => {
       switch acc {
       | Some(_) => acc
       | None => getAttr(el, name)
@@ -29,14 +28,14 @@ let extract: (NodeHtmlParserBinding.htmlElement, attributeConfig) => option<stri
   | All | Join =>
     let sep = cfg.joinSep->Option.getOr(" ")
     let vals = cfg.names->Iter.values->Iter.reduce((acc, name) => {
-      switch getAttrRaw(el, name) {
-      | None => acc
-      | Some(v) => {
-          acc->Array.push(v)
-          acc
+        switch getAttrRaw(el, name) {
+        | None => acc
+        | Some(v) => {
+            acc->Array.push(v)
+            acc
+          }
         }
-      }
-    }, [])
+      }, [])
     if Array.length(vals) === 0 {
       None
     } else {

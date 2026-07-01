@@ -14,10 +14,8 @@ let getElement = (doc, selector) =>
 test("DateTimeExtractor parses ISO text by default", () => {
   let doc = HtmlFixture.parse("<time class='t'>2024-06-01T12:34:56Z</time>")
   let el = getElement(doc, ".t")
-  isOptionEqualTo(
-    Some("2024-06-01T12:34:56Z"),
-    DateTimeExtractor.extract(el, None),
-    ~eq=(a, b) => a == b,
+  isOptionEqualTo(Some("2024-06-01T12:34:56Z"), DateTimeExtractor.extract(el, None), ~eq=(a, b) =>
+    a == b
   )
 })
 
@@ -25,10 +23,8 @@ test("DateTimeExtractor supports attribute source", () => {
   let doc = HtmlFixture.parse("<time class='t' datetime='2024-06-01T12:34:56Z'>ignore</time>")
   let el = getElement(doc, ".t")
   let opts: option<dateOptions> = Some({source: "attribute", attribute: "datetime"})
-  isOptionEqualTo(
-    Some("2024-06-01T12:34:56Z"),
-    DateTimeExtractor.extract(el, opts),
-    ~eq=(a, b) => a == b,
+  isOptionEqualTo(Some("2024-06-01T12:34:56Z"), DateTimeExtractor.extract(el, opts), ~eq=(a, b) =>
+    a == b
   )
 })
 
@@ -42,11 +38,10 @@ test("DateTimeExtractor supports custom parsing format", () => {
 test("DateTimeExtractor supports epoch outputs", () => {
   let doc = HtmlFixture.parse("<time class='t'>2024-06-01T00:00:00Z</time>")
   let el = getElement(doc, ".t")
-  isOptionEqualTo(
-    Some("1717200000"),
-    DateTimeExtractor.extract(el, Some({output: Epoch})),
-    ~eq=(a, b) => a == b,
-  )
+  isOptionEqualTo(Some("1717200000"), DateTimeExtractor.extract(el, Some({output: Epoch})), ~eq=(
+    a,
+    b,
+  ) => a == b)
   isOptionEqualTo(
     Some("1717200000000"),
     DateTimeExtractor.extract(el, Some({output: EpochMillis})),

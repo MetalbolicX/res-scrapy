@@ -6,9 +6,9 @@ test("parse returns single URL when no template braces", () => {
   | Ok(urls) => isIntEqualTo(1, Array.length(urls))
   | Error(_) => failWith("Expected Ok")
   }
-  
+
   switch TemplateParser.parse("https://example.com/page") {
-  | Ok(urls) => isTextEqualTo("https://example.com/page", Array.get(urls, 0)->Option.getOr("wrong"))
+  | Ok(urls) => isTextEqualTo("https://example.com/page", urls[0]->Option.getOr("wrong"))
   | Error(_) => failWith("Expected Ok")
   }
 })
@@ -17,9 +17,9 @@ test("parse expands simple range {1..3}", () => {
   switch TemplateParser.parse("https://api.com/items/{1..3}") {
   | Ok(urls) => {
       isIntEqualTo(3, Array.length(urls))
-      isTextEqualTo("https://api.com/items/1", Array.get(urls, 0)->Option.getOr("wrong"))
-      isTextEqualTo("https://api.com/items/2", Array.get(urls, 1)->Option.getOr("wrong"))
-      isTextEqualTo("https://api.com/items/3", Array.get(urls, 2)->Option.getOr("wrong"))
+      isTextEqualTo("https://api.com/items/1", urls[0]->Option.getOr("wrong"))
+      isTextEqualTo("https://api.com/items/2", urls[1]->Option.getOr("wrong"))
+      isTextEqualTo("https://api.com/items/3", urls[2]->Option.getOr("wrong"))
     }
   | Error(e) => failWith(`Expected Ok, got: ${TemplateParser.parseErrorToMessage(e)}`)
   }
@@ -29,9 +29,9 @@ test("parse expands range with step {0..10..5}", () => {
   switch TemplateParser.parse("https://api.com/offset={0..10..5}") {
   | Ok(urls) => {
       isIntEqualTo(3, Array.length(urls))
-      isTextEqualTo("https://api.com/offset=0", Array.get(urls, 0)->Option.getOr("wrong"))
-      isTextEqualTo("https://api.com/offset=5", Array.get(urls, 1)->Option.getOr("wrong"))
-      isTextEqualTo("https://api.com/offset=10", Array.get(urls, 2)->Option.getOr("wrong"))
+      isTextEqualTo("https://api.com/offset=0", urls[0]->Option.getOr("wrong"))
+      isTextEqualTo("https://api.com/offset=5", urls[1]->Option.getOr("wrong"))
+      isTextEqualTo("https://api.com/offset=10", urls[2]->Option.getOr("wrong"))
     }
   | Error(e) => failWith(`Expected Ok, got: ${TemplateParser.parseErrorToMessage(e)}`)
   }
@@ -41,9 +41,9 @@ test("parse expands zero-padded range {001..003}", () => {
   switch TemplateParser.parse("https://api.com/item={001..003}") {
   | Ok(urls) => {
       isIntEqualTo(3, Array.length(urls))
-      isTextEqualTo("https://api.com/item=001", Array.get(urls, 0)->Option.getOr("wrong"))
-      isTextEqualTo("https://api.com/item=002", Array.get(urls, 1)->Option.getOr("wrong"))
-      isTextEqualTo("https://api.com/item=003", Array.get(urls, 2)->Option.getOr("wrong"))
+      isTextEqualTo("https://api.com/item=001", urls[0]->Option.getOr("wrong"))
+      isTextEqualTo("https://api.com/item=002", urls[1]->Option.getOr("wrong"))
+      isTextEqualTo("https://api.com/item=003", urls[2]->Option.getOr("wrong"))
     }
   | Error(e) => failWith(`Expected Ok, got: ${TemplateParser.parseErrorToMessage(e)}`)
   }
@@ -101,8 +101,8 @@ test("parse handles range at end of URL", () => {
   switch TemplateParser.parse("https://api.com/page{1..2}") {
   | Ok(urls) => {
       isIntEqualTo(2, Array.length(urls))
-      isTextEqualTo("https://api.com/page1", Array.get(urls, 0)->Option.getOr("wrong"))
-      isTextEqualTo("https://api.com/page2", Array.get(urls, 1)->Option.getOr("wrong"))
+      isTextEqualTo("https://api.com/page1", urls[0]->Option.getOr("wrong"))
+      isTextEqualTo("https://api.com/page2", urls[1]->Option.getOr("wrong"))
     }
   | Error(e) => failWith(`Expected Ok, got: ${TemplateParser.parseErrorToMessage(e)}`)
   }
@@ -112,8 +112,8 @@ test("parse handles range in middle of URL", () => {
   switch TemplateParser.parse("https://api.com/{1..2}/items") {
   | Ok(urls) => {
       isIntEqualTo(2, Array.length(urls))
-      isTextEqualTo("https://api.com/1/items", Array.get(urls, 0)->Option.getOr("wrong"))
-      isTextEqualTo("https://api.com/2/items", Array.get(urls, 1)->Option.getOr("wrong"))
+      isTextEqualTo("https://api.com/1/items", urls[0]->Option.getOr("wrong"))
+      isTextEqualTo("https://api.com/2/items", urls[1]->Option.getOr("wrong"))
     }
   | Error(e) => failWith(`Expected Ok, got: ${TemplateParser.parseErrorToMessage(e)}`)
   }
@@ -131,7 +131,7 @@ test("parse handles single item range {5..5}", () => {
   switch TemplateParser.parse("https://api.com/item={5..5}") {
   | Ok(urls) => {
       isIntEqualTo(1, Array.length(urls))
-      isTextEqualTo("https://api.com/item=5", Array.get(urls, 0)->Option.getOr("wrong"))
+      isTextEqualTo("https://api.com/item=5", urls[0]->Option.getOr("wrong"))
     }
   | Error(e) => failWith(`Expected Ok, got: ${TemplateParser.parseErrorToMessage(e)}`)
   }

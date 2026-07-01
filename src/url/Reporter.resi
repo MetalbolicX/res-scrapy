@@ -9,7 +9,6 @@
   *
   * Report is printed to stderr.
   */
-
 type failedUrl = {
   url: string,
   reason: string,

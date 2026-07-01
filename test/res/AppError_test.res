@@ -18,8 +18,7 @@ test("AppError.mapStdInError maps stdin variants to InputError", () => {
 test("AppError.mapSchemaError maps InvalidFieldType message", () => {
   let err = FieldTypes.InvalidFieldType({field: "price", got: "weird"})
   switch AppError.mapSchemaError(err) {
-  | SchemaError(msg) =>
-    isTextEqualTo("Invalid field type \"weird\" for field \"price\"", msg)
+  | SchemaError(msg) => isTextEqualTo("Invalid field type \"weird\" for field \"price\"", msg)
   | _ => failWith("Expected SchemaError")
   }
 })

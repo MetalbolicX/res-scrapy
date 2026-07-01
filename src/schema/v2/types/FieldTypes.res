@@ -1,11 +1,10 @@
-/** Single source-of-truth for every type used by the v2 schema pipeline.
-  * All parser, extractor, and executor modules open or reference this module.
-  */
-
 // ---------------------------------------------------------------------------
 // Error fallback policy
 // ---------------------------------------------------------------------------
 
+/** Single source-of-truth for every type used by the v2 schema pipeline.
+  * All parser, extractor, and executor modules open or reference this module.
+  */
 type errorPolicy =
   | ReturnNull
   | ReturnText

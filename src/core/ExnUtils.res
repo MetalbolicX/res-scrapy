@@ -13,7 +13,6 @@
   * or an exception with an empty stack), `fullMessage` falls back to
   * `message` rather than emitting placeholder text.
   */
-
 let message = exn =>
   switch exn->JsExn.fromException {
   | Some(jsExn) => jsExn->JsExn.message->Option.getOr("Unknown error")
@@ -21,7 +20,7 @@ let message = exn =>
   }
 
 /* `stack` is a thin binding over the optional `stack` property on a JS error
-   object. It returns `None` for any value that isn't a JS exception. */
+ object. It returns `None` for any value that isn't a JS exception. */
 @get external getStack: JsExn.t => option<string> = "stack"
 
 let stack: JsExn.t => option<string> = getStack

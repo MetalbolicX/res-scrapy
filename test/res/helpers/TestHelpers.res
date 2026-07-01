@@ -5,7 +5,7 @@ let expectSome = (value, ~message="Expected Some(_) value") =>
   | Some(v) => v
   | None => {
       failWith(message)
-      Obj.magic(())
+      Obj.magic()
     }
   }
 
@@ -14,7 +14,7 @@ let expectOk = (value, ~message="Expected Ok(_) result") =>
   | Ok(v) => v
   | Error(_) => {
       failWith(message)
-      Obj.magic(())
+      Obj.magic()
     }
   }
 
@@ -28,7 +28,7 @@ let jsonFromString: string => JSON.t = raw =>
   }
 
 /* Single explicit `{..}` boundary: `jsonParse` returns `JSON.t` but some tests
-   need open-object access. Named here so the coercion is easy to find. */
+ need open-object access. Named here so the coercion is easy to find. */
 let asOpenObject: JSON.t => {..} = Obj.magic
 
 let objectFromJsonString: string => {..} = raw =>

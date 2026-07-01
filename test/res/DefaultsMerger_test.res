@@ -105,9 +105,7 @@ let _ = test("DefaultsMerger - resolveDefaults with None defaults", () => {
   let result = resolveDefaults(None, Text(Some(fieldOpts)))
 
   switch result {
-  | Text(Some(opts)) => {
-      isOptionEqualTo(Some(true), opts.trim, ~eq=(a, b) => a == b)
-    }
+  | Text(Some(opts)) => isOptionEqualTo(Some(true), opts.trim, ~eq=(a, b) => a == b)
   | _ => failWith("Expected Text field type")
   }
 })

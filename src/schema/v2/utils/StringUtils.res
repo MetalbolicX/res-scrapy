@@ -11,15 +11,15 @@ let toLower: string => string = text => String.toLowerCase(text)
 let toUpper: string => string = text => String.toUpperCase(text)
 
 /* -------------------------------------------------------------------------- */
-/* In-process regex execution.                                                */
-/*                                                                            */
-/* Previously, every regex call spawned a Node.js child process to avoid      */
-/* catastrophic backtracking hanging the main event loop. We now run regex    */
-/* in-process with two defenses:                                              */
-/*   1. compileSafePattern rejects patterns known to be DoS-prone (backrefs,  */
-/*      lookaheads, nested quantified groups, huge quantifiers, etc.).        */
-/*   2. exec/test calls run synchronously in the parent thread — the safety   */
-/*      net in step 1 keeps the surface small.                                */
+/* In-process regex execution. */
+/*  */
+/* Previously, every regex call spawned a Node.js child process to avoid */
+/* catastrophic backtracking hanging the main event loop. We now run regex */
+/* in-process with two defenses: */
+/* 1. compileSafePattern rejects patterns known to be DoS-prone (backrefs, */
+/* lookaheads, nested quantified groups, huge quantifiers, etc.). */
+/* 2. exec/test calls run synchronously in the parent thread — the safety */
+/* net in step 1 keeps the surface small. */
 /* -------------------------------------------------------------------------- */
 
 let compileSafePattern: string => option<RegExp.t> = %raw(`
@@ -77,8 +77,7 @@ let runRegex: (string, string) => option<string> = (text, pattern) => {
   }
 }
 
-let extractPattern: (string, string) => option<string> = (text, pattern) =>
-  runRegex(text, pattern)
+let extractPattern: (string, string) => option<string> = (text, pattern) => runRegex(text, pattern)
 
 let matchesPattern: (string, string) => bool = (text, pattern) =>
   switch compileSafePattern(pattern) {

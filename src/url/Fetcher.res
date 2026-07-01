@@ -64,11 +64,10 @@ let isRetryable: fetchError => bool = err =>
   * exception message, which broke when the underlying runtime changed its
   * error text.
   */
-let classifyError = (
-  ~message: string,
-  ~isAborted: bool,
-  ~timeoutSeconds: int,
-): result<'a, fetchError> =>
+let classifyError = (~message: string, ~isAborted: bool, ~timeoutSeconds: int): result<
+  'a,
+  fetchError,
+> =>
   if isAborted {
     Error(Timeout(`timeout after ${Int.toString(timeoutSeconds)}s`))
   } else {
@@ -81,11 +80,11 @@ let classifyError = (
 let delay: int => promise<unit> = ms =>
   Promise.make((resolve, _reject) => {
     let _timerId = setTimeout(() => resolve(), ms)
-    ()
   })
 
-let createEnvProxyDispatcher: unit => promise<option<NodeJsBinding.Fetch.dispatcher>> =
-  %raw(`async () => {
+let createEnvProxyDispatcher: unit => promise<
+  option<NodeJsBinding.Fetch.dispatcher>,
+> = %raw(`async () => {
     const hasProxy = Boolean(
       process.env.HTTP_PROXY ||
       process.env.HTTPS_PROXY ||
@@ -116,7 +115,12 @@ let getEnvProxyDispatcher = (): promise<option<NodeJsBinding.Fetch.dispatcher>> 
 /**
   * Fetches a single URL with timeout and error handling.
   */
-let fetchOnce: (string, string, int, array<(string, string)>) => promise<result<string, fetchError>> = async (url, userAgent, timeoutSeconds, headers) => {
+let fetchOnce: (
+  string,
+  string,
+  int,
+  array<(string, string)>,
+) => promise<result<string, fetchError>> = async (url, userAgent, timeoutSeconds, headers) => {
   let timeoutMs = timeoutSeconds * 1000
   // Set up controller and timeout OUTSIDE try so timeoutId is accessible in catch.
   let controller = NodeJsBinding.Fetch.AbortSignal.makeController()
@@ -163,24 +167,34 @@ let fetchOnce: (string, string, int, array<(string, string)>) => promise<result<
 /**
   * Fetches a URL with retries.
   */
-let fetchWithRetry: (string, string, int, int, array<(string, string)>) => promise<result<string, fetchError>> = async (url, userAgent, timeoutSeconds, retryCount, headers) => {
+let fetchWithRetry: (
+  string,
+  string,
+  int,
+  int,
+  array<(string, string)>,
+) => promise<result<string, fetchError>> = async (
+  url,
+  userAgent,
+  timeoutSeconds,
+  retryCount,
+  headers,
+) => {
   let rec tryFetch = async (attempt: int, maxAttempts: int) => {
     let result = await fetchOnce(url, userAgent, timeoutSeconds, headers)
-    
+
     switch result {
     | Ok(_) => result
-    | Error(err) => {
-        if attempt < maxAttempts && isRetryable(err) {
-          let delayMs = backoffDelay(attempt)
-          await delay(delayMs)
-          await tryFetch(attempt + 1, maxAttempts)
-        } else {
-          result
-        }
+    | Error(err) => if attempt < maxAttempts && isRetryable(err) {
+        let delayMs = backoffDelay(attempt)
+        await delay(delayMs)
+        await tryFetch(attempt + 1, maxAttempts)
+      } else {
+        result
       }
     }
   }
-  
+
   await tryFetch(1, retryCount)
 }
 
@@ -241,7 +255,10 @@ let acquireStartSlot = async (limiter: startLimiter) => {
 /**
   * Fetches all URLs with concurrency control.
   */
-let fetchAll: (array<string>, fetchOptions) => promise<array<fetchResult>> = async (urls, options) => {
+let fetchAll: (array<string>, fetchOptions) => promise<array<fetchResult>> = async (
+  urls,
+  options,
+) => {
   let concurrency = min(options.concurrency, 20) // Hard cap at 20
   let sem = makeSemaphore(concurrency)
   let limiter = makeStartLimiter(options.delayMs)
@@ -249,7 +266,13 @@ let fetchAll: (array<string>, fetchOptions) => promise<array<fetchResult>> = asy
   let fetchWithSemaphore = async url => {
     await acquire(sem)
     let result = await acquireStartSlot(limiter)->Promise.then(_ =>
-      fetchWithRetry(url, options.userAgent, options.timeoutSeconds, options.retryCount, options.headers)
+      fetchWithRetry(
+        url,
+        options.userAgent,
+        options.timeoutSeconds,
+        options.retryCount,
+        options.headers,
+      )
     )
     release(sem)
     {url, result}

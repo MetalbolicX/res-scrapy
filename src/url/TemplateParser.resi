@@ -18,7 +18,6 @@
   * // → Ok(["https://api.com/page=001", "https://api.com/page=002", "https://api.com/page=003"])
   * ```
   */
-
 type parseError =
   | InvalidSyntax(string)
   | InvalidRange(string)

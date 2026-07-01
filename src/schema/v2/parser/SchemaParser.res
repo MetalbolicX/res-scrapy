@@ -45,7 +45,8 @@ let normalizeFields: {..} => result<array<(string, schemaField)>, schemaError> =
         | Ok(field) => Ok(pairs->Array.concat([(key, field)]))
         }
       }
-    }, Ok([]))
+    }
+  , Ok([]))
 }
 
 /** Parse a complete schema from a raw JSON value.

@@ -7,8 +7,7 @@ test("SchemaV2.loadSchema parses inline JSON", () => {
 })
 
 test("SchemaV2.applySchema integrates parse and execute", () => {
-  let raw =
-    "{\"fields\":{\"title\":{\"selector\":\".title\",\"type\":\"text\"}},\"config\":{\"rowSelector\":\".row\"}}"
+  let raw = "{\"fields\":{\"title\":{\"selector\":\".title\",\"type\":\"text\"}},\"config\":{\"rowSelector\":\".row\"}}"
   let html = "<div class='row'><span class='title'>A</span></div><div class='row'><span class='title'>B</span></div>"
   let doc = HtmlFixture.parse(html)
 
@@ -17,7 +16,8 @@ test("SchemaV2.applySchema integrates parse and execute", () => {
       let out = SchemaV2.applySchema(doc, schema)
       isResultOk(out)
       switch out {
-      | Ok(value) => isTextEqualTo("[{\"title\":\"A\"},{\"title\":\"B\"}]", NodeJsBinding.jsonStringify(value))
+      | Ok(value) =>
+        isTextEqualTo("[{\"title\":\"A\"},{\"title\":\"B\"}]", NodeJsBinding.jsonStringify(value))
       | Error(_) => ()
       }
     }

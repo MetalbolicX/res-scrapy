@@ -73,12 +73,12 @@ let isFloatEqualTo: (float, float, ~epsilon: float=?, ~message: string=?) => uni
  * @param {string=} message - Optional custom message to display on assertion failure
  * @returns {unit}
  */
-let isOptionEqualTo: (
-  option<'a>,
-  option<'a>,
-  ~eq: ('a, 'a) => bool,
-  ~message: string=?,
-) => unit = (expected, actual, ~eq, ~message as msg="") => {
+let isOptionEqualTo: (option<'a>, option<'a>, ~eq: ('a, 'a) => bool, ~message: string=?) => unit = (
+  expected,
+  actual,
+  ~eq,
+  ~message as msg="",
+) => {
   let isEqual = switch (expected, actual) {
   | (None, None) => true
   | (Some(a), Some(b)) => eq(a, b)
@@ -107,10 +107,7 @@ let isResultOk: (result<'a, 'b>, ~message: string=?) => unit = (value, ~message 
  * @param {string=} message - Optional custom message to display on assertion failure
  * @returns {unit}
  */
-let isResultError: (result<'a, 'b>, ~message: string=?) => unit = (
-  value,
-  ~message as msg="",
-) => {
+let isResultError: (result<'a, 'b>, ~message: string=?) => unit = (value, ~message as msg="") => {
   let hasError = switch value {
   | Ok(_) => false
   | Error(_) => true
@@ -140,7 +137,11 @@ let isNull: (JSON.t, ~message: string=?) => unit = (value, ~message as msg="") =
  * @param {string=} message - Optional custom message to display on assertion failure
  * @returns {unit}
  */
-let isJsonEqualTo: (JSON.t, JSON.t, ~message: string=?) => unit = (expected, actual, ~message as msg="") =>
+let isJsonEqualTo: (JSON.t, JSON.t, ~message: string=?) => unit = (
+  expected,
+  actual,
+  ~message as msg="",
+) =>
   assertion(
     (a, b) => a == b,
     NodeJsBinding.jsonStringify(expected),

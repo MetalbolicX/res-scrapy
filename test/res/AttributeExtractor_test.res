@@ -22,7 +22,9 @@ test("AttributeExtractor FirstNonEmpty skips empty attributes", () => {
   let doc = HtmlFixture.parse("<a class='link' href='' data-url='https://example.com'></a>")
   let el = getElement(doc, ".link")
   let cfg: attributeConfig = {names: ["href", "data-url"], mode: FirstNonEmpty}
-  isOptionEqualTo(Some("https://example.com"), AttributeExtractor.extract(el, cfg), ~eq=(a, b) => a == b)
+  isOptionEqualTo(Some("https://example.com"), AttributeExtractor.extract(el, cfg), ~eq=(a, b) =>
+    a == b
+  )
 })
 
 test("AttributeExtractor Join mode concatenates values", () => {

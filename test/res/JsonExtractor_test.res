@@ -50,5 +50,7 @@ test("JsonExtractor handles parse errors with onError policy", () => {
     JsonExtractor.extract(el, Some({onError: ReturnText})),
     ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
   )
-  isOptionEqualTo(None, JsonExtractor.extract(el, None), ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b))
+  isOptionEqualTo(None, JsonExtractor.extract(el, None), ~eq=(a, b) =>
+    NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b)
+  )
 })

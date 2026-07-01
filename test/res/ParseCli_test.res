@@ -303,8 +303,7 @@ test("runArgsValidation accepts ndjson format when output is provided", () => {
 })
 
 test("runArgsValidation rejects invalid format when output is provided", () => {
-  let values =
-    emptyValues->withSelector(".item")->withOutput("./result.out")->withFormat("xml")
+  let values = emptyValues->withSelector(".item")->withOutput("./result.out")->withFormat("xml")
   switch runArgsValidation(values) {
   | Error(e) => isTruthy(isParseError(e))
   | Ok(_) => failWith("Expected ParseError for invalid --format")
@@ -362,8 +361,7 @@ test("runArgsValidation does not warn for --user-agent in URL mode", () => {
   switch runArgsValidation(values) {
   | Ok(opts) => {
       let hasUserAgentIgnoredWarning =
-        opts.warnings
-        ->Array.some(w =>
+        opts.warnings->Array.some(w =>
           stringContains(w, "--user-agent") && stringContains(w, "ignored in stdin mode")
         )
       isTruthy(hasUserAgentIgnoredWarning == false)
@@ -459,9 +457,13 @@ test("runArgsValidation parses repeatable --header and --cookie", () => {
   switch runArgsValidation(values) {
   | Ok(opts) => {
       isIntEqualTo(3, opts.requestHeaders->Array.length)
-      let hasAccept = opts.requestHeaders->Array.some(h => h.name == "accept" && h.value == "text/html")
+      let hasAccept =
+        opts.requestHeaders->Array.some(h => h.name == "accept" && h.value == "text/html")
       let hasTrace = opts.requestHeaders->Array.some(h => h.name == "x-trace" && h.value == "abc")
-      let hasCookie = opts.requestHeaders->Array.some(h => h.name == "cookie" && h.value == "session=one; lang=en")
+      let hasCookie =
+        opts.requestHeaders->Array.some(h =>
+          h.name == "cookie" && h.value == "session=one; lang=en"
+        )
       isTruthy(hasAccept)
       isTruthy(hasTrace)
       isTruthy(hasCookie)
@@ -517,7 +519,9 @@ test("runArgsValidation warns that --header and --cookie are ignored without --u
   | Ok(opts) => {
       let hasHeadersWarning =
         opts.warnings->Array.some(w =>
-          stringContains(w, "--header") && stringContains(w, "--cookie") && stringContains(w, "ignored in stdin mode")
+          stringContains(w, "--header") &&
+          stringContains(w, "--cookie") &&
+          stringContains(w, "ignored in stdin mode")
         )
       isTruthy(hasHeadersWarning)
     }
@@ -650,7 +654,8 @@ let getInvalidMsg = e =>
   | InvalidRetry(m)
   | InvalidDelay(m)
   | InvalidHeader(m)
-  | InvalidUrlMode(m) => Some(m)
+  | InvalidUrlMode(m) =>
+    Some(m)
   | ParseError({message: m}) => Some(m)
   | _ => None
   }
@@ -720,10 +725,7 @@ test("PR 2b preserves exact non-numeric timeout error message", () => {
   | Error(e) =>
     switch getInvalidMsg(e) {
     | Some(m) =>
-      isTextEqualTo(
-        "Invalid timeout value \"abc\". Expected a number of seconds (>= 1)",
-        m,
-      )
+      isTextEqualTo("Invalid timeout value \"abc\". Expected a number of seconds (>= 1)", m)
     | None => failWith("Expected timeout error")
     }
   | Ok(_) => failWith("Expected InvalidTimeout")
@@ -755,8 +757,7 @@ test("PR 2b preserves exact non-numeric retry error message", () => {
   switch runArgsValidation(values) {
   | Error(e) =>
     switch getInvalidMsg(e) {
-    | Some(m) =>
-      isTextEqualTo("Invalid retry value \"abc\". Expected a number (>= 1)", m)
+    | Some(m) => isTextEqualTo("Invalid retry value \"abc\". Expected a number (>= 1)", m)
     | None => failWith("Expected retry error")
     }
   | Ok(_) => failWith("Expected InvalidRetry")
@@ -788,8 +789,7 @@ test("PR 2b preserves exact non-numeric delay error message", () => {
   switch runArgsValidation(values) {
   | Error(e) =>
     switch getInvalidMsg(e) {
-    | Some(m) =>
-      isTextEqualTo("Invalid delay value \"abc\". Expected milliseconds (>= 0)", m)
+    | Some(m) => isTextEqualTo("Invalid delay value \"abc\". Expected milliseconds (>= 0)", m)
     | None => failWith("Expected delay error")
     }
   | Ok(_) => failWith("Expected InvalidDelay")
@@ -805,11 +805,7 @@ test("PR 2b preserves exact empty attr extract error message", () => {
   switch runArgsValidation(values) {
   | Error(e) =>
     switch parseErrOf(e) {
-    | Some(m) =>
-      isTextEqualTo(
-        "Invalid --extract value \"attr:\". Expected format: attr:<name>",
-        m,
-      )
+    | Some(m) => isTextEqualTo("Invalid --extract value \"attr:\". Expected format: attr:<name>", m)
     | None => failWith("Expected ParseError")
     }
   | Ok(_) => failWith("Expected ParseError for empty attr")
@@ -846,11 +842,7 @@ test("PR 2b preserves exact invalid --format error message", () => {
   switch runArgsValidation(values) {
   | Error(e) =>
     switch parseErrOf(e) {
-    | Some(m) =>
-      isTextEqualTo(
-        "Invalid --format value \"xml\". Valid values are: json, ndjson",
-        m,
-      )
+    | Some(m) => isTextEqualTo("Invalid --format value \"xml\". Valid values are: json, ndjson", m)
     | None => failWith("Expected ParseError")
     }
   | Ok(_) => failWith("Expected ParseError for invalid format")
@@ -866,11 +858,7 @@ test("PR 2b preserves exact empty user-agent error message", () => {
   switch runArgsValidation(values) {
   | Error(e) =>
     switch parseErrOf(e) {
-    | Some(m) =>
-      isTextEqualTo(
-        "Invalid --user-agent value \"\". Expected a non-empty string.",
-        m,
-      )
+    | Some(m) => isTextEqualTo("Invalid --user-agent value \"\". Expected a non-empty string.", m)
     | None => failWith("Expected ParseError")
     }
   | Ok(_) => failWith("Expected ParseError for empty user-agent")
@@ -907,10 +895,11 @@ test("PR 2b preserves exact --format-ignored warning message when no --output", 
   }
   switch runArgsValidation(values) {
   | Ok(opts) => {
-      let prefixWarning = opts.warnings->Array.some(w =>
-        stringContains(w, "Warning: --format is ignored unless --output is provided") &&
-        stringContains(w, "stdout always uses JSON array format.")
-      )
+      let prefixWarning =
+        opts.warnings->Array.some(w =>
+          stringContains(w, "Warning: --format is ignored unless --output is provided") &&
+          stringContains(w, "stdout always uses JSON array format.")
+        )
       isTruthy(prefixWarning)
     }
   | Error(_) => failWith("Expected warning for --format without --output")
@@ -927,9 +916,7 @@ test("PR 2b preserves comma-separated list of fetch flags in single warning", ()
   }
   switch runArgsValidation(values) {
   | Ok(opts) => {
-      let fetchWarning = opts.warnings->Array.find(w =>
-        stringContains(w, "ignored in stdin mode")
-      )
+      let fetchWarning = opts.warnings->Array.find(w => stringContains(w, "ignored in stdin mode"))
       switch fetchWarning {
       | Some(w) =>
         isTruthy(stringContains(w, "--user-agent"))

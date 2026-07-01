@@ -50,7 +50,11 @@ let parseRange: string => result<(int, int, int, int), parseError> = content => 
           Ok((start, end_, 1, zeroPad))
         }
       | (Some(start), Some(end_)) if start > end_ =>
-        Error(InvalidRange(`Range start (${Int.toString(start)}) must be <= end (${Int.toString(end_)})`))
+        Error(
+          InvalidRange(
+            `Range start (${Int.toString(start)}) must be <= end (${Int.toString(end_)})`,
+          ),
+        )
       | _ => Error(InvalidSyntax(`Invalid range syntax: "${content}"`))
       }
     }
@@ -72,7 +76,11 @@ let parseRange: string => result<(int, int, int, int), parseError> = content => 
       | (Some(_), Some(_), Some(step)) if step <= 0 =>
         Error(InvalidRange(`Step must be > 0, got ${Int.toString(step)}`))
       | (Some(start), Some(end_), Some(_)) if start > end_ =>
-        Error(InvalidRange(`Range start (${Int.toString(start)}) must be <= end (${Int.toString(end_)})`))
+        Error(
+          InvalidRange(
+            `Range start (${Int.toString(start)}) must be <= end (${Int.toString(end_)})`,
+          ),
+        )
       | _ => Error(InvalidSyntax(`Invalid range syntax: "${content}"`))
       }
     }
@@ -123,28 +131,22 @@ let padZero: (int, int) => string = (num, width) => {
   */
 let parse: string => result<array<string>, parseError> = url => {
   switch extractTemplate(url) {
-  | None => {
-      // No template found; check for stray braces
-      if String.includes(url, "{") || String.includes(url, "}") {
-        Error(InvalidSyntax("URL contains unmatched or multiple template braces"))
-      } else {
-        Ok([url])
-      }
+  | None => // No template found; check for stray braces
+    if String.includes(url, "{") || String.includes(url, "}") {
+      Error(InvalidSyntax("URL contains unmatched or multiple template braces"))
+    } else {
+      Ok([url])
     }
-  | Some((prefix, content, suffix)) => {
-      switch parseRange(content) {
+  | Some((prefix, content, suffix)) => switch parseRange(content) {
+    | Error(e) => Error(e)
+    | Ok((start, end_, step, zeroPad)) => switch generateSequence(start, end_, step) {
       | Error(e) => Error(e)
-      | Ok((start, end_, step, zeroPad)) => {
-          switch generateSequence(start, end_, step) {
-          | Error(e) => Error(e)
-          | Ok(sequence) => {
-              let urls = sequence->Array.map(num => {
-                let numStr = padZero(num, zeroPad)
-                prefix ++ numStr ++ suffix
-              })
-              Ok(urls)
-            }
-          }
+      | Ok(sequence) => {
+          let urls = sequence->Array.map(num => {
+            let numStr = padZero(num, zeroPad)
+            prefix ++ numStr ++ suffix
+          })
+          Ok(urls)
         }
       }
     }
@@ -159,6 +161,10 @@ let parseErrorToMessage: parseError => string = err => {
   | InvalidSyntax(msg) => `Invalid template syntax: ${msg}`
   | InvalidRange(msg) => `Invalid range: ${msg}`
   | UrlCountExceeded(count) =>
-    `URL template would generate ${Int.toString(count)} URLs, which exceeds the maximum of ${Int.toString(maxUrls)}. Reduce the range or split into multiple templates.`
+    `URL template would generate ${Int.toString(
+        count,
+      )} URLs, which exceeds the maximum of ${Int.toString(
+        maxUrls,
+      )}. Reduce the range or split into multiple templates.`
   }
 }

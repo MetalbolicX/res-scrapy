@@ -36,7 +36,7 @@ let getJsonSource: (NodeHtmlParserBinding.htmlElement, option<jsonOptions>) => o
 }
 
 /* Typed dictGet local to this module: keeps `getPath` JSON.t-typed so the
-   `option<JSON.t>` flows directly to the caller without an Obj.magic cast. */
+ `option<JSON.t>` flows directly to the caller without an Obj.magic cast. */
 @get_index external dictGetT: (JSON.t, string) => option<JSON.t> = ""
 external testAny: 'a => bool = "%is_nullable"
 
@@ -46,7 +46,9 @@ let getPath: (JSON.t, string) => option<JSON.t> = (obj, path) => {
   } else {
     let keys = String.split(path, ".")
     let current = ref(Some(obj))
-    keys->Iter.values->Iter.forEach(key => {
+    keys
+    ->Iter.values
+    ->Iter.forEach(key => {
       switch current.contents {
       | Some(cur) =>
         let val: option<JSON.t> = dictGetT(cur, key)

@@ -2,7 +2,6 @@
   * Each function accepts the raw JSON dict for a field and returns the
   * appropriate option record, falling back to None when the key is absent.
   */
-
 open FieldTypes
 open JsonUtils
 
@@ -84,11 +83,12 @@ let parseAttributeConfig: {..} => option<attributeConfig> = fieldJson => {
 // number options
 // ---------------------------------------------------------------------------
 
-let parseErrorPolicy: string => errorPolicy = s => switch s {
-| "returnText" => ReturnText
-| "returnDefault" => ReturnDefault
-| _ => ReturnNull
-}
+let parseErrorPolicy: string => errorPolicy = s =>
+  switch s {
+  | "returnText" => ReturnText
+  | "returnDefault" => ReturnDefault
+  | _ => ReturnNull
+  }
 
 let parseNumberOptions: {..} => option<numberOptions> = fieldJson => {
   switch dictGet(fieldJson, "numberOptions") {
@@ -104,8 +104,15 @@ let parseNumberOptions: {..} => option<numberOptions> = fieldJson => {
       | Some(s) => Some(parseErrorPolicy(s))
       | None => None
       }
-      Some({?stripNonNumeric, ?pattern, ?thousandsSeparator, ?decimalSeparator,
-            ?precision, ?allowNegative, ?onError})
+      Some({
+        ?stripNonNumeric,
+        ?pattern,
+        ?thousandsSeparator,
+        ?decimalSeparator,
+        ?precision,
+        ?allowNegative,
+        ?onError,
+      })
     }
   }
 }
@@ -243,17 +250,19 @@ let parseListOptions: {..} => listOptions = fieldJson => {
 // boolean options
 // ---------------------------------------------------------------------------
 
-let parseBooleanMode: string => booleanMode = s => switch s {
-| "presence" => Presence
-| "attributeCheck" => AttributeCheck
-| _ => Mapping
-}
+let parseBooleanMode: string => booleanMode = s =>
+  switch s {
+  | "presence" => Presence
+  | "attributeCheck" => AttributeCheck
+  | _ => Mapping
+  }
 
-let parseBooleanUnknownPolicy: string => booleanUnknownPolicy = s => switch s {
-| "null" => UnknownNull
-| "error" => UnknownError
-| _ => UnknownFalse
-}
+let parseBooleanUnknownPolicy: string => booleanUnknownPolicy = s =>
+  switch s {
+  | "null" => UnknownNull
+  | "error" => UnknownError
+  | _ => UnknownFalse
+  }
 
 let parseBooleanOptions: {..} => option<booleanOptions> = fieldJson => {
   switch dictGet(fieldJson, "booleanOptions") {
@@ -307,7 +316,10 @@ let parseColumnFieldTypeVisitor: parseColumnFieldTypeVisitor<{..}> = {
     },
 }
 
-let parseColumnFieldTypeDispatch = (columnJson: {..}, typeName: string): result<columnFieldType, string> => {
+let parseColumnFieldTypeDispatch = (columnJson: {..}, typeName: string): result<
+  columnFieldType,
+  string,
+> => {
   switch typeName {
   | "text" => parseColumnFieldTypeVisitor.text(columnJson)
   | "html" => parseColumnFieldTypeVisitor.html(columnJson)
@@ -324,8 +336,10 @@ let parseColumnFieldTypeDispatch = (columnJson: {..}, typeName: string): result<
   }
 }
 
-let parseColumnFieldType: ({..}, string) => result<columnFieldType, string> = (columnJson, typeName) =>
-  parseColumnFieldTypeDispatch(columnJson, typeName)
+let parseColumnFieldType: ({..}, string) => result<columnFieldType, string> = (
+  columnJson,
+  typeName,
+) => parseColumnFieldTypeDispatch(columnJson, typeName)
 
 let parseColumnField: {..} => result<columnField, string> = columnJson => {
   switch (dictGet(columnJson, "name"), dictGet(columnJson, "selector")) {
@@ -359,22 +373,20 @@ let parseTableOptions: {..} => result<tableOptions, string> = fieldJson => {
       | Some(cols) if Array.length(cols) == 0 =>
         Error("table field requires at least one column in \"tableOptions.columns\"")
       | Some(cols) => {
-          let parsedColumnsResult: result<array<columnField>, string> = cols->Iter.values->Iter.reduce((
-            acc,
-            colJson,
-          ) => {
-            switch acc {
-            | Error(e) => Error(e)
-            | Ok(parsedCols) =>
-              switch parseColumnField(colJson) {
+          let parsedColumnsResult: result<array<columnField>, string> =
+            cols->Iter.values->Iter.reduce((acc, colJson) => {
+              switch acc {
               | Error(e) => Error(e)
-              | Ok(col) => {
-                  parsedCols->Array.push(col)
-                  Ok(parsedCols)
+              | Ok(parsedCols) =>
+                switch parseColumnField(colJson) {
+                | Error(e) => Error(e)
+                | Ok(col) => {
+                    parsedCols->Array.push(col)
+                    Ok(parsedCols)
+                  }
                 }
               }
-            }
-          }, Ok([]))
+            }, Ok([]))
 
           switch parsedColumnsResult {
           | Error(e) => Error(e)

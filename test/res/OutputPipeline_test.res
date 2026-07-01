@@ -10,7 +10,12 @@ test("writeOutput writes JSON to stdout when target is Stdout", () => {
   let writeFileMock = (_path, _text) => {
     ()
   }
-  let result = writeText(~target=Stdout, ~text="[{\"name\":\"Alice\"},{\"name\":\"Bob\"}]", ~writeFile=writeFileMock, ~out=outMock)
+  let result = writeText(
+    ~target=Stdout,
+    ~text="[{\"name\":\"Alice\"},{\"name\":\"Bob\"}]",
+    ~writeFile=writeFileMock,
+    ~out=outMock,
+  )
 
   isResultOk(result)
   isTextEqualTo("[{\"name\":\"Alice\"},{\"name\":\"Bob\"}]", outputReceived.contents)
@@ -25,7 +30,13 @@ test("writeOutput writes NDJSON to stdout when format is Ndjson", () => {
     ()
   }
   let jsonText = "[{\"name\":\"Alice\"},{\"name\":\"Bob\"}]"
-  let result = write(~target=Stdout, ~format=Ndjson, ~jsonText, ~writeFile=writeFileMock, ~out=outMock)
+  let result = write(
+    ~target=Stdout,
+    ~format=Ndjson,
+    ~jsonText,
+    ~writeFile=writeFileMock,
+    ~out=outMock,
+  )
 
   isResultOk(result)
   // NDJSON format is only applied to File targets, Stdout gets raw JSON
@@ -42,7 +53,13 @@ test("writeOutput writes JSON format to file when output path provided", () => {
     fileReceived := (path, text)
   }
   let jsonText = "[{\"name\":\"Alice\"}]"
-  let result = write(~target=File("/tmp/output.json"), ~format=Json, ~jsonText, ~writeFile=writeFileMock, ~out=outMock)
+  let result = write(
+    ~target=File("/tmp/output.json"),
+    ~format=Json,
+    ~jsonText,
+    ~writeFile=writeFileMock,
+    ~out=outMock,
+  )
 
   isResultOk(result)
   isTextEqualTo("", outputReceived.contents)
@@ -58,7 +75,12 @@ test("writeOutput returns error when file write fails", () => {
     Js.Exn.raiseError("Disk full")
   }
   let jsonText = "[{\"name\":\"Alice\"}]"
-  let result = writeText(~target=File("/tmp/output.json"), ~text=jsonText, ~writeFile=writeFileMock, ~out=outMock)
+  let result = writeText(
+    ~target=File("/tmp/output.json"),
+    ~text=jsonText,
+    ~writeFile=writeFileMock,
+    ~out=outMock,
+  )
 
   switch result {
   | Error(AppError.WriteError(msg)) =>
@@ -87,7 +109,13 @@ test("empty JSON array for NDJSON produces empty output on stdout", () => {
   }
   let writeFileMock = (_path, _text) => ()
   let jsonText = "[]"
-  let result = write(~target=Stdout, ~format=Ndjson, ~jsonText, ~writeFile=writeFileMock, ~out=outMock)
+  let result = write(
+    ~target=Stdout,
+    ~format=Ndjson,
+    ~jsonText,
+    ~writeFile=writeFileMock,
+    ~out=outMock,
+  )
 
   isResultOk(result)
   // NDJSON format is only applied to File targets, Stdout gets raw JSON
@@ -101,7 +129,13 @@ test("NDJSON file output produces one JSON object per line", () => {
     fileReceived := (path, text)
   }
   let jsonText = "[{\"name\":\"Alice\",\"age\":30},{\"name\":\"Bob\",\"age\":25}]"
-  let result = write(~target=File("/tmp/output.ndjson"), ~format=Ndjson, ~jsonText, ~writeFile=writeFileMock, ~out=outMock)
+  let result = write(
+    ~target=File("/tmp/output.ndjson"),
+    ~format=Ndjson,
+    ~jsonText,
+    ~writeFile=writeFileMock,
+    ~out=outMock,
+  )
 
   isResultOk(result)
   let (path, text) = fileReceived.contents
@@ -116,7 +150,13 @@ test("NDJSON file output returns error when JSON is not an array", () => {
     fileReceived := (path, text)
   }
   let jsonText = "{\"name\":\"Alice\"}"
-  let result = write(~target=File("/tmp/output.ndjson"), ~format=Ndjson, ~jsonText, ~writeFile=writeFileMock, ~out=outMock)
+  let result = write(
+    ~target=File("/tmp/output.ndjson"),
+    ~format=Ndjson,
+    ~jsonText,
+    ~writeFile=writeFileMock,
+    ~out=outMock,
+  )
 
   switch result {
   | Error(AppError.WriteError(msg)) =>
@@ -144,37 +184,23 @@ test("PR 2b UrlOutputWriter.writeStdoutNdjson invokes out once per row with the 
   }
   let json = TestHelpers.jsonFromString("[{\"name\":\"Alice\"},{\"name\":\"Bob\"}]")
 
-  UrlOutputWriter.writeStdoutNdjson(
-    ~out=outMock,
-    ~stringifyJson=NodeJsBinding.jsonStringify,
-    ~json,
-  )
+  UrlOutputWriter.writeStdoutNdjson(~out=outMock, ~stringifyJson=NodeJsBinding.jsonStringify, ~json)
 
   isIntEqualTo(2, calls.contents->Array.length, ~message="one out call per row")
-  isTextEqualTo(
-    "{\"name\":\"Alice\"}",
-    calls.contents->Array.get(0)->Option.getOr(""),
-  )
-  isTextEqualTo(
-    "{\"name\":\"Bob\"}",
-    calls.contents->Array.get(1)->Option.getOr(""),
-  )
+  isTextEqualTo("{\"name\":\"Alice\"}", calls.contents->Array.get(0)->Option.getOr(""))
+  isTextEqualTo("{\"name\":\"Bob\"}", calls.contents->Array.get(1)->Option.getOr(""))
 })
 
 test("PR 2b UrlOutputWriter.writeStdoutNdjson yields NDJSON when out appends newline", () => {
   /* Realistic simulation: production sinks append a newline. Verify the
-     resulting stream is a valid NDJSON document (one JSON value per line). */
+   resulting stream is a valid NDJSON document (one JSON value per line). */
   let received = ref("")
   let outMock = text => {
     received := received.contents ++ text ++ "\n"
   }
   let json = TestHelpers.jsonFromString("[{\"name\":\"Alice\"},{\"name\":\"Bob\"}]")
 
-  UrlOutputWriter.writeStdoutNdjson(
-    ~out=outMock,
-    ~stringifyJson=NodeJsBinding.jsonStringify,
-    ~json,
-  )
+  UrlOutputWriter.writeStdoutNdjson(~out=outMock, ~stringifyJson=NodeJsBinding.jsonStringify, ~json)
 
   let lines = received.contents->String.split("\n")
   isTextEqualTo("{\"name\":\"Alice\"}", lines->Array.get(0)->Option.getOr(""))
@@ -206,10 +232,7 @@ test("PR 2b UrlOutputWriter.appendNdjsonToFile appends one NDJSON line per row",
   isIntEqualTo(1, calls->Array.length, ~message="appendFile called once")
   let (path, text) = calls->Array.get(0)->Option.getOr(("", ""))
   isTextEqualTo("/tmp/out.ndjson", path)
-  isTextEqualTo(
-    "{\"name\":\"Alice\"}\n{\"name\":\"Bob\"}\n",
-    text,
-  )
+  isTextEqualTo("{\"name\":\"Alice\"}\n{\"name\":\"Bob\"}\n", text)
 })
 
 test("PR 2b UrlOutputWriter.writeFileJson writes a JSON array to file synchronously", () => {
@@ -231,8 +254,5 @@ test("PR 2b UrlOutputWriter.writeFileJson writes a JSON array to file synchronou
   isResultOk(result)
   let (path, text) = received.contents
   isTextEqualTo("/tmp/out.json", path)
-  isTextEqualTo(
-    "[\"a\",\"b\"]",
-    text,
-  )
+  isTextEqualTo("[\"a\",\"b\"]", text)
 })

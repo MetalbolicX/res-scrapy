@@ -28,11 +28,7 @@ test("NumberUtils.parseWithOptions applies precision", () => {
 
 test("NumberUtils.parseWithOptions supports pattern extraction", () => {
   let opts: option<numberOptions> = Some({pattern: "Price:\\s*\\$([0-9.]+)"})
-  isOptionEqualTo(
-    Some(42.0),
-    NumberUtils.parseWithOptions("Price: $42.00", opts),
-    ~eq=eqFloat,
-  )
+  isOptionEqualTo(Some(42.0), NumberUtils.parseWithOptions("Price: $42.00", opts), ~eq=eqFloat)
 })
 
 test("NumberUtils.parseWithOptions rejects catastrophic regex patterns", () => {

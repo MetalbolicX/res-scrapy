@@ -12,7 +12,6 @@
   * pass unchanged. This module adds a thin convenience surface for the
   * orchestration layer; it does NOT duplicate the storage shape.
   */
-
 type t = {
   mutable stats: Reporter.stats,
 }
@@ -40,10 +39,9 @@ let printReport = (mgr: t, ~err: string => unit) => {
 }
 
 /* Pure decision helpers — extracted here so UrlRunner's exit-code branch
-   reads as plain English rather than a numeric comparison. */
+ reads as plain English rather than a numeric comparison. */
 
-let shouldExitWithError = (mgr: t): bool =>
-  mgr.stats.succeeded == 0 && mgr.stats.failed > 0
+let shouldExitWithError = (mgr: t): bool => mgr.stats.succeeded == 0 && mgr.stats.failed > 0
 
 let attempted = (mgr: t): int => mgr.stats.attempted
 let succeeded = (mgr: t): int => mgr.stats.succeeded

@@ -56,14 +56,14 @@ let extractJoined: (
   option<textOptions>,
 ) => option<string> = (els, sep, opts) => {
   let parts = els->Iter.values->Iter.reduce((acc, el) => {
-    switch extract(el, opts) {
-    | None => acc
-    | Some(value) => {
-        acc->Array.push(value)
-        acc
+      switch extract(el, opts) {
+      | None => acc
+      | Some(value) => {
+          acc->Array.push(value)
+          acc
+        }
       }
-    }
-  }, [])
+    }, [])
   if Array.length(parts) === 0 {
     None
   } else {

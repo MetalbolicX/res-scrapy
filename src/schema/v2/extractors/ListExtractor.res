@@ -45,6 +45,7 @@ let extractItemValue: (NodeHtmlParserBinding.htmlElement, listItemType) => optio
     TextExtractor.extract(el, None)
   | ListHtml => {
       let h = el.innerHTML
+
       // Preserve existing semantics: filter empty innerHTML only (no trim).
       if String.length(h) === 0 {
         None
@@ -53,8 +54,7 @@ let extractItemValue: (NodeHtmlParserBinding.htmlElement, listItemType) => optio
       }
     }
   | ListAttribute(name) =>
-    AttributeExtractor.extract(el, {names: [name], mode: First})
-    ->Option.flatMap(listTrim)
+    AttributeExtractor.extract(el, {names: [name], mode: First})->Option.flatMap(listTrim)
   | ListUrl =>
     // UrlExtractor with no options: extracts href/src, validates.
     UrlExtractor.extract(el, None)
@@ -67,33 +67,37 @@ let extract: (array<NodeHtmlParserBinding.htmlElement>, listOptions) => option<J
 ) => {
   // 1. Extract raw values, dropping None
   let values: array<string> = els->Iter.values->Iter.reduce((acc, el) => {
-    switch extractItemValue(el, opts.itemType) {
-    | None => acc
-    | Some(v) => {
-        acc->Array.push(v)
-        acc
+      switch extractItemValue(el, opts.itemType) {
+      | None => acc
+      | Some(v) => {
+          acc->Array.push(v)
+          acc
+        }
       }
-    }
-  }, [])
+    }, [])
 
   // 2. Filter by regex if provided
   let filtered = switch opts.filter {
   | None => values
-  | Some(pat) => values->Iter.values->Iter.filter(v => StringUtils.matchesPattern(v, pat))->Iter.toArray
+  | Some(pat) =>
+    values->Iter.values->Iter.filter(v => StringUtils.matchesPattern(v, pat))->Iter.toArray
   }
 
   // 3. Deduplicate (preserve first-occurrence order)
   let deduped = switch opts.unique {
   | Some(true) => {
       let seen: Dict.t<bool> = Dict.make()
-      filtered->Iter.values->Iter.filter(v => {
+      filtered
+      ->Iter.values
+      ->Iter.filter(v => {
         if Dict.has(seen, v) {
           false
         } else {
           Dict.set(seen, v, true)
           true
         }
-      })->Iter.toArray
+      })
+      ->Iter.toArray
     }
   | _ => filtered
   }
@@ -112,6 +116,7 @@ let extract: (array<NodeHtmlParserBinding.htmlElement>, listOptions) => option<J
   // 5. Join or return array
   switch opts.join {
   | Some(sep) => Some(JSON.Encode.string(Array.join(limited, sep)))
-  | None => Some(JSON.Encode.array(limited->Iter.values->Iter.map(JSON.Encode.string)->Iter.toArray))
+  | None =>
+    Some(JSON.Encode.array(limited->Iter.values->Iter.map(JSON.Encode.string)->Iter.toArray))
   }
 }

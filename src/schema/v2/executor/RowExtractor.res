@@ -36,7 +36,10 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
     schema.fields
     ->Iter.values
     ->Iter.map(((name, field)) => {
-      let resolvedFieldType = DefaultsMerger.resolveDefaults(schema.config.defaults, field.fieldType)
+      let resolvedFieldType = DefaultsMerger.resolveDefaults(
+        schema.config.defaults,
+        field.fieldType,
+      )
       let nestedDefaults = switch resolvedFieldType {
       | Table(_) => schema.config.defaults
       | _ => None
@@ -45,7 +48,12 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
     })
     ->Iter.toArray
 
-  let preQueriedFields = resolvedFields->Array.map(((name, field, resolvedFieldType, nestedDefaults)) => {
+  let preQueriedFields = resolvedFields->Array.map(((
+    name,
+    field,
+    resolvedFieldType,
+    nestedDefaults,
+  )) => {
     let isMulti = isMultiElementType(resolvedFieldType)
     let perRowEls = limitedRows->Array.map(rowEl =>
       if isMulti {
@@ -72,11 +80,17 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
         let pairsResult: result<array<(string, JSON.t)>, schemaError> = {
           let pairs: array<(string, JSON.t)> = []
           let fieldError: ref<option<schemaError>> = ref(None)
-          preQueriedFields->Array.forEach(((name, field, resolvedFieldType, nestedDefaults, perRowEls)) => {
+          preQueriedFields->Array.forEach(((
+            name,
+            field,
+            resolvedFieldType,
+            nestedDefaults,
+            perRowEls,
+          )) => {
             switch fieldError.contents {
             | Some(_) => ()
             | None => {
-                let rowEls = Array.get(perRowEls, rowIdx.contents)->Option.getOr([])
+                let rowEls = perRowEls[rowIdx.contents]->Option.getOr([])
                 let value = if isMultiElementType(resolvedFieldType) {
                   ExtractorRegistry.extractValueList(
                     rowEls,
@@ -88,7 +102,7 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
                     field.selector,
                   )
                 } else {
-                  let maybeEl = Array.get(rowEls, 0)
+                  let maybeEl = rowEls[0]
                   ExtractorRegistry.extractValueOrAbsent(
                     maybeEl,
                     resolvedFieldType,

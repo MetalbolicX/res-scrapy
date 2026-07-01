@@ -7,7 +7,7 @@ let parseSchema = raw =>
   | Ok(schema) => schema
   | Error(_) => {
       failWith("Unable to parse schema in test")
-      Obj.magic(())
+      Obj.magic()
     }
   }
 
@@ -171,9 +171,7 @@ test("extraction error propagates through pipeline with original message", () =>
   }`
   let out = SchemaV2.loadSchema(~isInline=true, schemaRaw)
   switch out {
-  | Error(InvalidFieldType({field, _})) => {
-      isTextEqualTo("field2", field)
-    }
+  | Error(InvalidFieldType({field, _})) => isTextEqualTo("field2", field)
   | Ok(_) => failWith("Expected error for invalid field type")
   | Error(_) => failWith("Expected InvalidFieldType error")
   }

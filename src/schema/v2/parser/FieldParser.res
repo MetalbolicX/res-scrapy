@@ -1,7 +1,6 @@
 /** Parse a single schema field from its raw JSON object.
   * Delegates option-level parsing to OptionsParser.
   */
-
 open FieldTypes
 open JsonUtils
 
@@ -65,8 +64,7 @@ let parseFieldType: ({..}, string) => result<fieldType, string> = (fieldJson, ty
 /** Parse one field JSON object into a schemaField. */
 let parseField: ({..}, string) => result<schemaField, schemaError> = (fieldJson, fieldName) => {
   switch dictGet(fieldJson, "selector") {
-  | None =>
-    Error(MissingFields(`Field "${fieldName}" is missing required key "selector"`))
+  | None => Error(MissingFields(`Field "${fieldName}" is missing required key "selector"`))
   | Some(selector) => {
       let rawType: string = switch dictGet(fieldJson, "type") {
       | Some(t) => t

@@ -27,7 +27,12 @@ let _ = test("OutputWriter - writeText with File target success", () => {
     fileReceived := (path, text)
   }
 
-  let result = writeText(~target=File("out.txt"), ~text="hello", ~writeFile=writeFileMock, ~out=outMock)
+  let result = writeText(
+    ~target=File("out.txt"),
+    ~text="hello",
+    ~writeFile=writeFileMock,
+    ~out=outMock,
+  )
 
   isResultOk(result)
   isTextEqualTo("", outputReceived.contents)
@@ -43,7 +48,12 @@ let _ = test("OutputWriter - writeText with File target failure", () => {
     Js.Exn.raiseError("Disk full")
   }
 
-  let result = writeText(~target=File("out.txt"), ~text="hello", ~writeFile=writeFileMock, ~out=outMock)
+  let result = writeText(
+    ~target=File("out.txt"),
+    ~text="hello",
+    ~writeFile=writeFileMock,
+    ~out=outMock,
+  )
 
   switch result {
   | Error(AppError.WriteError(msg)) =>
@@ -60,7 +70,13 @@ let _ = test("OutputWriter - write Ndjson success", () => {
   }
 
   let jsonText = "[{\"a\":1}, {\"b\":2}]"
-  let result = write(~target=File("out.ndjson"), ~format=Ndjson, ~jsonText, ~writeFile=writeFileMock, ~out=outMock)
+  let result = write(
+    ~target=File("out.ndjson"),
+    ~format=Ndjson,
+    ~jsonText,
+    ~writeFile=writeFileMock,
+    ~out=outMock,
+  )
 
   isResultOk(result)
   let (path, text) = fileReceived.contents
@@ -73,7 +89,13 @@ let _ = test("OutputWriter - write Ndjson failure (not an array)", () => {
   let writeFileMock = (_path, _text) => ()
 
   let jsonText = "{\"a\":1}"
-  let result = write(~target=File("out.ndjson"), ~format=Ndjson, ~jsonText, ~writeFile=writeFileMock, ~out=outMock)
+  let result = write(
+    ~target=File("out.ndjson"),
+    ~format=Ndjson,
+    ~jsonText,
+    ~writeFile=writeFileMock,
+    ~out=outMock,
+  )
 
   switch result {
   | Error(AppError.WriteError(msg)) =>
@@ -87,7 +109,13 @@ let _ = test("OutputWriter - write Ndjson failure (invalid json)", () => {
   let writeFileMock = (_path, _text) => ()
 
   let jsonText = "invalid json"
-  let result = write(~target=File("out.ndjson"), ~format=Ndjson, ~jsonText, ~writeFile=writeFileMock, ~out=outMock)
+  let result = write(
+    ~target=File("out.ndjson"),
+    ~format=Ndjson,
+    ~jsonText,
+    ~writeFile=writeFileMock,
+    ~out=outMock,
+  )
 
   switch result {
   | Error(AppError.WriteError(msg)) =>
@@ -102,7 +130,7 @@ let _ = testAsync("OutputWriter - writeTextAsync with Stdout target", planned =>
     outputReceived := text
   }
   let writeFileMock = (_path, _text) => {
-    Promise.resolve(())
+    Promise.resolve()
   }
 
   writeTextAsync(~target=Stdout, ~text="hello", ~writeFile=writeFileMock, ~out=outMock)
@@ -144,13 +172,25 @@ test("OutputWriter - sync and async routing produce identical output for JSON", 
   let jsonText = "[{\"a\":1},{\"b\":2}]"
 
   // Sync write with JSON format: routing emits a JSON-format file.
-  let syncResult = write(~target=File("sync.json"), ~format=Json, ~jsonText, ~writeFile=writeFileSync, ~out=outMock)
+  let syncResult = write(
+    ~target=File("sync.json"),
+    ~format=Json,
+    ~jsonText,
+    ~writeFile=writeFileSync,
+    ~out=outMock,
+  )
   isResultOk(syncResult)
   let (_syncPath, syncText) = fileReceivedSync.contents
   isTextEqualTo("[{\"a\":1},{\"b\":2}]", syncText)
 
   // Routing converts JSON array → NDJSON when format is Ndjson.
-  let ndjsonSyncResult = write(~target=File("sync.ndjson"), ~format=Ndjson, ~jsonText, ~writeFile=writeFileSync, ~out=outMock)
+  let ndjsonSyncResult = write(
+    ~target=File("sync.ndjson"),
+    ~format=Ndjson,
+    ~jsonText,
+    ~writeFile=writeFileSync,
+    ~out=outMock,
+  )
   isResultOk(ndjsonSyncResult)
   let (_syncNdjsonPath, syncNdjsonText) = fileReceivedSync.contents
   isTextEqualTo("{\"a\":1}\n{\"b\":2}", syncNdjsonText)
@@ -165,7 +205,13 @@ testAsync("OutputWriter - async routing produces same NDJSON conversion as sync"
   }
   let jsonText = "[{\"a\":1},{\"b\":2}]"
 
-  writeAsync(~target=File("async.ndjson"), ~format=Ndjson, ~jsonText, ~writeFile=writeFileAsync, ~out=outMock)
+  writeAsync(
+    ~target=File("async.ndjson"),
+    ~format=Ndjson,
+    ~jsonText,
+    ~writeFile=writeFileAsync,
+    ~out=outMock,
+  )
   ->Promise.then(result => {
     isResultOk(result)
     let (path, text) = fileReceived.contents
@@ -182,11 +228,20 @@ testAsync("OutputWriter - async routing fails for non-array JSON with NDJSON for
   let outMock = _text => ()
   let writeFileAsync = (_path, _text) => Promise.resolve()
 
-  writeAsync(~target=File("async.ndjson"), ~format=Ndjson, ~jsonText="{\"a\":1}", ~writeFile=writeFileAsync, ~out=outMock)
+  writeAsync(
+    ~target=File("async.ndjson"),
+    ~format=Ndjson,
+    ~jsonText="{\"a\":1}",
+    ~writeFile=writeFileAsync,
+    ~out=outMock,
+  )
   ->Promise.then(result => {
     switch result {
     | Error(AppError.WriteError(msg)) =>
-      isTextEqualTo("Cannot write NDJSON output: expected extraction result to be a JSON array", msg)
+      isTextEqualTo(
+        "Cannot write NDJSON output: expected extraction result to be a JSON array",
+        msg,
+      )
     | _ => failWith("Expected WriteError for non-array NDJSON")
     }
     planned(~planned=1, ())

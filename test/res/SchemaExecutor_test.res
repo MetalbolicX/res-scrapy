@@ -6,7 +6,7 @@ let parseSchema = raw =>
   | Ok(schema) => schema
   | Error(_) => {
       failWith("Unable to parse schema in test")
-      Obj.magic(())
+      Obj.magic()
     }
   }
 
@@ -17,10 +17,8 @@ let runSchema = (~html, ~schemaRaw) => {
 }
 
 test("SchemaExecutor routes to RowExtractor when rowSelector is set", () => {
-  let html =
-    "<ul><li class='row'><span class='title'>A</span></li><li class='row'><span class='title'>B</span></li></ul>"
-  let schemaRaw =
-    "{\"fields\":{\"title\":{\"selector\":\".title\",\"type\":\"text\"}},\"config\":{\"rowSelector\":\".row\"}}"
+  let html = "<ul><li class='row'><span class='title'>A</span></li><li class='row'><span class='title'>B</span></li></ul>"
+  let schemaRaw = "{\"fields\":{\"title\":{\"selector\":\".title\",\"type\":\"text\"}},\"config\":{\"rowSelector\":\".row\"}}"
   let doc = HtmlFixture.parse(html)
   let schema = parseSchema(schemaRaw)
   let out = SchemaExecutor.applySchema(doc, schema)
@@ -34,15 +32,17 @@ test("SchemaExecutor routes to RowExtractor when rowSelector is set", () => {
 
 test("SchemaExecutor routes to ZipExtractor when rowSelector is absent", () => {
   let html = "<h2>A</h2><h2>B</h2><span>1</span><span>2</span>"
-  let schemaRaw =
-    "{\"fields\":{\"title\":{\"selector\":\"h2\",\"type\":\"text\"},\"rank\":{\"selector\":\"span\",\"type\":\"number\"}}}"
+  let schemaRaw = "{\"fields\":{\"title\":{\"selector\":\"h2\",\"type\":\"text\"},\"rank\":{\"selector\":\"span\",\"type\":\"number\"}}}"
   let doc = HtmlFixture.parse(html)
   let schema = parseSchema(schemaRaw)
   let out = SchemaExecutor.applySchema(doc, schema)
   isResultOk(out)
   switch out {
   | Ok(value) =>
-    isTextEqualTo("[{\"title\":\"A\",\"rank\":1},{\"title\":\"B\",\"rank\":2}]", NodeJsBinding.jsonStringify(value))
+    isTextEqualTo(
+      "[{\"title\":\"A\",\"rank\":1},{\"title\":\"B\",\"rank\":2}]",
+      NodeJsBinding.jsonStringify(value),
+    )
   | Error(_) => ()
   }
 })
@@ -67,7 +67,8 @@ test("RowExtractor honors ignoreErrors and default for missing required", () => 
     ~schemaRaw="{\"fields\":{\"title\":{\"selector\":\".title\",\"type\":\"text\"},\"price\":{\"selector\":\".price\",\"type\":\"number\",\"required\":true,\"default\":0}},\"config\":{\"rowSelector\":\".row\",\"ignoreErrors\":true}}",
   )
   switch out {
-  | Ok(value) => isTextEqualTo("[{\"title\":\"A\",\"price\":0}]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) =>
+    isTextEqualTo("[{\"title\":\"A\",\"price\":0}]", NodeJsBinding.jsonStringify(value))
   | Error(_) => failWith("Expected ignoreErrors to produce output")
   }
 })
@@ -104,7 +105,8 @@ test("RowExtractor limit truncates row output", () => {
     ~schemaRaw="{\"fields\":{\"title\":{\"selector\":\".title\",\"type\":\"text\"}},\"config\":{\"rowSelector\":\".row\",\"limit\":2}}",
   )
   switch out {
-  | Ok(value) => isTextEqualTo("[{\"title\":\"A\"},{\"title\":\"B\"}]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) =>
+    isTextEqualTo("[{\"title\":\"A\"},{\"title\":\"B\"}]", NodeJsBinding.jsonStringify(value))
   | Error(_) => failWith("Expected limited row output")
   }
 })
@@ -115,7 +117,11 @@ test("ZipExtractor fills null for missing non-required values", () => {
     ~schemaRaw="{\"fields\":{\"title\":{\"selector\":\"h2\",\"type\":\"text\"},\"price\":{\"selector\":\".p\",\"type\":\"number\"}}}",
   )
   switch out {
-  | Ok(value) => isTextEqualTo("[{\"title\":\"A\",\"price\":1},{\"title\":\"B\",\"price\":null}]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) =>
+    isTextEqualTo(
+      "[{\"title\":\"A\",\"price\":1},{\"title\":\"B\",\"price\":null}]",
+      NodeJsBinding.jsonStringify(value),
+    )
   | Error(_) => failWith("Expected null fallback in zip mode")
   }
 })
@@ -140,7 +146,11 @@ test("ZipExtractor uses default when ignoreErrors true", () => {
     ~schemaRaw="{\"fields\":{\"title\":{\"selector\":\"h2\",\"type\":\"text\"},\"price\":{\"selector\":\".p\",\"type\":\"number\",\"required\":true,\"default\":0}},\"config\":{\"ignoreErrors\":true}}",
   )
   switch out {
-  | Ok(value) => isTextEqualTo("[{\"title\":\"A\",\"price\":1},{\"title\":\"B\",\"price\":0}]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) =>
+    isTextEqualTo(
+      "[{\"title\":\"A\",\"price\":1},{\"title\":\"B\",\"price\":0}]",
+      NodeJsBinding.jsonStringify(value),
+    )
   | Error(_) => failWith("Expected ignoreErrors default behavior in zip mode")
   }
 })

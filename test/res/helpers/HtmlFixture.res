@@ -1,9 +1,10 @@
 let parse: string => NodeHtmlParserBinding.htmlElement = NodeHtmlParserBinding.parse
 
-let select: (NodeHtmlParserBinding.htmlElement, string) => option<NodeHtmlParserBinding.htmlElement> = (
-  document,
-  selector,
-) => NodeHtmlParserBinding.querySelector(document, selector)->Nullable.toOption
+let select: (
+  NodeHtmlParserBinding.htmlElement,
+  string,
+) => option<NodeHtmlParserBinding.htmlElement> = (document, selector) =>
+  NodeHtmlParserBinding.querySelector(document, selector)->Nullable.toOption
 
 let selectAll: (
   NodeHtmlParserBinding.htmlElement,

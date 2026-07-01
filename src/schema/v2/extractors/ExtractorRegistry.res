@@ -105,14 +105,13 @@ let rec extractValue: (
     url: opts => UrlScalar.run(el, opts),
     json: opts => JsonScalar.run(el, opts),
     datetime: opts => DateTimeScalar.run(el, opts),
-    count: _ =>
-      // Count requires the full element array; callers must use extractValueList.
-      // If somehow routed here, return 1 (the element itself was found).
-      Ok(JSON.Encode.int(1)),
-    list: _ =>
-      // List requires the full element array; callers must use extractValueList.
-      Ok(JSON.Encode.null),
-    table: tableOpts => TableFieldExtractor.extract(el, tableOpts, defaults, ignoreErrors, extractValue),
+    count: _ => // Count requires the full element array; callers must use extractValueList.
+    // If somehow routed here, return 1 (the element itself was found).
+    Ok(JSON.Encode.int(1)),
+    list: _ => // List requires the full element array; callers must use extractValueList.
+    Ok(JSON.Encode.null),
+    table: tableOpts =>
+      TableFieldExtractor.extract(el, tableOpts, defaults, ignoreErrors, extractValue),
   }
   FieldTypeVisitor.visitFieldType(extractVisitor, resolved)
 }
@@ -128,7 +127,15 @@ let extractValueList: (
   bool,
   string,
   string,
-) => result<JSON.t, schemaError> = (els, ft, defaults, ignoreErrors, required, fieldName, selector) => {
+) => result<JSON.t, schemaError> = (
+  els,
+  ft,
+  defaults,
+  ignoreErrors,
+  required,
+  fieldName,
+  selector,
+) => {
   if Array.length(els) == 0 && required && ignoreErrors == false {
     Error(RequiredFieldMissing({fieldName, selector}))
   } else {
@@ -189,10 +196,12 @@ let extractValueOrAbsent: (
       if required && ignoreErrors == false {
         Error(RequiredFieldMissing({fieldName, selector}))
       } else {
-        Ok(switch defaultValue {
-        | Some(d) => d
-        | None => JSON.Encode.null
-        })
+        Ok(
+          switch defaultValue {
+          | Some(d) => d
+          | None => JSON.Encode.null
+          },
+        )
       }
     }
   }

@@ -36,7 +36,6 @@ let recordFailure = (stats, ~url, ~reason) => {
     ...stats,
     attempted: stats.attempted + 1,
     failed: stats.failed + 1,
-    /** O(1) prepend via list cons; reversed once at print time. */
     failedUrls: list{{url, reason}, ...stats.failedUrls},
   }
 }
@@ -52,10 +51,10 @@ let printReport = (stats, ~err) => {
   err(`  URLs succeeded:  ${Int.toString(stats.succeeded)}`)
   err(`  URLs failed:     ${Int.toString(stats.failed)}`)
   err(`  Rows extracted:  ${Int.toString(stats.rowsExtracted)}`)
-  
+
   let durationSec = stats.durationMs /. 1000.0
   err(`  Duration:        ${Float.toString(durationSec)}s`)
-  
+
   if stats.failed > 0 {
     err("")
     err("  Failed URLs:")

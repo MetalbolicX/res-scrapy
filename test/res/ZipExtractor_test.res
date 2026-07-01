@@ -46,16 +46,22 @@ test("ZipExtractor - run with multiple rows preserves order and count", () => {
   let doc = HtmlFixture.parse(html)
   let schema: schema = {
     fields: [
-      ("name", {
-        selector: ".name",
-        fieldType: Text(None),
-        required: false,
-      }),
-      ("price", {
-        selector: ".price",
-        fieldType: Number(None),
-        required: false,
-      }),
+      (
+        "name",
+        {
+          selector: ".name",
+          fieldType: Text(None),
+          required: false,
+        },
+      ),
+      (
+        "price",
+        {
+          selector: ".price",
+          fieldType: Number(None),
+          required: false,
+        },
+      ),
     ],
     config: {
       limit: 0,
@@ -68,10 +74,7 @@ test("ZipExtractor - run with multiple rows preserves order and count", () => {
   switch result {
   | Ok(json) =>
     let out = NodeJsBinding.jsonStringify(json)
-    isTextEqualTo(
-      `[{"name":"A","price":10},{"name":"B","price":20},{"name":"C","price":30}]`,
-      out,
-    )
+    isTextEqualTo(`[{"name":"A","price":10},{"name":"B","price":20},{"name":"C","price":30}]`, out)
   | Error(_) => failWith("Expected successful multi-row extraction")
   }
 })
@@ -88,16 +91,22 @@ test("ZipExtractor - limit config caps row count", () => {
   let doc = HtmlFixture.parse(html)
   let schema: schema = {
     fields: [
-      ("name", {
-        selector: ".name",
-        fieldType: Text(None),
-        required: false,
-      }),
-      ("price", {
-        selector: ".price",
-        fieldType: Number(None),
-        required: false,
-      }),
+      (
+        "name",
+        {
+          selector: ".name",
+          fieldType: Text(None),
+          required: false,
+        },
+      ),
+      (
+        "price",
+        {
+          selector: ".price",
+          fieldType: Number(None),
+          required: false,
+        },
+      ),
     ],
     config: {
       limit: 2,
@@ -121,25 +130,29 @@ test("ZipExtractor - handles large row count without stack overflow", () => {
   let rowCount = 5000
   let htmlBuilder = ref("<html><body>")
   for i in 0 to rowCount - 1 {
-    htmlBuilder :=
-      htmlBuilder.contents ++ `<span class="name">N${Int.toString(i)}</span>`
-    htmlBuilder :=
-      htmlBuilder.contents ++ `<span class="price">${Int.toString(i)}</span>`
+    htmlBuilder := htmlBuilder.contents ++ `<span class="name">N${Int.toString(i)}</span>`
+    htmlBuilder := htmlBuilder.contents ++ `<span class="price">${Int.toString(i)}</span>`
   }
   let html = htmlBuilder.contents ++ "</body></html>"
   let doc = HtmlFixture.parse(html)
   let schema: schema = {
     fields: [
-      ("name", {
-        selector: ".name",
-        fieldType: Text(None),
-        required: false,
-      }),
-      ("price", {
-        selector: ".price",
-        fieldType: Number(None),
-        required: false,
-      }),
+      (
+        "name",
+        {
+          selector: ".name",
+          fieldType: Text(None),
+          required: false,
+        },
+      ),
+      (
+        "price",
+        {
+          selector: ".price",
+          fieldType: Number(None),
+          required: false,
+        },
+      ),
     ],
     config: {
       limit: 0,
@@ -156,9 +169,7 @@ test("ZipExtractor - handles large row count without stack overflow", () => {
       // Spot-check first and last rows to confirm order preservation.
       let firstStr = NodeJsBinding.jsonStringify(Array.getUnsafe(jsonArray, 0))
       isTextEqualTo(`{"name":"N0","price":0}`, firstStr)
-      let lastStr = NodeJsBinding.jsonStringify(
-        Array.getUnsafe(jsonArray, rowCount - 1),
-      )
+      let lastStr = NodeJsBinding.jsonStringify(Array.getUnsafe(jsonArray, rowCount - 1))
       isTextEqualTo(
         `{"name":"N${Int.toString(rowCount - 1)}","price":${Int.toString(rowCount - 1)}}`,
         lastStr,

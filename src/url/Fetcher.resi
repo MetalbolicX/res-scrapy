@@ -10,7 +10,6 @@
   *
   * Uses `Promise.all` to collect all fetch results; each fetch always resolves with `result`.
   */
-
 type fetchError =
   | NetworkError(string)
   | Timeout(string)
@@ -41,7 +40,11 @@ let isRetryable: fetchError => bool
   * @internal Exported for unit testing only.
   * Classifies a fetch failure based on whether the request signal was aborted.
   */
-let classifyError: (~message: string, ~isAborted: bool, ~timeoutSeconds: int) => result<'a, fetchError>
+let classifyError: (
+  ~message: string,
+  ~isAborted: bool,
+  ~timeoutSeconds: int,
+) => result<'a, fetchError>
 
 /**
   * @internal Exported for unit testing only.

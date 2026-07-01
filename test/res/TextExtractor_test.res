@@ -27,26 +27,21 @@ test("TextExtractor supports trim false", () => {
 test("TextExtractor supports lowercase and uppercase", () => {
   let doc = HtmlFixture.parse("<div class='t'>HeLLo</div>")
   let el = getElement(doc, ".t")
-  isOptionEqualTo(
-    Some("hello"),
-    TextExtractor.extract(el, Some({lowercase: true})),
-    ~eq=(a, b) => a == b,
+  isOptionEqualTo(Some("hello"), TextExtractor.extract(el, Some({lowercase: true})), ~eq=(a, b) =>
+    a == b
   )
-  isOptionEqualTo(
-    Some("HELLO"),
-    TextExtractor.extract(el, Some({uppercase: true})),
-    ~eq=(a, b) => a == b,
+  isOptionEqualTo(Some("HELLO"), TextExtractor.extract(el, Some({uppercase: true})), ~eq=(a, b) =>
+    a == b
   )
 })
 
 test("TextExtractor supports normalizeWhitespace", () => {
   let doc = HtmlFixture.parse("<div class='t'>  A\n\tB   C  </div>")
   let el = getElement(doc, ".t")
-  isOptionEqualTo(
-    Some("A B C"),
-    TextExtractor.extract(el, Some({normalizeWhitespace: true})),
-    ~eq=(a, b) => a == b,
-  )
+  isOptionEqualTo(Some("A B C"), TextExtractor.extract(el, Some({normalizeWhitespace: true})), ~eq=(
+    a,
+    b,
+  ) => a == b)
 })
 
 test("TextExtractor supports regex pattern extraction", () => {
@@ -62,7 +57,10 @@ test("TextExtractor supports regex pattern extraction", () => {
 test("TextExtractor returns None when pattern has no match", () => {
   let doc = HtmlFixture.parse("<div class='t'>Price: unknown</div>")
   let el = getElement(doc, ".t")
-  isOptionEqualTo(None, TextExtractor.extract(el, Some({pattern: "([0-9]+\\.[0-9]+)"})), ~eq=(a, b) => a == b)
+  isOptionEqualTo(None, TextExtractor.extract(el, Some({pattern: "([0-9]+\\.[0-9]+)"})), ~eq=(
+    a,
+    b,
+  ) => a == b)
 })
 
 test("TextExtractor rejects catastrophic regex patterns", () => {

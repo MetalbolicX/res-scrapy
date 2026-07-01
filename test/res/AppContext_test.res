@@ -4,7 +4,6 @@ open Assertions
 /** Approval test: spec says "All dependencies remain accessible" via sub-records.
     These tests reference the new grouped shape (ctx.deps.cli.*, ctx.deps.fs.*, ...)
     which exercises grouped access as documented in the spec scenario. */
-
 test("cli sub-record exposes parseCli, validateArgs, readStdin, getCliVersion", () => {
   let ctx = AppContext.production
   isTruthy(%raw(`ctx => typeof ctx.deps.cli.parseCli === 'function'`)(ctx))
@@ -31,7 +30,11 @@ test("serialize sub-record exposes stringifyJson, stringifyTableRows, stringifyS
 test("doc sub-record exposes documentOps, extractTable, parseTemplate", () => {
   let ctx = AppContext.production
   // documentOps is a record, not a function
-  isTruthy(%raw(`ctx => ctx.deps.doc.documentOps !== undefined && typeof ctx.deps.doc.documentOps === 'object'`)(ctx))
+  isTruthy(
+    %raw(`ctx => ctx.deps.doc.documentOps !== undefined && typeof ctx.deps.doc.documentOps === 'object'`)(
+      ctx,
+    ),
+  )
   isTruthy(%raw(`ctx => typeof ctx.deps.doc.extractTable === 'function'`)(ctx))
   isTruthy(%raw(`ctx => typeof ctx.deps.doc.parseTemplate === 'function'`)(ctx))
 })

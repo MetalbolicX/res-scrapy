@@ -7,7 +7,7 @@ type timeoutId
 
 @new external makeError: string => JsExn.t = "Error"
 
-external setTimeoutImpl: ((unit => unit), int) => timeoutId = "setTimeout"
+external setTimeoutImpl: (unit => unit, int) => timeoutId = "setTimeout"
 let startTimeout: (int, unit => unit) => timeoutId = (ms, cb) => setTimeoutImpl(cb, ms)
 
 external clearTimeoutImpl: timeoutId => unit = "clearTimeout"
@@ -15,10 +15,12 @@ let clearTimeout_ = clearTimeoutImpl
 
 /** Maximum stdin size in bytes (50 MB). Prevents memory exhaustion from
   * unexpectedly large inputs. */
-let maxStdinBytes = 50 * 1024 * 1024
+let maxStdinBytes =
+  50 * 1024 * 1024
 
 /** Maximum time to wait for stdin completion (30 seconds). */
-let maxStdinMs = 30 * 1000
+let maxStdinMs =
+  30 * 1000
 
 let hasStdinData: unit => bool = () => {
   open NodeJsBinding.Process
@@ -87,7 +89,9 @@ let readFromStdin: unit => promise<Result.t<string, stdInError>> = () => {
             let content = chunks.contents->Array.join("")->String.trim
             switch content->String.length {
             | 0 =>
-              completeWithCleanup(Result.Error(EmptyContent("Empty HTML content received from stdin")))
+              completeWithCleanup(
+                Result.Error(EmptyContent("Empty HTML content received from stdin")),
+              )
             | _ => completeWithCleanup(Result.Ok(content))
             }
           }
@@ -108,15 +112,13 @@ let readFromStdin: unit => promise<Result.t<string, stdInError>> = () => {
 
         stdin->resume
       } catch {
-      | exn => {
-          if !settled.contents {
-            let errorMessage = switch exn->JsExn.fromException {
-            | Some(jsExn) => jsExn->JsExn.message->Option.getOr("Unknown error")
-            | None => "Unknown error"
-            }
-            settled := true
-            reject(makeError(`Error initializing stdin read: ${errorMessage}`))
+      | exn => if !settled.contents {
+          let errorMessage = switch exn->JsExn.fromException {
+          | Some(jsExn) => jsExn->JsExn.message->Option.getOr("Unknown error")
+          | None => "Unknown error"
           }
+          settled := true
+          reject(makeError(`Error initializing stdin read: ${errorMessage}`))
         }
       }
     }

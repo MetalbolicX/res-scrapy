@@ -248,35 +248,35 @@ test("OptionsParser.parseTableOptions returns Error for nested table columns", (
   }
 })
 
-test("OptionsParser.parseTableOptions returns Error for attribute column without attribute key", () => {
-  let field = TestHelpers.objectFromJsonString(
-    "{\"tableOptions\":{\"columns\":[{\"name\":\"cell\",\"selector\":\"td\",\"type\":\"attribute\"}]}}",
-  )
-  switch OptionsParser.parseTableOptions(field) {
-  | Ok(_) => failWith("Expected Error for attribute without attribute key")
-  | Error(msg) => stringContains(msg, "attribute")->isTruthy
-  }
-})
+test(
+  "OptionsParser.parseTableOptions returns Error for attribute column without attribute key",
+  () => {
+    let field = TestHelpers.objectFromJsonString(
+      "{\"tableOptions\":{\"columns\":[{\"name\":\"cell\",\"selector\":\"td\",\"type\":\"attribute\"}]}}",
+    )
+    switch OptionsParser.parseTableOptions(field) {
+    | Ok(_) => failWith("Expected Error for attribute without attribute key")
+    | Error(msg) => stringContains(msg, "attribute")->isTruthy
+    }
+  },
+)
 
 /* -------------------------------------------------------------------------- */
-/* Shared Option Parsing — after the refactor, OptionsParser and              */
+/* Shared Option Parsing — after the refactor, OptionsParser and */
 /* ConfigParser MUST produce structurally identical textOptions from the same */
-/* raw JSON. These tests pin that contract before OptionFields.res exists.    */
+/* raw JSON. These tests pin that contract before OptionFields.res exists. */
 /* -------------------------------------------------------------------------- */
 
 test("OptionsParser and ConfigParser produce identical textOptions (full payload)", () => {
-  let textJson =
-    "{\"trim\":false,\"normalizeWhitespace\":true,\"lowercase\":true,\"uppercase\":false,\"pattern\":\"([0-9]+)\",\"join\":\",\"}"
+  let textJson = "{\"trim\":false,\"normalizeWhitespace\":true,\"lowercase\":true,\"uppercase\":false,\"pattern\":\"([0-9]+)\",\"join\":\",\"}"
 
   let fromOptions =
-    TestHelpers.objectFromJsonString(`{"textOptions":${textJson}}`)
-    ->OptionsParser.parseTextOptions
+    TestHelpers.objectFromJsonString(`{"textOptions":${textJson}}`)->OptionsParser.parseTextOptions
 
   /* ConfigParser side: parsed via parseConfig which exposes the text defaults. */
-  let fromConfigRaw =
-    TestHelpers.objectFromJsonString(
-      `{"config":{"defaults":{"text":${textJson}}}}`,
-    )
+  let fromConfigRaw = TestHelpers.objectFromJsonString(
+    `{"config":{"defaults":{"text":${textJson}}}}`,
+  )
   let fromConfig = ConfigParser.parseConfig(fromConfigRaw)
 
   switch fromOptions {
@@ -304,13 +304,11 @@ test("OptionsParser and ConfigParser produce identical textOptions (sparse paylo
   let textJson = "{\"trim\":true}"
 
   let fromOptions =
-    TestHelpers.objectFromJsonString(`{"textOptions":${textJson}}`)
-    ->OptionsParser.parseTextOptions
+    TestHelpers.objectFromJsonString(`{"textOptions":${textJson}}`)->OptionsParser.parseTextOptions
 
-  let fromConfigRaw =
-    TestHelpers.objectFromJsonString(
-      `{"config":{"defaults":{"text":${textJson}}}}`,
-    )
+  let fromConfigRaw = TestHelpers.objectFromJsonString(
+    `{"config":{"defaults":{"text":${textJson}}}}`,
+  )
   let fromConfig = ConfigParser.parseConfig(fromConfigRaw)
 
   switch fromOptions {
@@ -341,9 +339,7 @@ test("OptionsParser returns None when textOptions key is absent", () => {
 })
 
 test("ConfigParser with empty text defaults yields all-None text options", () => {
-  let fromConfigRaw = TestHelpers.objectFromJsonString(
-    `{"config":{"defaults":{"text":{}}}}`,
-  )
+  let fromConfigRaw = TestHelpers.objectFromJsonString(`{"config":{"defaults":{"text":{}}}}`)
   let fromConfig = ConfigParser.parseConfig(fromConfigRaw)
   switch fromConfig.defaults {
   | Some(d) =>

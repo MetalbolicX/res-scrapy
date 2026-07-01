@@ -103,7 +103,11 @@ test("Fetcher classifies error as Timeout when signal is aborted", () => {
   let controller = AbortSignal.makeController()
   let signal = AbortSignal.signal(controller)
   AbortSignal.abort(controller)
-  let result = Fetcher.classifyError(~message="some unrelated error text", ~isAborted=AbortSignal.aborted(signal), ~timeoutSeconds=5)
+  let result = Fetcher.classifyError(
+    ~message="some unrelated error text",
+    ~isAborted=AbortSignal.aborted(signal),
+    ~timeoutSeconds=5,
+  )
   switch result {
   | Error(Timeout(msg)) =>
     stringContains(msg, "5")->isTruthy
@@ -113,10 +117,13 @@ test("Fetcher classifies error as Timeout when signal is aborted", () => {
 })
 
 test("Fetcher classifies error as NetworkError when signal is not aborted", () => {
-  let result = Fetcher.classifyError(~message="connection refused", ~isAborted=false, ~timeoutSeconds=30)
+  let result = Fetcher.classifyError(
+    ~message="connection refused",
+    ~isAborted=false,
+    ~timeoutSeconds=30,
+  )
   switch result {
-  | Error(NetworkError(msg)) =>
-    stringContains(msg, "connection refused")->isTruthy
+  | Error(NetworkError(msg)) => stringContains(msg, "connection refused")->isTruthy
   | _ => failWith("Expected NetworkError variant when signal is not aborted")
   }
 })
@@ -124,7 +131,11 @@ test("Fetcher classifies error as NetworkError when signal is not aborted", () =
 test("Fetcher timeout classification ignores error message text", () => {
   // Critical: even if the error message contains "abort" or "timeout", if the
   // signal was not aborted, the error should be classified as NetworkError.
-  let result = Fetcher.classifyError(~message="abort controller failure", ~isAborted=false, ~timeoutSeconds=10)
+  let result = Fetcher.classifyError(
+    ~message="abort controller failure",
+    ~isAborted=false,
+    ~timeoutSeconds=10,
+  )
   switch result {
   | Error(NetworkError(_)) => passWith("NetworkError returned despite 'abort' in message")
   | Error(Timeout(_)) => failWith("Should not classify as Timeout when signal is not aborted")
@@ -141,28 +152,29 @@ testAsync("fetchAll returns all results even when some URLs fail", planned => {
     delayMs: 0,
     headers: [],
   }
-  Fetcher.fetchAll(
-    [
-      "http://127.0.0.1:9",
-      "http://127.0.0.1:9",
-      "https://example.com/",
-    ],
-    options,
-  )
+  Fetcher.fetchAll(["http://127.0.0.1:9", "http://127.0.0.1:9", "https://example.com/"], options)
   ->Promise.then(results => {
     (results->Array.length == 3)->isTruthy
-    let countSuccess = results->Array.filter(r =>
-      switch r.result {
-      | Ok(_) => true
-      | Error(_) => false
-      }
-    )->Array.length
-    let countFailure = results->Array.filter(r =>
-      switch r.result {
-      | Ok(_) => false
-      | Error(_) => true
-      }
-    )->Array.length
+    let countSuccess =
+      results
+      ->Array.filter(
+        r =>
+          switch r.result {
+          | Ok(_) => true
+          | Error(_) => false
+          },
+      )
+      ->Array.length
+    let countFailure =
+      results
+      ->Array.filter(
+        r =>
+          switch r.result {
+          | Ok(_) => false
+          | Error(_) => true
+          },
+      )
+      ->Array.length
     (countSuccess >= 1)->isTruthy
     (countFailure >= 1)->isTruthy
     planned(~planned=3, ())

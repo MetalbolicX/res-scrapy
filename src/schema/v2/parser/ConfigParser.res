@@ -29,8 +29,15 @@ let parseNumberDefaults: {..} => numberOptions = raw => {
   | Some(s) => Some(parseErrorPolicy(s))
   | None => None
   }
-  {?stripNonNumeric, ?pattern, ?thousandsSeparator, ?decimalSeparator, ?precision, ?allowNegative,
-   ?onError}
+  {
+    ?stripNonNumeric,
+    ?pattern,
+    ?thousandsSeparator,
+    ?decimalSeparator,
+    ?precision,
+    ?allowNegative,
+    ?onError,
+  }
 }
 
 let parseBooleanDefaults: {..} => booleanOptions = raw => {

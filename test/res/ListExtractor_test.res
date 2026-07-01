@@ -104,7 +104,7 @@ test("ListExtractor ListAttribute and ListUrl", () => {
    ============================================================================ */
 
 /* listTrim mirrors the trim+filter that ListExtractor applies at the
-   list-semantics layer for text and attribute item types. */
+ list-semantics layer for text and attribute item types. */
 let listTrim = (s: string): option<string> => {
   let t = String.trim(s)
   if String.length(t) === 0 {
@@ -117,10 +117,9 @@ let listTrim = (s: string): option<string> => {
 /* expectedItem computes what the list-extractor SHOULD return for one element
    for each itemType — i.e. the named extractor's output plus list-level
    normalization. This is the truth source used by the delegation tests. */
-let expectedItem = (
-  el: NodeHtmlParserBinding.htmlElement,
-  itemType: listItemType,
-): option<string> => {
+let expectedItem = (el: NodeHtmlParserBinding.htmlElement, itemType: listItemType): option<
+  string,
+> => {
   switch itemType {
   | ListText => TextExtractor.extract(el, None)
   | ListHtml => {
@@ -132,8 +131,7 @@ let expectedItem = (
       }
     }
   | ListAttribute(name) =>
-    AttributeExtractor.extract(el, {names: [name], mode: First})
-    ->Option.flatMap(listTrim)
+    AttributeExtractor.extract(el, {names: [name], mode: First})->Option.flatMap(listTrim)
   | ListUrl => UrlExtractor.extract(el, None)
   }
 }
@@ -170,7 +168,9 @@ test("PR 2b ListText delegates to TextExtractor.extract on each element", () => 
 
   isIntEqualTo(expected->Array.length, actual->Array.length, ~message="ListText length")
   for i in 0 to expected->Array.length - 1 {
-    let e = NodeJsBinding.jsonStringify(JSON.Encode.string(expected->Array.get(i)->Option.getOr("")))
+    let e = NodeJsBinding.jsonStringify(
+      JSON.Encode.string(expected->Array.get(i)->Option.getOr("")),
+    )
     isTextEqualTo(e, actual->Array.get(i)->Option.getOr(""))
   }
 })
@@ -187,7 +187,9 @@ test("PR 2b ListAttribute delegates to AttributeExtractor.extract on each elemen
 
   isIntEqualTo(expected->Array.length, actual->Array.length, ~message="ListAttr length")
   for i in 0 to expected->Array.length - 1 {
-    let e = NodeJsBinding.jsonStringify(JSON.Encode.string(expected->Array.get(i)->Option.getOr("")))
+    let e = NodeJsBinding.jsonStringify(
+      JSON.Encode.string(expected->Array.get(i)->Option.getOr("")),
+    )
     isTextEqualTo(e, actual->Array.get(i)->Option.getOr(""))
   }
 })
@@ -204,7 +206,9 @@ test("PR 2b ListUrl delegates to UrlExtractor.extract on each element", () => {
 
   isIntEqualTo(expected->Array.length, actual->Array.length, ~message="ListUrl length")
   for i in 0 to expected->Array.length - 1 {
-    let e = NodeJsBinding.jsonStringify(JSON.Encode.string(expected->Array.get(i)->Option.getOr("")))
+    let e = NodeJsBinding.jsonStringify(
+      JSON.Encode.string(expected->Array.get(i)->Option.getOr("")),
+    )
     isTextEqualTo(e, actual->Array.get(i)->Option.getOr(""))
   }
 })

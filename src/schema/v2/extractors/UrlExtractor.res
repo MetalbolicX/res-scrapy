@@ -107,13 +107,12 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<urlOptions>) => option<s
           }
           if !protoOk {
             None
+          } else if !isSafeProtocol(url.protocol) {
+            None
           } else {
-            if !isSafeProtocol(url.protocol) {
-              None
-            } else {
-              // 4. Build final URL string, stripping query/hash as needed
-              let final = ref(url.href)
-              if (
+            // 4. Build final URL string, stripping query/hash as needed
+            let final = ref(url.href)
+            if (
               switch opts {
               | Some(o) => o.stripQuery == Some(true)
               | None => false
@@ -126,11 +125,10 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<urlOptions>) => option<s
               | Some(o) => o.stripHash == Some(true)
               | None => false
               }
-              ) {
-                final := final.contents->String.split("#")->Array.get(0)->Option.getOr(final.contents)
-              }
-              Some(final.contents)
+            ) {
+              final := final.contents->String.split("#")->Array.get(0)->Option.getOr(final.contents)
             }
+            Some(final.contents)
           }
         }
       | None => None

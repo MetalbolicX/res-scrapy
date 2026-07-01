@@ -8,7 +8,6 @@
   * zip — they receive the full element array via extractValueList and their
   * result is the same across every output row.
   */
-
 open FieldTypes
 
 module Iter = NodeJsBinding.Iter
@@ -21,7 +20,10 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
     schema.fields
     ->Iter.values
     ->Iter.map(((name, field)) => {
-      let resolvedFieldType = DefaultsMerger.resolveDefaults(schema.config.defaults, field.fieldType)
+      let resolvedFieldType = DefaultsMerger.resolveDefaults(
+        schema.config.defaults,
+        field.fieldType,
+      )
       let nestedDefaults = switch resolvedFieldType {
       | Table(_) => schema.config.defaults
       | _ => None
@@ -32,7 +34,9 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
     ->Iter.toArray
 
   let aggregateValues: Dict.t<result<JSON.t, schemaError>> = Dict.make()
-  fieldLists->Iter.values->Iter.forEach(((name, field, resolvedFieldType, _nestedDefaults, els)) => {
+  fieldLists
+  ->Iter.values
+  ->Iter.forEach(((name, field, resolvedFieldType, _nestedDefaults, els)) => {
     if isMultiElementType(resolvedFieldType) {
       let value = ExtractorRegistry.extractValueList(
         els,
@@ -52,9 +56,9 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
   // Edge case: if all fields are aggregate and rowSelector is not set, rowCount
   // is 0 and the output is an empty array. Use rowSelector to enable row-based
   // extraction in that scenario.
-  let rowCount = switch fieldLists->Iter.values->Iter.find(((_, _, resolvedFieldType, _, _)) =>
-    !isMultiElementType(resolvedFieldType)
-  ) {
+  let rowCount = switch fieldLists
+  ->Iter.values
+  ->Iter.find(((_, _, resolvedFieldType, _, _)) => !isMultiElementType(resolvedFieldType)) {
   | None => 0
   | Some((_, _, _, _, els)) => Array.length(els)
   }
@@ -68,14 +72,19 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
     let rows: array<JSON.t> = []
     let idx = ref(0)
     let loopResult: ref<result<unit, schemaError>> = ref(Ok())
-    while idx.contents < limitedCount && {
-      switch loopResult.contents {
-      | Error(_) => false
-      | Ok(_) => true
-      }
-    } {
+    while (
+      idx.contents < limitedCount &&
+        {
+          switch loopResult.contents {
+          | Error(_) => false
+          | Ok(_) => true
+          }
+        }
+    ) {
       let fieldResult: result<array<(string, JSON.t)>, schemaError> =
-        fieldLists->Iter.values->Iter.reduce((fAcc, (name, field, resolvedFieldType, nestedDefaults, els)) => {
+        fieldLists
+        ->Iter.values
+        ->Iter.reduce((fAcc, (name, field, resolvedFieldType, nestedDefaults, els)) => {
           switch fAcc {
           | Error(e) => Error(e)
           | Ok(pairs) => {
@@ -85,7 +94,7 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
                 | None => Ok(JSON.Encode.null)
                 }
               } else {
-                switch Array.get(els, idx.contents) {
+                switch els[idx.contents] {
                 | Some(el) =>
                   ExtractorRegistry.extractValue(
                     el,
@@ -97,10 +106,12 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
                   if field.required && schema.config.ignoreErrors == false {
                     Error(RequiredFieldMissing({fieldName: name, selector: field.selector}))
                   } else {
-                    Ok(switch field.default {
-                    | Some(d) => d
-                    | None => JSON.Encode.null
-                    })
+                    Ok(
+                      switch field.default {
+                      | Some(d) => d
+                      | None => JSON.Encode.null
+                      },
+                    )
                   }
                 }
               }

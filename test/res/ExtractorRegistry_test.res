@@ -61,36 +61,61 @@ test("ExtractorRegistry extractValueList scalar fallback uses first element", ()
   }
 })
 
-test("ExtractorRegistry extractValueList returns RequiredFieldMissing for required Count with empty elements", () => {
-  let els = []
-  switch ExtractorRegistry.extractValueList(els, Count(None), None, false, true, "items", ".item") {
-  | Error(RequiredFieldMissing({fieldName, selector})) => {
-      isTextEqualTo("items", fieldName)
-      isTextEqualTo(".item", selector)
+test(
+  "ExtractorRegistry extractValueList returns RequiredFieldMissing for required Count with empty elements",
+  () => {
+    let els = []
+    switch ExtractorRegistry.extractValueList(
+      els,
+      Count(None),
+      None,
+      false,
+      true,
+      "items",
+      ".item",
+    ) {
+    | Error(RequiredFieldMissing({fieldName, selector})) => {
+        isTextEqualTo("items", fieldName)
+        isTextEqualTo(".item", selector)
+      }
+    | _ => failWith("Expected RequiredFieldMissing for required Count with empty elements")
     }
-  | _ => failWith("Expected RequiredFieldMissing for required Count with empty elements")
-  }
-})
+  },
+)
 
-test("ExtractorRegistry extractValueList returns RequiredFieldMissing for required List with empty elements", () => {
-  let els = []
-  let opts: listOptions = {itemType: ListText}
-  switch ExtractorRegistry.extractValueList(els, List(opts), None, false, true, "tags", ".tag") {
-  | Error(RequiredFieldMissing({fieldName, selector})) => {
-      isTextEqualTo("tags", fieldName)
-      isTextEqualTo(".tag", selector)
+test(
+  "ExtractorRegistry extractValueList returns RequiredFieldMissing for required List with empty elements",
+  () => {
+    let els = []
+    let opts: listOptions = {itemType: ListText}
+    switch ExtractorRegistry.extractValueList(els, List(opts), None, false, true, "tags", ".tag") {
+    | Error(RequiredFieldMissing({fieldName, selector})) => {
+        isTextEqualTo("tags", fieldName)
+        isTextEqualTo(".tag", selector)
+      }
+    | _ => failWith("Expected RequiredFieldMissing for required List with empty elements")
     }
-  | _ => failWith("Expected RequiredFieldMissing for required List with empty elements")
-  }
-})
+  },
+)
 
-test("ExtractorRegistry extractValueList returns 0 for non-required Count with empty elements", () => {
-  let els = []
-  switch ExtractorRegistry.extractValueList(els, Count(None), None, false, false, "items", ".item") {
-  | Ok(value) => isTextEqualTo("0", NodeJsBinding.jsonStringify(value))
-  | Error(_) => failWith("Expected Count=0 for non-required field with empty elements")
-  }
-})
+test(
+  "ExtractorRegistry extractValueList returns 0 for non-required Count with empty elements",
+  () => {
+    let els = []
+    switch ExtractorRegistry.extractValueList(
+      els,
+      Count(None),
+      None,
+      false,
+      false,
+      "items",
+      ".item",
+    ) {
+    | Ok(value) => isTextEqualTo("0", NodeJsBinding.jsonStringify(value))
+    | Error(_) => failWith("Expected Count=0 for non-required field with empty elements")
+    }
+  },
+)
 
 test("ExtractorRegistry extractValueOrAbsent returns false for Boolean Presence", () => {
   switch ExtractorRegistry.extractValueOrAbsent(
@@ -157,12 +182,14 @@ test("ExtractorRegistry extractValue supports Table field", () => {
     "<table class='t'><tbody><tr><td class='name'>A</td></tr><tr><td class='name'>B</td></tr></tbody></table>",
   )
   let tableEl = getElement(doc, "table.t")
-  let columns: array<columnField> = [{
-    name: "name",
-    selector: ".name",
-    columnType: ColumnText(None),
-    required: false,
-  }]
+  let columns: array<columnField> = [
+    {
+      name: "name",
+      selector: ".name",
+      columnType: ColumnText(None),
+      required: false,
+    },
+  ]
   let tableOpts: tableOptions = {columns: columns}
 
   switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
@@ -173,14 +200,18 @@ test("ExtractorRegistry extractValue supports Table field", () => {
 })
 
 test("ExtractorRegistry table columns honor required error behavior", () => {
-  let doc = HtmlFixture.parse("<table class='t'><tbody><tr><td class='name'>A</td></tr></tbody></table>")
+  let doc = HtmlFixture.parse(
+    "<table class='t'><tbody><tr><td class='name'>A</td></tr></tbody></table>",
+  )
   let tableEl = getElement(doc, "table.t")
-  let columns: array<columnField> = [{
-    name: "price",
-    selector: ".price",
-    columnType: ColumnNumber(None),
-    required: true,
-  }]
+  let columns: array<columnField> = [
+    {
+      name: "price",
+      selector: ".price",
+      columnType: ColumnNumber(None),
+      required: true,
+    },
+  ]
   let tableOpts: tableOptions = {columns: columns}
 
   switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
@@ -193,9 +224,9 @@ test("ExtractorRegistry table columns honor required error behavior", () => {
 })
 
 /* -------------------------------------------------------------------------- */
-/* Separated Table Extraction — pin down the exact JSON output of the        */
-/* embedded table logic so the refactor into TableFieldExtractor.res cannot   */
-/* silently change row/column output.                                         */
+/* Separated Table Extraction — pin down the exact JSON output of the */
+/* embedded table logic so the refactor into TableFieldExtractor.res cannot */
+/* silently change row/column output. */
 /* -------------------------------------------------------------------------- */
 
 test("ExtractorRegistry table with multiple columns produces expected row objects", () => {
@@ -210,7 +241,8 @@ test("ExtractorRegistry table with multiple columns produces expected row object
   let tableOpts: tableOptions = {columns: columns}
 
   switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
-  | Ok(value) => isTextEqualTo(
+  | Ok(value) =>
+    isTextEqualTo(
       "[{\"name\":\"A\",\"price\":\"10\"},{\"name\":\"B\",\"price\":\"20\"}]",
       NodeJsBinding.jsonStringify(value),
     )
@@ -229,7 +261,7 @@ test("ExtractorRegistry table with custom rowSelector extracts those rows", () =
   let columns: array<columnField> = [
     {name: "label", selector: ".label", columnType: ColumnText(None), required: false},
   ]
-  let tableOpts: tableOptions = {rowSelector: ".row", columns: columns}
+  let tableOpts: tableOptions = {rowSelector: ".row", columns}
 
   switch ExtractorRegistry.extractValue(containerEl, Table(tableOpts), None, false) {
   | Ok(value) =>
@@ -254,19 +286,14 @@ test("ExtractorRegistry table without tbody falls back to skipping first tr (the
 
   switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
   | Ok(value) =>
-    isTextEqualTo(
-      "[{\"name\":\"A\"},{\"name\":\"B\"}]",
-      NodeJsBinding.jsonStringify(value),
-    )
+    isTextEqualTo("[{\"name\":\"A\"},{\"name\":\"B\"}]", NodeJsBinding.jsonStringify(value))
   | Error(_) => failWith("Expected thead fallback extraction")
   }
 })
 
 test("ExtractorRegistry table with single tr and no tbody yields empty rows", () => {
   /* Without tbody, only 1 tr → empty array (treated as header-only table). */
-  let doc = HtmlFixture.parse(
-    "<table class='t'><tr><th>X</th></tr></table>",
-  )
+  let doc = HtmlFixture.parse("<table class='t'><tr><th>X</th></tr></table>")
   let tableEl = getElement(doc, "table.t")
   let columns: array<columnField> = [
     {name: "name", selector: ".name", columnType: ColumnText(None), required: false},
@@ -274,8 +301,7 @@ test("ExtractorRegistry table with single tr and no tbody yields empty rows", ()
   let tableOpts: tableOptions = {columns: columns}
 
   switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
-  | Ok(value) =>
-    isTextEqualTo("[]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("[]", NodeJsBinding.jsonStringify(value))
   | Error(_) => failWith("Expected empty rows fallback")
   }
 })
@@ -285,18 +311,19 @@ test("ExtractorRegistry table with required column uses default fallback", () =>
     "<table class='t'><tbody><tr><td class='name'>A</td></tr></tbody></table>",
   )
   let tableEl = getElement(doc, "table.t")
-  let columns: array<columnField> = [{
-    name: "price",
-    selector: ".price",
-    columnType: ColumnNumber(None),
-    required: true,
-    default: JSON.Encode.float(0.0),
-  }]
+  let columns: array<columnField> = [
+    {
+      name: "price",
+      selector: ".price",
+      columnType: ColumnNumber(None),
+      required: true,
+      default: JSON.Encode.float(0.0),
+    },
+  ]
   let tableOpts: tableOptions = {columns: columns}
 
   switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, true) {
-  | Ok(value) =>
-    isTextEqualTo("[{\"price\":0}]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("[{\"price\":0}]", NodeJsBinding.jsonStringify(value))
   | Error(_) => failWith("Expected default fallback for missing column")
   }
 })
@@ -306,18 +333,19 @@ test("ExtractorRegistry table ignoreErrors true suppresses column error", () => 
     "<table class='t'><tbody><tr><td class='name'>A</td></tr></tbody></table>",
   )
   let tableEl = getElement(doc, "table.t")
-  let columns: array<columnField> = [{
-    name: "stock",
-    selector: ".stock",
-    columnType: ColumnBoolean(Some({onUnknown: UnknownError})),
-    required: true,
-  }]
+  let columns: array<columnField> = [
+    {
+      name: "stock",
+      selector: ".stock",
+      columnType: ColumnBoolean(Some({onUnknown: UnknownError})),
+      required: true,
+    },
+  ]
   let tableOpts: tableOptions = {columns: columns}
 
   /* ignoreErrors=true should swallow the ExtractionError and return null. */
   switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, true) {
-  | Ok(value) =>
-    isTextEqualTo("[{\"stock\":null}]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("[{\"stock\":null}]", NodeJsBinding.jsonStringify(value))
   | Error(_) => failWith("Expected ignoreErrors to swallow error")
   }
 })
@@ -328,7 +356,12 @@ test("ExtractorRegistry table list column extracts element array per row", () =>
   )
   let tableEl = getElement(doc, "table.t")
   let columns: array<columnField> = [
-    {name: "tags", selector: ".tag span", columnType: ColumnList({itemType: ListText}), required: false},
+    {
+      name: "tags",
+      selector: ".tag span",
+      columnType: ColumnList({itemType: ListText}),
+      required: false,
+    },
   ]
   let tableOpts: tableOptions = {columns: columns}
 
@@ -351,8 +384,7 @@ test("ExtractorRegistry table with empty tbody yields empty array", () => {
   let tableOpts: tableOptions = {columns: columns}
 
   switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
-  | Ok(value) =>
-    isTextEqualTo("[]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("[]", NodeJsBinding.jsonStringify(value))
   | Error(_) => failWith("Expected empty tbody to yield []")
   }
 })

@@ -71,11 +71,9 @@ type parseError =
  */
 let modeFromBool: bool => mode = isMultiple => isMultiple ? Multiple : Single
 
-let normalizeHeaderName = (name: string): string =>
-  name->String.toLowerCase
+let normalizeHeaderName = (name: string): string => name->String.toLowerCase
 
-let trimHeaderPart = (value: string): string =>
-  value->String.trim
+let trimHeaderPart = (value: string): string => value->String.trim
 
 let parseHeaderLine: string => result<headerEntry, parseError> = raw => {
   let line = raw->trimHeaderPart
@@ -89,7 +87,9 @@ let parseHeaderLine: string => result<headerEntry, parseError> = raw => {
       let name = line->String.slice(~start=0, ~end=idx)->trimHeaderPart
       let value = line->String.slice(~start=idx + 1, ~end=String.length(line))->trimHeaderPart
       if name == "" || value == "" {
-        Error(InvalidHeader(`Invalid --header value "${raw}". Header name and value must be non-empty`))
+        Error(
+          InvalidHeader(`Invalid --header value "${raw}". Header name and value must be non-empty`),
+        )
       } else {
         Ok({name: normalizeHeaderName(name), value})
       }
@@ -131,10 +131,11 @@ let parseRequestHeaders = (
   switch baseResult {
   | Error(_) as e => e
   | Ok(acc) => {
-      let cookieValue = cookieInputs
-      ->Array.map(trimHeaderPart)
-      ->Array.filter(v => v != "")
-      ->Array.join("; ")
+      let cookieValue =
+        cookieInputs
+        ->Array.map(trimHeaderPart)
+        ->Array.filter(v => v != "")
+        ->Array.join("; ")
       if cookieValue == "" {
         Ok(acc)
       } else {
@@ -154,7 +155,12 @@ let parseRequestHeaders = (
 let validateUserAgent: option<string> => result<option<string>, parseError> = ua => {
   switch ua {
   | Some(s) if s == "" =>
-    Error(ParseError({message: "Invalid --user-agent value \"\". Expected a non-empty string.", details: None}))
+    Error(
+      ParseError({
+        message: "Invalid --user-agent value \"\". Expected a non-empty string.",
+        details: None,
+      }),
+    )
   | Some(s) => Ok(Some(s))
   | None => Ok(None)
   }
@@ -172,8 +178,12 @@ let validateConcurrency: option<string> => result<int, parseError> = input => {
   | Some(s) =>
     switch Int.fromString(s) {
     | Some(n) if n >= 1 && n <= 20 => Ok(n)
-    | Some(n) => Error(InvalidConcurrency(`Concurrency must be between 1 and 20, got ${Int.toString(n)}`))
-    | None => Error(InvalidConcurrency(`Invalid concurrency value "${s}". Expected a number between 1 and 20`))
+    | Some(n) =>
+      Error(InvalidConcurrency(`Concurrency must be between 1 and 20, got ${Int.toString(n)}`))
+    | None =>
+      Error(
+        InvalidConcurrency(`Invalid concurrency value "${s}". Expected a number between 1 and 20`),
+      )
     }
   | None => Ok(5)
   }
@@ -185,7 +195,8 @@ let validateTimeout: option<string> => result<int, parseError> = input => {
     switch Int.fromString(s) {
     | Some(n) if n >= 1 => Ok(n)
     | Some(n) => Error(InvalidTimeout(`Timeout must be >= 1 second, got ${Int.toString(n)}`))
-    | None => Error(InvalidTimeout(`Invalid timeout value "${s}". Expected a number of seconds (>= 1)`))
+    | None =>
+      Error(InvalidTimeout(`Invalid timeout value "${s}". Expected a number of seconds (>= 1)`))
     }
   | None => Ok(30)
   }
@@ -215,7 +226,10 @@ let validateDelay: option<string> => result<int, parseError> = input => {
   }
 }
 
-let validateTableSelector: (option<string>, bool) => option<schemaSource> = (selector, tableOpt) => {
+let validateTableSelector: (option<string>, bool) => option<schemaSource> = (
+  selector,
+  tableOpt,
+) => {
   if tableOpt {
     let sel = selector->Option.getOr("table")
     Some(TableSelector(sel == "" ? "table" : sel))
@@ -224,10 +238,11 @@ let validateTableSelector: (option<string>, bool) => option<schemaSource> = (sel
   }
 }
 
-let validateSchemaSource: (option<string>, option<string>, option<schemaSource>) => result<
+let validateSchemaSource: (
+  option<string>,
+  option<string>,
   option<schemaSource>,
-  parseError,
-> = (schemaOpt, schemaPathOpt, tableSource) => {
+) => result<option<schemaSource>, parseError> = (schemaOpt, schemaPathOpt, tableSource) => {
   switch tableSource {
   | Some(_) as t => Ok(t)
   | None =>
@@ -308,22 +323,31 @@ let validateOutputFormat: (option<string>, option<string>) => result<outputForma
     | Some("json") | None => Ok(Json)
     | Some("ndjson") => Ok(Ndjson)
     | Some(s) =>
-      Error(ParseError({message: `Invalid --format value "${s}". Valid values are: json, ndjson`, details: None}))
+      Error(
+        ParseError({
+          message: `Invalid --format value "${s}". Valid values are: json, ndjson`,
+          details: None,
+        }),
+      )
     }
   }
 }
 
-let validateSelector: (option<string>, option<string>, option<schemaSource>) => result<string, parseError> = (
-  urlOpt,
-  selectorOpt,
-  schemaSrc,
-) => {
+let validateSelector: (
+  option<string>,
+  option<string>,
+  option<schemaSource>,
+) => result<string, parseError> = (urlOpt, selectorOpt, schemaSrc) => {
   switch (urlOpt, schemaSrc) {
   | (Some(_), Some(_)) => Ok(selectorOpt->Option.getOr(""))
   | (Some(_), None) =>
     switch selectorOpt {
     | None | Some("") =>
-      Error(InvalidUrlMode("When using --url, an extraction flag is required (--selector/-s, --schemaPath/-p, or --table/-t)"))
+      Error(
+        InvalidUrlMode(
+          "When using --url, an extraction flag is required (--selector/-s, --schemaPath/-p, or --table/-t)",
+        ),
+      )
     | Some(s) => Ok(s)
     }
   | (None, Some(_)) => Ok(selectorOpt->Option.getOr(""))
@@ -343,18 +367,28 @@ let validateExtract: option<string> => result<extractMode, parseError> = extract
   | s if String.startsWith(s, "attr:") => {
       let attr = String.slice(s, ~start=5, ~end=String.length(s))
       if attr == "" {
-        Error(ParseError({message: "Invalid --extract value \"attr:\". Expected format: attr:<name>", details: None}))
+        Error(
+          ParseError({
+            message: "Invalid --extract value \"attr:\". Expected format: attr:<name>",
+            details: None,
+          }),
+        )
       } else {
         Ok(Attribute(attr))
       }
     }
   | s =>
-    Error(ParseError({message: `Invalid --extract value "${s}". Valid values are: outerHtml, innerHtml, text, attr:<name>`, details: None}))
+    Error(
+      ParseError({
+        message: `Invalid --extract value "${s}". Valid values are: outerHtml, innerHtml, text, attr:<name>`,
+        details: None,
+      }),
+    )
   }
 }
 
 /* Convenience record bundling all the validated scalars so the final
-   pipeline block can build the parseOptions without repattern-matching. */
+ pipeline block can build the parseOptions without repattern-matching. */
 type validatedScalars = {
   userAgent: option<string>,
   url: option<string>,
@@ -364,46 +398,43 @@ type validatedScalars = {
   delayMs: int,
 }
 
-let validateScalars: NodeJsBinding.Util.cliValues => result<validatedScalars, parseError> = values => {
-  validateUserAgent(values.userAgent)
-  ->ResultX.flatMap(userAgent =>
-    validateUrl(values.url)
-    ->ResultX.flatMap(url =>
-      validateConcurrency(values.concurrency)
-      ->ResultX.flatMap(concurrency =>
-        validateTimeout(values.timeout)
-        ->ResultX.flatMap(timeoutSeconds =>
-          validateRetry(values.retry)
-          ->ResultX.flatMap(retryCount =>
-            validateDelay(values.delay)
-            ->Result.map(delayMs => {
-              userAgent,
-              url,
-              concurrency,
-              timeoutSeconds,
-              retryCount,
-              delayMs,
-            })
-          )
-        )
+let validateScalars: NodeJsBinding.Util.cliValues => result<
+  validatedScalars,
+  parseError,
+> = values => {
+  validateUserAgent(values.userAgent)->ResultX.flatMap(userAgent =>
+    validateUrl(values.url)->ResultX.flatMap(url =>
+      validateConcurrency(values.concurrency)->ResultX.flatMap(
+        concurrency =>
+          validateTimeout(values.timeout)->ResultX.flatMap(
+            timeoutSeconds =>
+              validateRetry(values.retry)->ResultX.flatMap(
+                retryCount =>
+                  validateDelay(values.delay)->Result.map(
+                    delayMs => {
+                      userAgent,
+                      url,
+                      concurrency,
+                      timeoutSeconds,
+                      retryCount,
+                      delayMs,
+                    },
+                  ),
+              ),
+          ),
       )
     )
   )
 }
 
 /* Composes request-headers validation with warning computation that depends
-   on the parsed headers. */
+ on the parsed headers. */
 let validateHeadersAndWarnings: (
   NodeJsBinding.Util.cliValues,
   option<string>,
   array<string>,
-) => result<(array<headerEntry>, array<string>), parseError> = (
-  values,
-  urlOpt,
-  fetchFlags,
-) => {
-  parseRequestHeaders(values.header, values.cookie)
-  ->Result.map(requestHeaders => {
+) => result<(array<headerEntry>, array<string>), parseError> = (values, urlOpt, fetchFlags) => {
+  parseRequestHeaders(values.header, values.cookie)->Result.map(requestHeaders => {
     let formatWarnings = formatWarning(values.output, values.format)
     let fetchWarnings = fetchWarning(urlOpt, fetchFlags)
     (requestHeaders, formatWarnings->Array.concat(fetchWarnings))
@@ -419,49 +450,56 @@ let validateHeadersAndWarnings: (
   * returning `result`; this entry-point composes them with ResultX.flatMap
   * instead of nested switches.
   */
-let runArgsValidation: NodeJsBinding.Util.cliValues => result<parseOptions, parseError> = values => {
+let runArgsValidation: NodeJsBinding.Util.cliValues => result<
+  parseOptions,
+  parseError,
+> = values => {
   let fetchFlags = fetchFlagNames(values)
 
-  validateScalars(values)
-  ->ResultX.flatMap(scalars => {
+  validateScalars(values)->ResultX.flatMap(scalars => {
     let {userAgent, url, concurrency, timeoutSeconds, retryCount, delayMs} = scalars
 
     let tableSource = validateTableSelector(values.selector, values.table->Option.getOr(false))
 
-    validateSchemaSource(values.schema, values.schemaPath, tableSource)
-    ->ResultX.flatMap(schemaSource =>
-      validateHeadersAndWarnings(values, url, fetchFlags)
-      ->ResultX.flatMap(((requestHeaders, warnings)) => {
-        let output = validateOutputPath(values.output)
+    validateSchemaSource(
+      values.schema,
+      values.schemaPath,
+      tableSource,
+    )->ResultX.flatMap(schemaSource =>
+      validateHeadersAndWarnings(values, url, fetchFlags)->ResultX.flatMap(
+        ((requestHeaders, warnings)) => {
+          let output = validateOutputPath(values.output)
 
-        validateOutputFormat(output, values.format)
-        ->ResultX.flatMap(outputFormat =>
-          validateSelector(url, values.selector, schemaSource)
-          ->ResultX.flatMap(selector =>
-            validateExtract(values.extract)
-            ->Result.map(extract => {
-              let modeFromBoolValue = values.mode->Option.getOr(false)
-              let mode = modeFromBool(modeFromBoolValue)
-              {
-                selector,
-                extract,
-                mode,
-                ?schemaSource,
-                ?output,
-                outputFormat,
-                warnings,
-                ?url,
-                concurrency,
-                ?userAgent,
-                timeoutSeconds,
-                retryCount,
-                delayMs,
-                requestHeaders,
-              }
-            })
+          validateOutputFormat(output, values.format)->ResultX.flatMap(
+            outputFormat =>
+              validateSelector(url, values.selector, schemaSource)->ResultX.flatMap(
+                selector =>
+                  validateExtract(values.extract)->Result.map(
+                    extract => {
+                      let modeFromBoolValue = values.mode->Option.getOr(false)
+                      let mode = modeFromBool(modeFromBoolValue)
+                      {
+                        selector,
+                        extract,
+                        mode,
+                        ?schemaSource,
+                        ?output,
+                        outputFormat,
+                        warnings,
+                        ?url,
+                        concurrency,
+                        ?userAgent,
+                        timeoutSeconds,
+                        retryCount,
+                        delayMs,
+                        requestHeaders,
+                      }
+                    },
+                  ),
+              ),
           )
-        )
-      })
+        },
+      )
     )
   })
 }

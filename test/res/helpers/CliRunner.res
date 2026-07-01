@@ -12,7 +12,7 @@ let runCli = (
   ~cwd: string="",
   ~timeoutMs: int=defaultTimeoutMs,
 ): promise<cliResult> => {
-  (%raw(`
+  %raw(`
     (async (args, input, cwd, timeoutMs) => {
       const { spawn } = await import('node:child_process');
       const { join } = await import('node:path');
@@ -49,7 +49,7 @@ let runCli = (
         proc.stdin.end();
       });
     })
-  `)(args, input, cwd, timeoutMs))->Obj.magic
+  `)(args, input, cwd, timeoutMs)->Obj.magic
 }
 
 let runCliWithSchemaFile = (
@@ -59,7 +59,7 @@ let runCliWithSchemaFile = (
   ~cwd: string="",
   ~timeoutMs: int=defaultTimeoutMs,
 ): promise<cliResult> => {
-  (%raw(`
+  %raw(`
     (async (schemaContent, cliArgs, input, cwd, timeoutMs) => {
       const { spawn } = await import('node:child_process');
       const fs = await import('node:fs');
@@ -111,5 +111,5 @@ let runCliWithSchemaFile = (
         proc.stdin.end();
       });
     })
-  `)(schemaContent, cliArgs, input, cwd, timeoutMs))->Obj.magic
+  `)(schemaContent, cliArgs, input, cwd, timeoutMs)->Obj.magic
 }

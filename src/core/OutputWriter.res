@@ -5,8 +5,7 @@ type outputTarget =
 let jsonArrayToNdjson: string => option<string> = raw =>
   switch NodeJsBinding.jsonParse(raw) {
   | None => None
-  | Some(JSON.Array(items)) =>
-    Some(items->Array.map(NodeJsBinding.jsonStringify)->Array.join("\n"))
+  | Some(JSON.Array(items)) => Some(items->Array.map(NodeJsBinding.jsonStringify)->Array.join("\n"))
   | Some(_) => None
   }
 
@@ -34,7 +33,9 @@ let computeOutputText = (
       | Some(ndjson) => Ok(ndjson)
       | None =>
         Error(
-          AppError.WriteError("Cannot write NDJSON output: expected extraction result to be a JSON array"),
+          AppError.WriteError(
+            "Cannot write NDJSON output: expected extraction result to be a JSON array",
+          ),
         )
       }
     }
@@ -49,14 +50,19 @@ let writeText = (
   switch target {
   | Stdout => {
       out(text)
-      Ok(())
+      Ok()
     }
   | File(path) =>
     try {
       writeFile(path, text)
-      Ok(())
+      Ok()
     } catch {
-    | exn => Error(AppError.WriteError("Failed to write output file \"" ++ path ++ "\": " ++ ExnUtils.message(exn)))
+    | exn =>
+      Error(
+        AppError.WriteError(
+          "Failed to write output file \"" ++ path ++ "\": " ++ ExnUtils.message(exn),
+        ),
+      )
     }
   }
 
@@ -81,12 +87,20 @@ let writeTextAsync = (
   switch target {
   | Stdout => {
       out(text)
-      Promise.resolve(Ok(()))
+      Promise.resolve(Ok())
     }
   | File(path) =>
     writeFile(path, text)
-    ->Promise.then(_ => Promise.resolve(Ok(())))
-    ->Promise.catch(exn => Promise.resolve(Error(AppError.WriteError("Failed to write output file \"" ++ path ++ "\": " ++ ExnUtils.message(exn)))))
+    ->Promise.then(_ => Promise.resolve(Ok()))
+    ->Promise.catch(exn =>
+      Promise.resolve(
+        Error(
+          AppError.WriteError(
+            "Failed to write output file \"" ++ path ++ "\": " ++ ExnUtils.message(exn),
+          ),
+        ),
+      )
+    )
   }
 }
 
@@ -120,9 +134,9 @@ let writeOutput = (
     ~writeFile=ctx.deps.fs.writeFileSync,
     ~out=ctx.io.out,
   ) {
-  | Ok(()) => ()
+  | Ok() => ()
   | Error(err) => {
- ctx.io.err(AppError.toMessage(err))
+      ctx.io.err(AppError.toMessage(err))
       ctx.io.exit(1)
     }
   }

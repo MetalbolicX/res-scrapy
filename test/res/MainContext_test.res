@@ -15,8 +15,8 @@ let makeState = () => {
   (push, getEvents)
 }
 
-let mkContext = (~deps, ~push) : AppContext.appContext => {
-  deps: deps,
+let mkContext = (~deps, ~push): AppContext.appContext => {
+  deps,
   io: {
     out: msg => push(Out(msg)),
     err: msg => push(Err(msg)),
@@ -83,8 +83,18 @@ let simpleDeps = (
 
 testAsync("mainWithContext writes selector output", done_ => {
   let (push, getEvents) = makeState()
-  let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> =
-    Ok({selector: ".item", extract: Text, mode: Multiple, outputFormat: Json, warnings: [], concurrency: 5, timeoutSeconds: 30, retryCount: 3, delayMs: 0, requestHeaders: []})
+  let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> = Ok({
+    selector: ".item",
+    extract: Text,
+    mode: Multiple,
+    outputFormat: Json,
+    warnings: [],
+    concurrency: 5,
+    timeoutSeconds: 30,
+    retryCount: 3,
+    delayMs: 0,
+    requestHeaders: [],
+  })
   let deps = simpleDeps(
     ~cliValues={selector: ".item", mode: true, extract: "text"},
     ~parseResult,
@@ -99,7 +109,7 @@ testAsync("mainWithContext writes selector output", done_ => {
   ->Promise.then(_ => {
     let events = getEvents()
     isIntEqualTo(1, Array.length(events))
-    switch Array.get(events, 0) {
+    switch events[0] {
     | Some(Out(msg)) => isTextEqualTo("[\"A\",\"B\"]", msg)
     | _ => failWith("Expected one Out event")
     }
@@ -116,10 +126,27 @@ testAsync("mainWithContext writes selector output", done_ => {
 
 testAsync("mainWithContext reports write error when writeFile throws", done_ => {
   let (push, getEvents) = makeState()
-  let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> =
-    Ok({selector: ".item", extract: Text, mode: Multiple, output: "/tmp/res-scrapy-write-fail", outputFormat: Json, warnings: [], concurrency: 5, timeoutSeconds: 30, retryCount: 3, delayMs: 0, requestHeaders: []})
+  let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> = Ok({
+    selector: ".item",
+    extract: Text,
+    mode: Multiple,
+    output: "/tmp/res-scrapy-write-fail",
+    outputFormat: Json,
+    warnings: [],
+    concurrency: 5,
+    timeoutSeconds: 30,
+    retryCount: 3,
+    delayMs: 0,
+    requestHeaders: [],
+  })
   let depsBase = simpleDeps(
-    ~cliValues={selector: ".item", mode: true, extract: "text", output: "/tmp/res-scrapy-write-fail", format: "json"},
+    ~cliValues={
+      selector: ".item",
+      mode: true,
+      extract: "text",
+      output: "/tmp/res-scrapy-write-fail",
+      format: "json",
+    },
     ~parseResult,
     ~stdinResult=Ok("<div class='item'>A</div><div class='item'>B</div>"),
     ~extractResult=Ok([]),
@@ -139,7 +166,7 @@ testAsync("mainWithContext reports write error when writeFile throws", done_ => 
   ->Promise.then(_ => {
     let events = getEvents()
     isIntEqualTo(2, Array.length(events))
-    switch (Array.get(events, 0), Array.get(events, 1)) {
+    switch (events[0], events[1]) {
     | (Some(Err(msg)), Some(Exit(code))) => {
         stringContains(msg, "Failed to write output file")->isTruthy
         isIntEqualTo(1, code)
@@ -159,11 +186,28 @@ testAsync("mainWithContext reports write error when writeFile throws", done_ => 
 
 testAsync("mainWithContext reports NDJSON error when result is not an array", done_ => {
   let (push, getEvents) = makeState()
-  let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> =
-    Ok({selector: ".item", extract: Text, mode: Single, output: "/tmp/res-scrapy-ndjson-fail", outputFormat: Ndjson, warnings: [], concurrency: 5, timeoutSeconds: 30, retryCount: 3, delayMs: 0, requestHeaders: []})
+  let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> = Ok({
+    selector: ".item",
+    extract: Text,
+    mode: Single,
+    output: "/tmp/res-scrapy-ndjson-fail",
+    outputFormat: Ndjson,
+    warnings: [],
+    concurrency: 5,
+    timeoutSeconds: 30,
+    retryCount: 3,
+    delayMs: 0,
+    requestHeaders: [],
+  })
   /* Override stringifyStrings to return a JSON object string so NDJSON conversion fails */
   let depsBase = simpleDeps(
-    ~cliValues={selector: ".item", mode: false, extract: "text", output: "/tmp/res-scrapy-ndjson-fail", format: "ndjson"},
+    ~cliValues={
+      selector: ".item",
+      mode: false,
+      extract: "text",
+      output: "/tmp/res-scrapy-ndjson-fail",
+      format: "ndjson",
+    },
     ~parseResult,
     ~stdinResult=Ok("<div class='item'>Only</div>"),
     ~extractResult=Ok([]),
@@ -183,7 +227,7 @@ testAsync("mainWithContext reports NDJSON error when result is not an array", do
   ->Promise.then(_ => {
     let events = getEvents()
     isIntEqualTo(2, Array.length(events))
-    switch (Array.get(events, 0), Array.get(events, 1)) {
+    switch (events[0], events[1]) {
     | (Some(Err(msg)), Some(Exit(code))) => {
         stringContains(msg, "Cannot write NDJSON output")->isTruthy
         isIntEqualTo(1, code)
@@ -217,7 +261,7 @@ testAsync("mainWithContext reports cli parse errors", done_ => {
   ->Promise.then(_ => {
     let events = getEvents()
     isIntEqualTo(2, Array.length(events))
-    switch (Array.get(events, 0), Array.get(events, 1)) {
+    switch (events[0], events[1]) {
     | (Some(Err(msg)), Some(Exit(code))) => {
         isTextEqualTo("Selector missing", msg)
         isIntEqualTo(1, code)
@@ -239,7 +283,18 @@ testAsync("mainWithContext catches parseCli exceptions", done_ => {
   let (push, getEvents) = makeState()
   let depsBase = simpleDeps(
     ~cliValues={},
-    ~parseResult=Ok({selector: ".item", extract: Text, mode: Single, outputFormat: Json, warnings: [], concurrency: 5, timeoutSeconds: 30, retryCount: 3, delayMs: 0, requestHeaders: []}),
+    ~parseResult=Ok({
+      selector: ".item",
+      extract: Text,
+      mode: Single,
+      outputFormat: Json,
+      warnings: [],
+      concurrency: 5,
+      timeoutSeconds: 30,
+      retryCount: 3,
+      delayMs: 0,
+      requestHeaders: [],
+    }),
     ~stdinResult=Ok("<div class='item'>A</div>"),
     ~extractResult=Ok([]),
     ~schemaLoadResult=Error(FileReadError("unused")),
@@ -258,7 +313,7 @@ testAsync("mainWithContext catches parseCli exceptions", done_ => {
   ->Promise.then(_ => {
     let events = getEvents()
     isIntEqualTo(2, Array.length(events))
-    switch (Array.get(events, 0), Array.get(events, 1)) {
+    switch (events[0], events[1]) {
     | (Some(Err(msg)), Some(Exit(code))) => {
         stringContains(msg, "Invalid CLI arguments")->isTruthy
         isIntEqualTo(1, code)
@@ -284,10 +339,27 @@ let throwSystemError: (string, string) => 'a = %raw(`(code, msg) => {
 
 testAsync("write error: permission denied (EACCES) exits with code 1", done_ => {
   let (push, getEvents) = makeState()
-  let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> =
-    Ok({selector: ".item", extract: Text, mode: Multiple, output: "/root/forbidden/output.json", outputFormat: Json, warnings: [], concurrency: 5, timeoutSeconds: 30, retryCount: 3, delayMs: 0, requestHeaders: []})
+  let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> = Ok({
+    selector: ".item",
+    extract: Text,
+    mode: Multiple,
+    output: "/root/forbidden/output.json",
+    outputFormat: Json,
+    warnings: [],
+    concurrency: 5,
+    timeoutSeconds: 30,
+    retryCount: 3,
+    delayMs: 0,
+    requestHeaders: [],
+  })
   let depsBase = simpleDeps(
-    ~cliValues={selector: ".item", mode: true, extract: "text", output: "/root/forbidden/output.json", format: "json"},
+    ~cliValues={
+      selector: ".item",
+      mode: true,
+      extract: "text",
+      output: "/root/forbidden/output.json",
+      format: "json",
+    },
     ~parseResult,
     ~stdinResult=Ok("<div class='item'>A</div>"),
     ~extractResult=Ok([]),
@@ -298,7 +370,8 @@ testAsync("write error: permission denied (EACCES) exits with code 1", done_ => 
     ...depsBase,
     fs: {
       ...depsBase.fs,
-      writeFileSync: (_, _) => throwSystemError("EACCES", "EACCES: permission denied, open '/root/forbidden/output.json'"),
+      writeFileSync: (_, _) =>
+        throwSystemError("EACCES", "EACCES: permission denied, open '/root/forbidden/output.json'"),
     },
   }
   let ctx = mkContext(~deps, ~push)
@@ -307,7 +380,7 @@ testAsync("write error: permission denied (EACCES) exits with code 1", done_ => 
   ->Promise.then(_ => {
     let events = getEvents()
     isIntEqualTo(2, Array.length(events))
-    switch (Array.get(events, 0), Array.get(events, 1)) {
+    switch (events[0], events[1]) {
     | (Some(Err(msg)), Some(Exit(code))) => {
         stringContains(msg, "Failed to write output file")->isTruthy
         stringContains(msg, "/root/forbidden/output.json")->isTruthy
@@ -329,10 +402,27 @@ testAsync("write error: permission denied (EACCES) exits with code 1", done_ => 
 
 testAsync("write error: non-writable directory path (EISDIR) exits with code 1", done_ => {
   let (push, getEvents) = makeState()
-  let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> =
-    Ok({selector: ".item", extract: Text, mode: Single, output: "/some/directory/path", outputFormat: Json, warnings: [], concurrency: 5, timeoutSeconds: 30, retryCount: 3, delayMs: 0, requestHeaders: []})
+  let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> = Ok({
+    selector: ".item",
+    extract: Text,
+    mode: Single,
+    output: "/some/directory/path",
+    outputFormat: Json,
+    warnings: [],
+    concurrency: 5,
+    timeoutSeconds: 30,
+    retryCount: 3,
+    delayMs: 0,
+    requestHeaders: [],
+  })
   let depsBase = simpleDeps(
-    ~cliValues={selector: ".item", mode: false, extract: "text", output: "/some/directory/path", format: "json"},
+    ~cliValues={
+      selector: ".item",
+      mode: false,
+      extract: "text",
+      output: "/some/directory/path",
+      format: "json",
+    },
     ~parseResult,
     ~stdinResult=Ok("<div class='item'>Only</div>"),
     ~extractResult=Ok([]),
@@ -343,7 +433,11 @@ testAsync("write error: non-writable directory path (EISDIR) exits with code 1",
     ...depsBase,
     fs: {
       ...depsBase.fs,
-      writeFileSync: (_, _) => throwSystemError("EISDIR", "EISDIR: illegal operation on a directory, open '/some/directory/path'"),
+      writeFileSync: (_, _) =>
+        throwSystemError(
+          "EISDIR",
+          "EISDIR: illegal operation on a directory, open '/some/directory/path'",
+        ),
     },
   }
   let ctx = mkContext(~deps, ~push)
@@ -352,7 +446,7 @@ testAsync("write error: non-writable directory path (EISDIR) exits with code 1",
   ->Promise.then(_ => {
     let events = getEvents()
     isIntEqualTo(2, Array.length(events))
-    switch (Array.get(events, 0), Array.get(events, 1)) {
+    switch (events[0], events[1]) {
     | (Some(Err(msg)), Some(Exit(code))) => {
         stringContains(msg, "Failed to write output file")->isTruthy
         stringContains(msg, "/some/directory/path")->isTruthy
@@ -374,10 +468,27 @@ testAsync("write error: non-writable directory path (EISDIR) exits with code 1",
 
 testAsync("write error: permission denied for NDJSON output exits with code 1", done_ => {
   let (push, getEvents) = makeState()
-  let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> =
-    Ok({selector: ".item", extract: Text, mode: Single, output: "/root/forbidden/output.ndjson", outputFormat: Ndjson, warnings: [], concurrency: 5, timeoutSeconds: 30, retryCount: 3, delayMs: 0, requestHeaders: []})
+  let parseResult: result<ParseCli.parseOptions, ParseCli.parseError> = Ok({
+    selector: ".item",
+    extract: Text,
+    mode: Single,
+    output: "/root/forbidden/output.ndjson",
+    outputFormat: Ndjson,
+    warnings: [],
+    concurrency: 5,
+    timeoutSeconds: 30,
+    retryCount: 3,
+    delayMs: 0,
+    requestHeaders: [],
+  })
   let depsBase = simpleDeps(
-    ~cliValues={selector: ".item", mode: false, extract: "text", output: "/root/forbidden/output.ndjson", format: "ndjson"},
+    ~cliValues={
+      selector: ".item",
+      mode: false,
+      extract: "text",
+      output: "/root/forbidden/output.ndjson",
+      format: "ndjson",
+    },
     ~parseResult,
     ~stdinResult=Ok("<div class='item'>Only</div>"),
     ~extractResult=Ok([]),
@@ -388,7 +499,11 @@ testAsync("write error: permission denied for NDJSON output exits with code 1", 
     ...depsBase,
     fs: {
       ...depsBase.fs,
-      writeFileSync: (_, _) => throwSystemError("EACCES", "EACCES: permission denied, open '/root/forbidden/output.ndjson'"),
+      writeFileSync: (_, _) =>
+        throwSystemError(
+          "EACCES",
+          "EACCES: permission denied, open '/root/forbidden/output.ndjson'",
+        ),
     },
   }
   let ctx = mkContext(~deps, ~push)
@@ -397,7 +512,7 @@ testAsync("write error: permission denied for NDJSON output exits with code 1", 
   ->Promise.then(_ => {
     let events = getEvents()
     isIntEqualTo(2, Array.length(events))
-    switch (Array.get(events, 0), Array.get(events, 1)) {
+    switch (events[0], events[1]) {
     | (Some(Err(msg)), Some(Exit(code))) => {
         stringContains(msg, "Failed to write output file")->isTruthy
         stringContains(msg, "/root/forbidden/output.ndjson")->isTruthy
@@ -425,7 +540,18 @@ testAsync("mainWithContext catches HTML parse exceptions", done_ => {
   }
   let depsBase = simpleDeps(
     ~cliValues={selector: ".item", extract: "text"},
-    ~parseResult=Ok({selector: ".item", extract: Text, mode: Single, outputFormat: Json, warnings: [], concurrency: 5, timeoutSeconds: 30, retryCount: 3, delayMs: 0, requestHeaders: []}),
+    ~parseResult=Ok({
+      selector: ".item",
+      extract: Text,
+      mode: Single,
+      outputFormat: Json,
+      warnings: [],
+      concurrency: 5,
+      timeoutSeconds: 30,
+      retryCount: 3,
+      delayMs: 0,
+      requestHeaders: [],
+    }),
     ~stdinResult=Ok("<div class='item'>A</div>"),
     ~extractResult=Ok([]),
     ~schemaLoadResult=Error(FileReadError("unused")),
@@ -444,7 +570,7 @@ testAsync("mainWithContext catches HTML parse exceptions", done_ => {
   ->Promise.then(_ => {
     let events = getEvents()
     isIntEqualTo(2, Array.length(events))
-    switch (Array.get(events, 0), Array.get(events, 1)) {
+    switch (events[0], events[1]) {
     | (Some(Err(msg)), Some(Exit(code))) => {
         stringContains(msg, "Failed to parse HTML input")->isTruthy
         isIntEqualTo(1, code)

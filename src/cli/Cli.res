@@ -34,7 +34,9 @@ let parseVersionFromPath: string => option<string> = path => {
 let getCliVersion: unit => string = () => {
   let paths = candidatePackagePaths()
   let found: ref<option<string>> = ref(None)
-  paths->Iter.values->Iter.forEach(path => {
+  paths
+  ->Iter.values
+  ->Iter.forEach(path => {
     if found.contents->Option.isNone {
       found := parseVersionFromPath(path)
     }

@@ -50,7 +50,7 @@ let unicodeHtml = `<!DOCTYPE html>
 
 let malformedHtml = "<div class='item'>A<div><span class='item'>B"
 
-testAsync("simple extraction: single element", (planned) => {
+testAsync("simple extraction: single element", planned => {
   runCli(~args=["--selector", "#intro", "--extract", "text"], ~input=html)
   ->Promise.then(result => {
     let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
@@ -67,7 +67,7 @@ testAsync("simple extraction: single element", (planned) => {
   ->ignore
 })
 
-testAsync("simple extraction: unicode text", (planned) => {
+testAsync("simple extraction: unicode text", planned => {
   runCli(~args=["--selector", ".title", "--extract", "text"], ~input=unicodeHtml)
   ->Promise.then(result => {
     let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
@@ -84,7 +84,7 @@ testAsync("simple extraction: unicode text", (planned) => {
   ->ignore
 })
 
-testAsync("simple extraction: malformed html does not crash", (planned) => {
+testAsync("simple extraction: malformed html does not crash", planned => {
   runCli(~args=["--selector", ".item", "--mode", "--extract", "text"], ~input=malformedHtml)
   ->Promise.then(result => {
     let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
@@ -102,7 +102,7 @@ testAsync("simple extraction: malformed html does not crash", (planned) => {
   ->ignore
 })
 
-testAsync("simple extraction: multiple elements", (planned) => {
+testAsync("simple extraction: multiple elements", planned => {
   runCli(~args=["--selector", ".item", "--mode"], ~input=html)
   ->Promise.then(result => {
     let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
@@ -119,7 +119,7 @@ testAsync("simple extraction: multiple elements", (planned) => {
   ->ignore
 })
 
-testAsync("simple extraction: text mode", (planned) => {
+testAsync("simple extraction: text mode", planned => {
   runCli(~args=["--selector", "p.desc", "--extract", "text"], ~input=html)
   ->Promise.then(result => {
     let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
@@ -136,7 +136,7 @@ testAsync("simple extraction: text mode", (planned) => {
   ->ignore
 })
 
-testAsync("simple extraction: innerHtml mode", (planned) => {
+testAsync("simple extraction: innerHtml mode", planned => {
   runCli(~args=["--selector", "#intro", "--extract", "innerHtml"], ~input=html)
   ->Promise.then(result => {
     let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
@@ -153,7 +153,7 @@ testAsync("simple extraction: innerHtml mode", (planned) => {
   ->ignore
 })
 
-testAsync("simple extraction: attr mode", (planned) => {
+testAsync("simple extraction: attr mode", planned => {
   runCli(~args=["--selector", "a", "--extract", "attr:href"], ~input=html)
   ->Promise.then(result => {
     let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
@@ -170,7 +170,7 @@ testAsync("simple extraction: attr mode", (planned) => {
   ->ignore
 })
 
-testAsync("simple extraction: missing selector returns empty array", (planned) => {
+testAsync("simple extraction: missing selector returns empty array", planned => {
   runCli(~args=["--selector", ".nonexistent"], ~input=html)
   ->Promise.then(result => {
     let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
@@ -187,7 +187,7 @@ testAsync("simple extraction: missing selector returns empty array", (planned) =
   ->ignore
 })
 
-testAsync("simple extraction: missing attr returns empty string", (planned) => {
+testAsync("simple extraction: missing attr returns empty string", planned => {
   runCli(~args=["--selector", "div#intro", "--extract", "attr:title"], ~input=html)
   ->Promise.then(result => {
     let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
@@ -204,7 +204,7 @@ testAsync("simple extraction: missing attr returns empty string", (planned) => {
   ->ignore
 })
 
-testAsync("table extraction: basic table", (planned) => {
+testAsync("table extraction: basic table", planned => {
   runCli(~args=["--table"], ~input=tableHtml)
   ->Promise.then(result => {
     let arr: array<{..}> = result.stdout->TestHelpers.objectArrayFromJsonString
@@ -223,7 +223,7 @@ testAsync("table extraction: basic table", (planned) => {
   ->ignore
 })
 
-testAsync("table extraction: custom selector", (planned) => {
+testAsync("table extraction: custom selector", planned => {
   runCli(~args=["--table", "--selector", "table.users"], ~input=tableHtml)
   ->Promise.then(result => {
     let arr: array<{..}> = result.stdout->TestHelpers.objectArrayFromJsonString
@@ -240,7 +240,7 @@ testAsync("table extraction: custom selector", (planned) => {
   ->ignore
 })
 
-testAsync("schema extraction: minimal schema", (planned) => {
+testAsync("schema extraction: minimal schema", planned => {
   let schema = `{"fields":{}}`
   runCli(~args=["--schema", schema], ~input=html)
   ->Promise.then(result => {
@@ -256,7 +256,7 @@ testAsync("schema extraction: minimal schema", (planned) => {
   ->ignore
 })
 
-testAsync("schema extraction: with field extraction", (planned) => {
+testAsync("schema extraction: with field extraction", planned => {
   let schema = `{
     "fields": {
       "intro": {
@@ -282,7 +282,7 @@ testAsync("schema extraction: with field extraction", (planned) => {
   ->ignore
 })
 
-testAsync("error: missing selector with no schema or table", (planned) => {
+testAsync("error: missing selector with no schema or table", planned => {
   runCli(~args=[], ~input=html)
   ->Promise.then(result => {
     isIntEqualTo(1, result.exitCode)
@@ -298,7 +298,7 @@ testAsync("error: missing selector with no schema or table", (planned) => {
   ->ignore
 })
 
-testAsync("error: unknown CLI flag returns friendly parse error", (planned) => {
+testAsync("error: unknown CLI flag returns friendly parse error", planned => {
   runCli(~args=["--unknownFlag"], ~input=html)
   ->Promise.then(result => {
     isIntEqualTo(1, result.exitCode)
@@ -314,7 +314,7 @@ testAsync("error: unknown CLI flag returns friendly parse error", (planned) => {
   ->ignore
 })
 
-testAsync("help flag exits with code 0", (planned) => {
+testAsync("help flag exits with code 0", planned => {
   runCli(~args=["--help"], ~input="")
   ->Promise.then(result => {
     isIntEqualTo(0, result.exitCode)
@@ -330,7 +330,7 @@ testAsync("help flag exits with code 0", (planned) => {
   ->ignore
 })
 
-testAsync("version flag exits with code 0 and semantic version", (planned) => {
+testAsync("version flag exits with code 0 and semantic version", planned => {
   runCli(~args=["--version"], ~input="")
   ->Promise.then(result => {
     isIntEqualTo(0, result.exitCode)
@@ -348,7 +348,7 @@ testAsync("version flag exits with code 0 and semantic version", (planned) => {
   ->ignore
 })
 
-testAsync("error: empty stdin", (planned) => {
+testAsync("error: empty stdin", planned => {
   runCli(~args=["--selector", "div"], ~input="")
   ->Promise.then(result => {
     isIntEqualTo(1, result.exitCode)
@@ -364,7 +364,7 @@ testAsync("error: empty stdin", (planned) => {
   ->ignore
 })
 
-testAsync("error: invalid schema JSON", (planned) => {
+testAsync("error: invalid schema JSON", planned => {
   let schema = `{invalid json}`
   runCli(~args=["--schema", schema], ~input=html)
   ->Promise.then(result => {
@@ -381,7 +381,7 @@ testAsync("error: invalid schema JSON", (planned) => {
   ->ignore
 })
 
-testAsync("error: missing selector with attr: extract", (planned) => {
+testAsync("error: missing selector with attr: extract", planned => {
   runCli(~args=["--extract", "attr:href"], ~input=html)
   ->Promise.then(result => {
     isIntEqualTo(1, result.exitCode)
@@ -397,7 +397,7 @@ testAsync("error: missing selector with attr: extract", (planned) => {
   ->ignore
 })
 
-testAsync("schemaPath: loads schema from disk file", (planned) => {
+testAsync("schemaPath: loads schema from disk file", planned => {
   let schemaContent = `{"fields":{"intro":{"selector":"#intro","type":"text"}}}`
   runCliWithSchemaFile(~schemaContent, ~cliArgs=[], ~input=html)
   ->Promise.then(result => {
@@ -418,7 +418,10 @@ testAsync("schemaPath: loads schema from disk file", (planned) => {
 
 testAsync("output file: writes json when --output is provided", planned => {
   let outPath = tempOutPath("output.json")
-  runCli(~args=["--selector", ".item", "--mode", "--extract", "text", "--output", outPath], ~input=html)
+  runCli(
+    ~args=["--selector", ".item", "--mode", "--extract", "text", "--output", outPath],
+    ~input=html,
+  )
   ->Promise.then(result => {
     isIntEqualTo(0, result.exitCode)
     isTextEqualTo("", result.stdout)
@@ -439,7 +442,17 @@ testAsync("output file: writes json when --output is provided", planned => {
 testAsync("output file: writes ndjson when --format ndjson is provided", planned => {
   let outPath = tempOutPath("output.ndjson")
   runCli(
-    ~args=["--selector", ".item", "--mode", "--extract", "text", "--output", outPath, "--format", "ndjson"],
+    ~args=[
+      "--selector",
+      ".item",
+      "--mode",
+      "--extract",
+      "text",
+      "--output",
+      outPath,
+      "--format",
+      "ndjson",
+    ],
     ~input=html,
   )
   ->Promise.then(result => {
@@ -462,7 +475,10 @@ testAsync("output file: writes ndjson when --format ndjson is provided", planned
 })
 
 testAsync("output format is ignored on stdout when --output is absent", planned => {
-  runCli(~args=["--selector", ".item", "--mode", "--extract", "text", "--format", "ndjson"], ~input=html)
+  runCli(
+    ~args=["--selector", ".item", "--mode", "--extract", "text", "--format", "ndjson"],
+    ~input=html,
+  )
   ->Promise.then(result => {
     isIntEqualTo(0, result.exitCode)
     let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
@@ -492,7 +508,6 @@ testAsync("output file: permission denied returns error", planned => {
         Nodefs.chmodSync(file, 0o600);
       } catch {}
     }`)(path)
-    ()
   }
   let cleanupPath = (path: string): unit => {
     let _ = %raw(`(target) => {
@@ -500,7 +515,6 @@ testAsync("output file: permission denied returns error", planned => {
         Nodefs.rmSync(target, { recursive: true, force: true });
       } catch {}
     }`)(path)
-    ()
   }
   runCli(
     ~args=["--selector", ".item", "--mode", "--extract", "text", "--output", readOnlyFile],
