@@ -37,23 +37,27 @@ let writeStdoutNdjson: (~out: string => unit, ~stringifyJson: JSON.t => string, 
   rows->Array.forEach(row => out(stringifyJson(row)))
 }
 
-/** Appends NDJSON rows to a file asynchronously. Returns a promise that
-    resolves to unit; if appendFile throws, the warning is emitted on `err`
-    and the promise resolves to unit anyway (run continues). */
+/** Appends NDJSON rows to a file asynchronously. If appendFile throws, the
+    warning is emitted on `err` and the returned promise resolves to
+    `Error(msg)` so the caller can surface a non-zero exit code while the
+    overall run continues for the remaining writes. */
 let appendNdjsonToFile: (
   ~appendFile: (string, string) => promise<unit>,
   ~err: string => unit,
   ~stringifyJson: JSON.t => string,
   ~path: string,
   ~json: JSON.t,
-) => promise<unit> = async (~appendFile, ~err, ~stringifyJson, ~path, ~json) => {
+) => promise<result<unit, string>> = async (~appendFile, ~err, ~stringifyJson, ~path, ~json) => {
   let rows = extractJsonArray(json)
   let content = rows->Array.map(stringifyJson)->Array.join("\n") ++ "\n"
   try {
     await appendFile(path, content)
+    Ok(())
   } catch {
   | exn =>
-    err(`Warning: Failed to append to output file "${path}": ${ExnUtils.message(exn)}`)
+    let msg = `Failed to append to output file "${path}": ${ExnUtils.message(exn)}`
+    err(`Warning: ${msg}`)
+    Error(msg)
   }
 }
 

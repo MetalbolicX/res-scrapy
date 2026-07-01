@@ -96,7 +96,7 @@ let runUrlMode = async (
     let mgr = FetchStatsManager.create()
     let allResults = ref(list{})
     let totalRowCount = ref(0)
-    let pendingWrites: ref<list<promise<unit>>> = ref(list{})
+    let pendingWrites: ref<list<promise<result<unit, string>>>> = ref(list{})
     let jsonOutputHitCap = ref(false)
 
     // Process each fetch result
@@ -198,8 +198,15 @@ let runUrlMode = async (
 
     // Await all pending file writes
     let writes = pendingWrites.contents->List.reverse->List.toArray
+    let writeFailures = ref(0)
     if Array.length(writes) > 0 {
-      let _ = await Promise.all(writes)
+      let results = await Promise.all(writes)
+      results->Array.forEach(result =>
+        switch result {
+        | Ok(_) => ()
+        | Error(_) => writeFailures := writeFailures.contents + 1
+        }
+      )
     }
 
     // Calculate duration
@@ -231,8 +238,11 @@ let runUrlMode = async (
     // Print report to stderr
     FetchStatsManager.printReport(mgr, ~err=ctx.io.err)
 
-    // Exit code: 0 if any succeeded, 1 if all failed
-    if FetchStatsManager.shouldExitWithError(mgr) {
+    // Exit code: 0 if any succeeded, 1 if all failed or any NDJSON write failed
+    if FetchStatsManager.shouldExitWithError(mgr) || writeFailures.contents > 0 {
+      if writeFailures.contents > 0 {
+        ctx.io.err(`Warning: ${Int.toString(writeFailures.contents)} output write(s) failed`)
+      }
       ctx.io.exit(1)
     }
   }

@@ -17,6 +17,7 @@ let makeState = () => {
 let makeUrlRunnerDeps = (
   ~fetchResults: array<Fetcher.fetchResult>,
   ~parseTemplateResult: result<array<string>, TemplateParser.parseError>,
+  ~appendFile: ((string, string) => promise<unit>)=(_, _) => Promise.resolve(),
 ): AppContext.dependencies => {
   cli: {
     parseCli: () => {
@@ -42,7 +43,7 @@ let makeUrlRunnerDeps = (
   },
   fs: {
     writeFile: (_, _) => Promise.resolve(),
-    appendFile: (_, _) => Promise.resolve(),
+    appendFile: appendFile,
     writeFileSync: (_, _) => (),
     appendFileSync: (_, _) => (),
   },
@@ -287,6 +288,44 @@ testAsync("runUrlMode exits 1 when template produces no URLs", done_ => {
   ->Promise.catch(_ => {
     failWith("runUrlMode should not throw")
     done_(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("runUrlMode exits 1 when NDJSON file write fails", done_ => {
+  let (push, getEvents) = makeState()
+  let fetchResults: array<Fetcher.fetchResult> = [
+    {url: "http://example.com/1", result: Ok("<div class=\"item\">A</div><div class=\"item\">B</div>")},
+  ]
+  let appendFileMock = (_path, _text) => {
+    %raw(`Promise.reject(new Error("Disk full"))`)
+  }
+  let deps = makeUrlRunnerDeps(
+    ~fetchResults,
+    ~parseTemplateResult=Ok(["http://example.com/1"]),
+    ~appendFile=appendFileMock,
+  )
+  let ctx = mkUrlRunnerCtx(~deps, ~push)
+  let options: ParseCli.parseOptions = {
+    selector: ".item",
+    extract: ParseCli.Text,
+    mode: ParseCli.Multiple,
+    output: "out.ndjson",
+    outputFormat: ParseCli.Ndjson,
+    warnings: [],
+    concurrency: 5,
+    timeoutSeconds: 30,
+    retryCount: 3,
+    delayMs: 0,
+    requestHeaders: [],
+  }
+
+  UrlRunner.runUrlMode(ctx, "http://example.com/{1..1}", options)
+  ->Promise.then(_ => {
+    let events = getEvents()
+    isOptionEqualTo(Some(1), exitCodeOf(events), ~eq=(a, b) => a == b)
+    done_(~planned=1, ())
     Promise.resolve()
   })
   ->ignore
