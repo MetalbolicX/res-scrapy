@@ -87,7 +87,7 @@ let mergeCountOptions = (fieldOpts: option<countOptions>, defaultOpts: option<co
   | Some(def) =>
     switch fieldOpts {
     | None => Some(def)
-    | Some(opts) => Some({min: ?pickOption(opts.min, def.min), max: ?pickOption(opts.max, def.max)})
+    | Some(_) => Some({})
     }
   }
 

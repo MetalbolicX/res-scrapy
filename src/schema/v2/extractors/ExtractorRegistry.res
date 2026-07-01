@@ -133,8 +133,8 @@ let extractValueList: (
     Error(RequiredFieldMissing({fieldName, selector}))
   } else {
     switch DefaultsMerger.resolveDefaults(defaults, ft) {
-    | Count(opts) =>
-      switch CountExtractor.extract(els, opts) {
+    | Count(_) =>
+      switch CountExtractor.extract(els) {
       | Some(n) => Ok(JSON.Encode.int(n))
       | None => Ok(JSON.Encode.null)
       }

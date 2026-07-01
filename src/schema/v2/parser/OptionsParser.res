@@ -29,11 +29,16 @@ let parseHtmlOptions: {..} => option<htmlOptions> = fieldJson => {
   | Some(raw) => {
       let mode = switch dictGet(raw, "mode") {
       | Some("outer") => Some(Outer)
-      | _ => Some(Inner)
+      | Some("inner") => Some(Inner)
+      | None => None
+      | Some(_) => None
       }
       let stripScripts = dictGet(raw, "stripScripts")
       let stripStyles = dictGet(raw, "stripStyles")
-      Some({?mode, ?stripScripts, ?stripStyles})
+      switch (mode, stripScripts, stripStyles) {
+      | (None, None, None) => None
+      | _ => Some({?mode, ?stripScripts, ?stripStyles})
+      }
     }
   }
 }
@@ -109,16 +114,7 @@ let parseNumberOptions: {..} => option<numberOptions> = fieldJson => {
 // count options
 // ---------------------------------------------------------------------------
 
-let parseCountOptions: {..} => option<countOptions> = fieldJson => {
-  switch dictGet(fieldJson, "countOptions") {
-  | None => None
-  | Some(raw) => {
-      let min = dictGet(raw, "min")
-      let max = dictGet(raw, "max")
-      Some({?min, ?max})
-    }
-  }
-}
+let parseCountOptions: {..} => option<countOptions> = _ => None
 
 // ---------------------------------------------------------------------------
 // url options

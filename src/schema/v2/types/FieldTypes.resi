@@ -75,8 +75,7 @@ type booleanOptions = {
 }
 
 type countOptions = {
-  min?: int,
-  max?: int,
+  // No configurable options currently; type exists for future use
 }
 
 type urlOptions = {

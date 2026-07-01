@@ -68,9 +68,21 @@ let extract: (
         if Array.length(fromTbody) > 0 {
           fromTbody
         } else {
-          // No <tbody> — take all <tr>s and skip the first (header) row
           let allRows = table->NodeHtmlParserBinding.querySelectorAll("tr")
-          Array.slice(allRows, ~start=1, ~end=Array.length(allRows))
+          if Array.length(allRows) == 0 {
+            []
+          } else {
+            let firstRowThCount = switch allRows->Array.get(0) {
+            | None => 0
+            | Some(firstRow) =>
+              Array.length(firstRow->NodeHtmlParserBinding.querySelectorAll("th"))
+            }
+            if firstRowThCount > 0 {
+              Array.slice(allRows, ~start=1, ~end=Array.length(allRows))
+            } else {
+              allRows
+            }
+          }
         }
       }
 

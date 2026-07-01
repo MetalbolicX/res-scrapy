@@ -83,11 +83,7 @@ let parseUrlDefaults: {..} => urlOptions = raw => {
   {?base, ?resolve, ?validate, ?protocol, ?stripQuery, ?stripHash, ?attribute}
 }
 
-let parseCountDefaults: {..} => countOptions = raw => {
-  let min = dictGet(raw, "min")
-  let max = dictGet(raw, "max")
-  {?min, ?max}
-}
+let parseCountDefaults: {..} => countOptions = _ => {}
 
 let parseJsonDefaults: {..} => jsonOptions = raw => {
   let source = dictGet(raw, "source")

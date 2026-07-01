@@ -43,9 +43,15 @@ let runSelectorMode = (
 ) => {
   switch extractElements(ctx, document, selector, extractMode, mode) {
   | Error(msg) => {
- ctx.io.err(AppError.toMessage(AppError.ExtractionError(msg)))
+      ctx.io.err(AppError.toMessage(AppError.ExtractionError(msg)))
       ctx.io.exit(1)
     }
-  | Ok(contents) => OutputWriter.writeOutput(ctx, options, ctx.deps.serialize.stringifyStrings(contents))
+  | Ok(contents) =>
+    switch (mode, contents) {
+    | (ParseCli.Single, []) =>
+      OutputWriter.writeOutput(ctx, options, "null")
+    | _ =>
+      OutputWriter.writeOutput(ctx, options, ctx.deps.serialize.stringifyStrings(contents))
+    }
   }
 }

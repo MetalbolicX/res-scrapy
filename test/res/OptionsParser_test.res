@@ -77,14 +77,11 @@ test("OptionsParser.parseHtmlOptions parses mode and strip flags", () => {
   }
 })
 
-test("OptionsParser.parseCountOptions parses min and max", () => {
-  let field = TestHelpers.objectFromJsonString("{\"countOptions\":{\"min\":1,\"max\":3}}")
-  switch OptionsParser.parseCountOptions(field) {
-  | Some(opts) => {
-      isOptionEqualTo(Some(1), opts.min, ~eq=(a, b) => a == b)
-      isOptionEqualTo(Some(3), opts.max, ~eq=(a, b) => a == b)
-    }
-  | None => failWith("Expected count options")
+test("OptionsParser.parseHtmlOptions returns None when mode is absent", () => {
+  let field = TestHelpers.objectFromJsonString("{\"htmlOptions\":{}}")
+  switch OptionsParser.parseHtmlOptions(field) {
+  | Some(_) => failWith("Expected None for absent mode")
+  | None => () // correct
   }
 })
 

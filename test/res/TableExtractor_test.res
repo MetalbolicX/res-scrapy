@@ -178,7 +178,7 @@ test("TableExtractor treats rowspan as a single plain cell", () => {
 test("TableExtractor handles table with no thead and no th cells at all", () => {
   let html = "<table><tr><td>Name</td><td>Price</td></tr><tr><td>A</td><td>10</td></tr></table>"
   switch run(~html) {
-  | Ok(rows) => isTextEqualTo("[{}]", NodeJsBinding.jsonStringify(rows))
+  | Ok(rows) => isTextEqualTo("[{},{}]", NodeJsBinding.jsonStringify(rows))
   | Error(_) => failWith("Expected no-headers table to produce empty objects")
   }
 })
@@ -221,7 +221,7 @@ test("TableExtractor handles empty thead and empty tbody", () => {
 test("TableExtractor handles table with only empty tr elements", () => {
   let html = "<table><tr></tr><tr></tr></table>"
   switch run(~html) {
-  | Ok(rows) => isTextEqualTo("[{}]", NodeJsBinding.jsonStringify(rows))
+  | Ok(rows) => isTextEqualTo("[{},{}]", NodeJsBinding.jsonStringify(rows))
   | Error(_) => failWith("Expected table with only empty rows")
   }
 })
@@ -233,5 +233,17 @@ test("TableExtractor handles deeply nested tr and td structures", () => {
   | Ok(rows) =>
     isTextEqualTo("[{\"Name\":\"Bold\"}]", NodeJsBinding.jsonStringify(rows))
   | Error(_) => failWith("Expected nested element text extraction")
+  }
+})
+
+test("TableExtractor handles table with thead but no tbody and no th in data rows", () => {
+  let html = "<table><thead><tr><th>Name</th><th>Price</th></tr></thead><tr><td>A</td><td>10</td></tr><tr><td>B</td><td>20</td></tr></table>"
+  switch run(~html) {
+  | Ok(rows) =>
+    isTextEqualTo(
+      "[{\"Name\":\"A\",\"Price\":\"10\"},{\"Name\":\"B\",\"Price\":\"20\"}]",
+      NodeJsBinding.jsonStringify(rows),
+    )
+  | Error(_) => failWith("Expected tbody-less table extraction")
   }
 })
