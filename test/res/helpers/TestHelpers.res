@@ -54,3 +54,31 @@ let arrayFromJsonString: string => array<JSON.t> = raw =>
       []
     }
   }
+
+let stringArrayFromJsonString: string => array<string> = raw =>
+  switch NodeJsBinding.jsonParse(raw) {
+  | Some(JSON.Array(items)) => items->Array.map(v => Obj.magic(v))
+  | Some(_) => {
+      failWith("Expected JSON string array in test")
+      []
+    }
+  | None => {
+      failWith("Invalid JSON literal in test")
+      []
+    }
+  }
+
+let objectArrayFromJsonString: string => array<{..}> = raw =>
+  switch NodeJsBinding.jsonParse(raw) {
+  | Some(JSON.Array(items)) => items->Array.map(v => asOpenObject(v))
+  | Some(_) => {
+      failWith("Expected JSON object array in test")
+      []
+    }
+  | None => {
+      failWith("Invalid JSON literal in test")
+      []
+    }
+  }
+
+let emptyObject: {..} = %raw("({})")

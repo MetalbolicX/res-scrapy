@@ -53,7 +53,7 @@ let malformedHtml = "<div class='item'>A<div><span class='item'>B"
 testAsync("simple extraction: single element", (planned) => {
   runCli(~args=["--selector", "#intro", "--extract", "text"], ~input=html)
   ->Promise.then(result => {
-    let arr: array<string> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
+    let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
     isTextEqualTo("Hello World", arr->Array.get(0)->Option.getOr(""))
     isIntEqualTo(0, result.exitCode)
     planned(~planned=2, ())
@@ -70,7 +70,7 @@ testAsync("simple extraction: single element", (planned) => {
 testAsync("simple extraction: unicode text", (planned) => {
   runCli(~args=["--selector", ".title", "--extract", "text"], ~input=unicodeHtml)
   ->Promise.then(result => {
-    let arr: array<string> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
+    let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
     isTextEqualTo("Café ☕ 日本語 مرحبا", arr->Array.get(0)->Option.getOr(""))
     isIntEqualTo(0, result.exitCode)
     planned(~planned=2, ())
@@ -87,7 +87,7 @@ testAsync("simple extraction: unicode text", (planned) => {
 testAsync("simple extraction: malformed html does not crash", (planned) => {
   runCli(~args=["--selector", ".item", "--mode", "--extract", "text"], ~input=malformedHtml)
   ->Promise.then(result => {
-    let arr: array<string> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
+    let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
     isIntEqualTo(1, arr->Array.length)
     stringContains(arr->Array.get(0)->Option.getOr(""), "A")->isTruthy
     isIntEqualTo(0, result.exitCode)
@@ -105,7 +105,7 @@ testAsync("simple extraction: malformed html does not crash", (planned) => {
 testAsync("simple extraction: multiple elements", (planned) => {
   runCli(~args=["--selector", ".item", "--mode"], ~input=html)
   ->Promise.then(result => {
-    let arr: array<string> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
+    let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
     isIntEqualTo(3, arr->Array.length)
     isIntEqualTo(0, result.exitCode)
     planned(~planned=2, ())
@@ -122,7 +122,7 @@ testAsync("simple extraction: multiple elements", (planned) => {
 testAsync("simple extraction: text mode", (planned) => {
   runCli(~args=["--selector", "p.desc", "--extract", "text"], ~input=html)
   ->Promise.then(result => {
-    let arr: array<string> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
+    let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
     stringContains(arr->Array.get(0)->Option.getOr(""), "paragraph")->isTruthy
     isIntEqualTo(0, result.exitCode)
     planned(~planned=2, ())
@@ -139,7 +139,7 @@ testAsync("simple extraction: text mode", (planned) => {
 testAsync("simple extraction: innerHtml mode", (planned) => {
   runCli(~args=["--selector", "#intro", "--extract", "innerHtml"], ~input=html)
   ->Promise.then(result => {
-    let arr: array<string> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
+    let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
     stringContains(arr->Array.get(0)->Option.getOr(""), "Hello World")->isTruthy
     isIntEqualTo(0, result.exitCode)
     planned(~planned=2, ())
@@ -156,7 +156,7 @@ testAsync("simple extraction: innerHtml mode", (planned) => {
 testAsync("simple extraction: attr mode", (planned) => {
   runCli(~args=["--selector", "a", "--extract", "attr:href"], ~input=html)
   ->Promise.then(result => {
-    let arr: array<string> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
+    let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
     isTextEqualTo("https://example.com", arr->Array.get(0)->Option.getOr(""))
     isIntEqualTo(0, result.exitCode)
     planned(~planned=2, ())
@@ -173,7 +173,7 @@ testAsync("simple extraction: attr mode", (planned) => {
 testAsync("simple extraction: missing selector returns empty array", (planned) => {
   runCli(~args=["--selector", ".nonexistent"], ~input=html)
   ->Promise.then(result => {
-    let arr: array<string> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
+    let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
     isIntEqualTo(0, arr->Array.length)
     isIntEqualTo(0, result.exitCode)
     planned(~planned=2, ())
@@ -190,7 +190,7 @@ testAsync("simple extraction: missing selector returns empty array", (planned) =
 testAsync("simple extraction: missing attr returns empty string", (planned) => {
   runCli(~args=["--selector", "div#intro", "--extract", "attr:title"], ~input=html)
   ->Promise.then(result => {
-    let arr: array<string> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
+    let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
     isTextEqualTo("", arr->Array.get(0)->Option.getOr(""))
     isIntEqualTo(0, result.exitCode)
     planned(~planned=2, ())
@@ -207,9 +207,9 @@ testAsync("simple extraction: missing attr returns empty string", (planned) => {
 testAsync("table extraction: basic table", (planned) => {
   runCli(~args=["--table"], ~input=tableHtml)
   ->Promise.then(result => {
-    let arr: array<{..}> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
+    let arr: array<{..}> = result.stdout->TestHelpers.objectArrayFromJsonString
     isIntEqualTo(2, arr->Array.length)
-    let firstRow: {..} = arr->Array.get(0)->Option.getOr(Obj.magic(%raw("({})")))
+    let firstRow: {..} = arr->Array.get(0)->Option.getOr(TestHelpers.emptyObject)
     isTextEqualTo("Carol", firstRow["Name"])
     isIntEqualTo(0, result.exitCode)
     planned(~planned=3, ())
@@ -226,7 +226,7 @@ testAsync("table extraction: basic table", (planned) => {
 testAsync("table extraction: custom selector", (planned) => {
   runCli(~args=["--table", "--selector", "table.users"], ~input=tableHtml)
   ->Promise.then(result => {
-    let arr: array<{..}> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
+    let arr: array<{..}> = result.stdout->TestHelpers.objectArrayFromJsonString
     isIntEqualTo(2, arr->Array.length)
     isIntEqualTo(0, result.exitCode)
     planned(~planned=2, ())
@@ -268,8 +268,8 @@ testAsync("schema extraction: with field extraction", (planned) => {
   runCli(~args=["--schema", schema], ~input=html)
   ->Promise.then(result => {
     isIntEqualTo(0, result.exitCode)
-    let arr: array<{..}> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
-    let firstRow = arr->Array.get(0)->Option.getOr(Obj.magic(%raw("({})")))
+    let arr: array<{..}> = result.stdout->TestHelpers.objectArrayFromJsonString
+    let firstRow = arr->Array.get(0)->Option.getOr(TestHelpers.emptyObject)
     isTextEqualTo("Hello World", firstRow["intro"])
     planned(~planned=2, ())
     Promise.resolve()
@@ -402,8 +402,8 @@ testAsync("schemaPath: loads schema from disk file", (planned) => {
   runCliWithSchemaFile(~schemaContent, ~cliArgs=[], ~input=html)
   ->Promise.then(result => {
     isIntEqualTo(0, result.exitCode)
-    let arr: array<{..}> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
-    let firstRow = arr->Array.get(0)->Option.getOr(Obj.magic(%raw("({})")))
+    let arr: array<{..}> = result.stdout->TestHelpers.objectArrayFromJsonString
+    let firstRow = arr->Array.get(0)->Option.getOr(TestHelpers.emptyObject)
     isTextEqualTo("Hello World", firstRow["intro"])
     planned(~planned=2, ())
     Promise.resolve()
@@ -423,7 +423,7 @@ testAsync("output file: writes json when --output is provided", planned => {
     isIntEqualTo(0, result.exitCode)
     isTextEqualTo("", result.stdout)
     let fileContent = NodeJsBinding.Fs.readFileSync(outPath)
-    let arr: array<string> = fileContent->TestHelpers.arrayFromJsonString->Obj.magic
+    let arr: array<string> = fileContent->TestHelpers.stringArrayFromJsonString
     isIntEqualTo(3, arr->Array.length)
     planned(~planned=3, ())
     Promise.resolve()
@@ -465,7 +465,7 @@ testAsync("output format is ignored on stdout when --output is absent", planned 
   runCli(~args=["--selector", ".item", "--mode", "--extract", "text", "--format", "ndjson"], ~input=html)
   ->Promise.then(result => {
     isIntEqualTo(0, result.exitCode)
-    let arr: array<string> = result.stdout->TestHelpers.arrayFromJsonString->Obj.magic
+    let arr: array<string> = result.stdout->TestHelpers.stringArrayFromJsonString
     isIntEqualTo(3, arr->Array.length)
     planned(~planned=2, ())
     Promise.resolve()
