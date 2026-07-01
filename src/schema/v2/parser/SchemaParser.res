@@ -7,6 +7,8 @@ open JsonUtils
 
 module Iter = NodeJsBinding.Iter
 
+@val external objectKeys: 'a => array<string> = "Object.keys"
+
 /** Normalise the `fields` value to an object, supporting both:
   * - Object format: `{"title": {"selector": ".title"}, ...}` (v2 preferred)
   * - Array format:  `[{"name": "title", "selector": ".title"}, ...]` (v1 legacy)
@@ -26,7 +28,7 @@ let toFieldsObject: 'a => {..} = %raw(`
 
 /** Convert the `fields` object (keys → field defs) into a sorted array. */
 let normalizeFields: {..} => result<array<(string, schemaField)>, schemaError> = fieldsObj => {
-  let keys: array<string> = %raw(`(obj) => Object.keys(obj)`)(fieldsObj)
+  let keys: array<string> = objectKeys(fieldsObj)
   keys->Iter.values->Iter.reduce((acc, key) =>
     switch acc {
     | Error(_) => acc

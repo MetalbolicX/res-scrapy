@@ -140,10 +140,10 @@ module Util = {
 /** Serialises any value to a JSON string via the platform `JSON.stringify`. */
 @val @scope("JSON") external jsonStringify: 'a => string = "stringify"
 
-/** Parses a raw JSON string and returns `option<'a>`, returning `None` on syntax errors. */
-let jsonParse = (raw: string): option<'a> => {
+/** Parses a raw JSON string and returns `option<JSON.t>`, returning `None` on syntax errors. */
+let jsonParse = (raw: string): option<JSON.t> => {
   try {
-    Some((%raw("JSON.parse"): string => 'a)(raw))
+    Some((%raw("JSON.parse"): string => JSON.t)(raw))
   } catch {
   | _ => None
   }

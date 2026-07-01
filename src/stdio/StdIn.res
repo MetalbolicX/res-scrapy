@@ -7,8 +7,11 @@ type timeoutId
 
 @new external makeError: string => JsExn.t = "Error"
 
-let startTimeout: (int, unit => unit) => timeoutId = %raw(`(ms, cb) => setTimeout(cb, ms)`)
-let clearTimeout_: timeoutId => unit = %raw(`id => clearTimeout(id)`)
+external setTimeoutImpl: ((unit => unit), int) => timeoutId = "setTimeout"
+let startTimeout: (int, unit => unit) => timeoutId = (ms, cb) => setTimeoutImpl(cb, ms)
+
+external clearTimeoutImpl: timeoutId => unit = "clearTimeout"
+let clearTimeout_ = clearTimeoutImpl
 
 /** Maximum stdin size in bytes (50 MB). Prevents memory exhaustion from
   * unexpectedly large inputs. */

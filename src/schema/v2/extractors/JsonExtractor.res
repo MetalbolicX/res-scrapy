@@ -35,7 +35,12 @@ let getJsonSource: (NodeHtmlParserBinding.htmlElement, option<jsonOptions>) => o
   }
 }
 
-let getPath: ('a, string) => option<'a> = (obj, path) => {
+/* Typed dictGet local to this module: keeps `getPath` JSON.t-typed so the
+   `option<JSON.t>` flows directly to the caller without an Obj.magic cast. */
+@get_index external dictGetT: (JSON.t, string) => option<JSON.t> = ""
+external testAny: 'a => bool = "%is_nullable"
+
+let getPath: (JSON.t, string) => option<JSON.t> = (obj, path) => {
   if path == "" {
     Some(obj)
   } else {
@@ -44,10 +49,10 @@ let getPath: ('a, string) => option<'a> = (obj, path) => {
     keys->Iter.values->Iter.forEach(key => {
       switch current.contents {
       | Some(cur) =>
-        let val: option<'a> = JsonUtils.dictGet(cur, key)
+        let val: option<JSON.t> = dictGetT(cur, key)
         switch val {
         | Some(v) =>
-          if v == %raw("null") || v == %raw("undefined") {
+          if testAny(v) {
             current := None
           } else {
             current := Some(v)
@@ -104,7 +109,7 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<jsonOptions>) => option<
           | Some(ReturnDefault) => None
           | _ => None
           }
-        | Some(v) => Some(Obj.magic(v))
+        | Some(v) => Some(v)
         }
       }
     }

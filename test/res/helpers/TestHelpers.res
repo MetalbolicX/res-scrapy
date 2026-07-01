@@ -20,19 +20,23 @@ let expectOk = (value, ~message="Expected Ok(_) result") =>
 
 let jsonFromString: string => JSON.t = raw =>
   switch NodeJsBinding.jsonParse(raw) {
-  | Some(v) => Obj.magic(v)
+  | Some(v) => v
   | None => {
       failWith("Invalid JSON literal in test")
       JSON.Encode.null
     }
   }
 
+/* Single explicit `{..}` boundary: `jsonParse` returns `JSON.t` but some tests
+   need open-object access. Named here so the coercion is easy to find. */
+let asOpenObject: JSON.t => {..} = Obj.magic
+
 let objectFromJsonString: string => {..} = raw =>
   switch NodeJsBinding.jsonParse(raw) {
-  | Some(v) => Obj.magic(v)
+  | Some(v) => asOpenObject(v)
   | None => {
       failWith("Invalid JSON object in test")
-      Obj.magic(%raw("({})"))
+      asOpenObject(%raw("({})"))
     }
   }
 
@@ -40,7 +44,11 @@ let stringContains: (string, string) => bool = %raw(`(source, fragment) => sourc
 
 let arrayFromJsonString: string => array<JSON.t> = raw =>
   switch NodeJsBinding.jsonParse(raw) {
-  | Some(v) => Obj.magic(v)
+  | Some(JSON.Array(items)) => items
+  | Some(_) => {
+      failWith("Expected JSON array in test")
+      []
+    }
   | None => {
       failWith("Invalid JSON literal in test")
       []

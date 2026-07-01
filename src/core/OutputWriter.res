@@ -2,17 +2,13 @@ type outputTarget =
   | Stdout
   | File(string)
 
-let jsonArrayToNdjson: string => option<string> = %raw(`raw => {
-  try {
-    const value = JSON.parse(raw);
-    if (!Array.isArray(value)) {
-      return undefined;
-    }
-    return value.map(item => JSON.stringify(item)).join("\n");
-  } catch {
-    return undefined;
+let jsonArrayToNdjson: string => option<string> = raw =>
+  switch NodeJsBinding.jsonParse(raw) {
+  | None => None
+  | Some(JSON.Array(items)) =>
+    Some(items->Array.map(NodeJsBinding.jsonStringify)->Array.join("\n"))
+  | Some(_) => None
   }
-}`)
 
 /**
   * Computes the actual text payload to write based on the target and format.

@@ -22,11 +22,9 @@ let message = exn =>
 
 /* `stack` is a thin binding over the optional `stack` property on a JS error
    object. It returns `None` for any value that isn't a JS exception. */
-let stack: JsExn.t => option<string> = jsExn =>
-  switch %raw(`({stack}) => (typeof stack === "string" ? stack : null)`)(jsExn) {
-  | Some(s) => Some(s)
-  | None => None
-  }
+@get external getStack: JsExn.t => option<string> = "stack"
+
+let stack: JsExn.t => option<string> = getStack
 
 let fromExn: exn => option<JsExn.t> = exn => exn->JsExn.fromException
 

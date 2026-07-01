@@ -1,6 +1,5 @@
 open Test
 open Assertions
-open TestHelpers
 
 type event =
   | Out(string)
@@ -58,7 +57,7 @@ let makeUrlRunnerDeps = (
     parseTemplate: _ => parseTemplateResult,
   },
   schema: {
-    loadSchema: (~isInline, _) => Error(FileReadError("unused")),
+    loadSchema: (~isInline as _, _) => Error(FileReadError("unused")),
     applySchema: (_, _) => Error(ExtractionError("unused")),
   },
   fetch: {

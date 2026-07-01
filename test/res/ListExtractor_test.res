@@ -7,7 +7,7 @@ let collectStrings = (json: option<JSON.t>): array<string> => {
   | Some(j) =>
     let raw = NodeJsBinding.jsonStringify(j)
     let arr = TestHelpers.arrayFromJsonString(raw)
-    arr->Array.map(node => NodeJsBinding.jsonStringify(Obj.magic(node)))
+    arr->Array.map(node => NodeJsBinding.jsonStringify(node))
   | None => []
   }
 }
