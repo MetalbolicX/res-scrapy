@@ -19,37 +19,24 @@
   *
   * `colspan`/`rowspan` are treated as plain cells (out of scope for MVP).
  */
-
 /**
   * Extracts the table matching `selector` from `document` and returns an array of
   * row objects, or an error string when no table is found.
  */
 module Iter = NodeJsBinding.Iter
 
-let extract: (
-  NodeHtmlParserBinding.htmlElement,
-  string,
-) => result<array<dict<string>>, string> = (document, selector) => {
+let extract: (NodeHtmlParserBinding.htmlElement, string) => result<array<dict<string>>, string> = (
+  document,
+  selector,
+) => {
   switch document->NodeHtmlParserBinding.querySelector(selector)->Nullable.toOption {
   | None => Error(`No element found for table selector "${selector}"`)
   | Some(table) => {
       // -----------------------------------------------------------------------
       // 1. Resolve headers
       // -----------------------------------------------------------------------
-      let headerEls: array<NodeHtmlParserBinding.htmlElement> = {
-        let fromThead = table->NodeHtmlParserBinding.querySelectorAll("thead th")
-        if Array.length(fromThead) > 0 {
-          fromThead
-        } else {
-          // No <thead> — take <th> cells from the very first <tr>
-          switch table
-          ->NodeHtmlParserBinding.querySelector("tr")
-          ->Nullable.toOption {
-          | None => []
-          | Some(firstRow) => firstRow->NodeHtmlParserBinding.querySelectorAll("th")
-          }
-        }
-      }
+      let headerEls: array<NodeHtmlParserBinding.htmlElement> =
+        TableUtils.resolveHeaders(table)
 
       let headers: array<string> =
         headerEls
@@ -63,29 +50,8 @@ let extract: (
       // -----------------------------------------------------------------------
       // 2. Resolve data rows
       // -----------------------------------------------------------------------
-      let rowEls: array<NodeHtmlParserBinding.htmlElement> = {
-        let fromTbody = table->NodeHtmlParserBinding.querySelectorAll("tbody tr")
-        if Array.length(fromTbody) > 0 {
-          fromTbody
-        } else {
-          let allRows = table->NodeHtmlParserBinding.querySelectorAll("tr")
-          if Array.length(allRows) == 0 {
-            []
-          } else {
-            let firstRowThCount = switch allRows->Array.get(0) {
-            | None => 0
-            | Some(firstRow) =>
-              Array.length(firstRow->NodeHtmlParserBinding.querySelectorAll("th"))
-            }
-            if firstRowThCount > 0 {
-              Array.slice(allRows, ~start=1, ~end=Array.length(allRows))
-            } else {
-              allRows
-            }
-          }
-        }
-      }
-
+      let rowEls: array<NodeHtmlParserBinding.htmlElement> =
+        TableUtils.resolveRows(table, None)
       // -----------------------------------------------------------------------
       // 3. Build row objects
       // -----------------------------------------------------------------------
@@ -95,7 +61,9 @@ let extract: (
         ->Iter.map(row => {
           let cells = row->NodeHtmlParserBinding.querySelectorAll("td")
           let obj = Dict.make()
-          headers->Iter.entries->Iter.forEach(((i, header)) => {
+          headers
+          ->Iter.entries
+          ->Iter.forEach(((i, header)) => {
             let value = switch cells->Array.get(i) {
             | None => ""
             | Some(cell) => String.trim(cell.textContent)

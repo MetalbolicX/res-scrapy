@@ -14,8 +14,7 @@ let extractElements: (
     | OuterHtml => Document.outerHTML(ctx.deps.doc.documentOps, el)
     | InnerHtml => Document.innerHTML(ctx.deps.doc.documentOps, el)
     | Text => Document.textContent(ctx.deps.doc.documentOps, el)
-    | Attribute(name) =>
-      Document.getAttribute(ctx.deps.doc.documentOps, el, name)->Option.getOr("")
+    | Attribute(name) => Document.getAttribute(ctx.deps.doc.documentOps, el, name)->Option.getOr("")
     }
   switch mode {
   | Single =>
@@ -42,16 +41,11 @@ let runSelectorMode = (
   ~options: ParseCli.parseOptions,
 ) => {
   switch extractElements(ctx, document, selector, extractMode, mode) {
-  | Error(msg) => {
-      ctx.io.err(AppError.toMessage(AppError.ExtractionError(msg)))
-      ctx.io.exit(1)
-    }
+  | Error(msg) => AppContext.exitWithError(ctx, AppError.ExtractionError(msg))
   | Ok(contents) =>
     switch (mode, contents) {
-    | (ParseCli.Single, []) =>
-      OutputWriter.writeOutput(ctx, options, "null")
-    | _ =>
-      OutputWriter.writeOutput(ctx, options, ctx.deps.serialize.stringifyStrings(contents))
+    | (ParseCli.Single, []) => OutputWriter.writeOutput(ctx, options, "null")
+    | _ => OutputWriter.writeOutput(ctx, options, ctx.deps.serialize.stringifyStrings(contents))
     }
   }
 }

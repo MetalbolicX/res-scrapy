@@ -59,4 +59,6 @@ type appContext = {
   io: io,
 }
 
+let exitWithError: (appContext, AppError.appError) => unit
+let exitWithErrorMsg: (appContext, string) => unit
 let production: appContext

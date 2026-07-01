@@ -18,28 +18,6 @@ type cellExtractor = (
   bool,
 ) => result<JSON.t, schemaError>
 
-let resolveRows: (
-  NodeHtmlParserBinding.htmlElement,
-  option<string>,
-) => array<NodeHtmlParserBinding.htmlElement> = (el, rowSelector) => {
-  switch rowSelector {
-  | Some(sel) => el->NodeHtmlParserBinding.querySelectorAll(sel)
-  | None => {
-      let tbodyRows = el->NodeHtmlParserBinding.querySelectorAll("tbody tr")
-      if Array.length(tbodyRows) > 0 {
-        tbodyRows
-      } else {
-        let allRows = el->NodeHtmlParserBinding.querySelectorAll("tr")
-        if Array.length(allRows) <= 1 {
-          []
-        } else {
-          Array.slice(allRows, ~start=1, ~end=Array.length(allRows))
-        }
-      }
-    }
-  }
-}
-
 let columnTypeToFieldType: columnFieldType => fieldType = columnType => {
   let visitor: FieldTypeVisitor.columnFieldTypeVisitor<fieldType> = {
     columnText: opts => Text(opts),
@@ -77,7 +55,8 @@ let extract: (
   bool,
   cellExtractor,
 ) => result<JSON.t, schemaError> = (el, tableOpts, defaults, ignoreErrors, extractCell) => {
-  let resolvedColumns = tableOpts.columns
+  let resolvedColumns =
+    tableOpts.columns
     ->Iter.values
     ->Iter.map(col => {
       let (resolvedFieldType, nestedDefaults) = resolveColumnDefaults(col, defaults)
@@ -85,7 +64,7 @@ let extract: (
     })
     ->Iter.toArray
 
-  let rows = resolveRows(el, tableOpts.rowSelector)
+  let rows = TableUtils.resolveRows(el, tableOpts.rowSelector)
 
   let preQueriedCols = resolvedColumns->Array.map(((col, resolvedFieldType, nestedDefaults)) => {
     let isList = switch resolvedFieldType {
@@ -121,7 +100,7 @@ let extract: (
             switch pairsError.contents {
             | Some(_) => ()
             | None => {
-                let rowEls = Array.get(perRowEls, rowIdx.contents)->Option.getOr([])
+                let rowEls = perRowEls[rowIdx.contents]->Option.getOr([])
                 let value: result<JSON.t, schemaError> = switch resolvedFieldType {
                 | List(opts) =>
                   switch ListExtractor.extract(rowEls, opts) {
@@ -129,7 +108,7 @@ let extract: (
                   | None => Ok(JSON.Encode.null)
                   }
                 | _ =>
-                  let maybeEl = Array.get(rowEls, 0)
+                  let maybeEl = rowEls[0]
                   switch maybeEl {
                   | Some(colEl) =>
                     extractCell(colEl, resolvedFieldType, nestedDefaults, ignoreErrors)

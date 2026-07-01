@@ -5,10 +5,7 @@ let runTableMode = (
   options: ParseCli.parseOptions,
 ) => {
   switch ctx.deps.doc.extractTable(document, selector) {
-  | Error(msg) => {
- ctx.io.err(AppError.toMessage(AppError.ExtractionError(msg)))
-      ctx.io.exit(1)
-    }
+  | Error(msg) => AppContext.exitWithError(ctx, AppError.ExtractionError(msg))
   | Ok(rows) => OutputWriter.writeOutput(ctx, options, ctx.deps.serialize.stringifyTableRows(rows))
   }
 }

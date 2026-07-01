@@ -21,7 +21,8 @@
     "docs": "docsify serve docs",
     "release:check": "pnpm run res:build && pnpm run res:test && pnpm run bundle && pnpm run date:check",
     "bundle": "rolldown -c",
-    "security:audit": "npm audit --audit-level=high",
+    "security:audit": "pnpm audit --audit-level=high",
+    "res:lint": "rescript format --check",
     "prepare": "pnpm run bundle && node ./scripts/ensure-cli.mjs",
     "res:coverage": "c8 pnpm run res:test"
   },

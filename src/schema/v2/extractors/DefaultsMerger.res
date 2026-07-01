@@ -61,10 +61,7 @@ let mergeNumberOptions = (fieldOpts: option<numberOptions>, defaultOpts: option<
     }
   }
 
-let mergeBooleanOptions = (
-  fieldOpts: option<booleanOptions>,
-  defaultOpts: option<booleanOptions>,
-) =>
+let mergeBooleanOptions = (fieldOpts: option<booleanOptions>, defaultOpts: option<booleanOptions>) =>
   switch defaultOpts {
   | None => fieldOpts
   | Some(def) =>
@@ -82,13 +79,9 @@ let mergeBooleanOptions = (
   }
 
 let mergeCountOptions = (fieldOpts: option<countOptions>, defaultOpts: option<countOptions>) =>
-  switch defaultOpts {
-  | None => fieldOpts
-  | Some(def) =>
-    switch fieldOpts {
-    | None => Some(def)
-    | Some(_) => Some({})
-    }
+  switch fieldOpts {
+  | Some(_) => fieldOpts
+  | None => defaultOpts
   }
 
 let mergeDateOptions = (fieldOpts: option<dateOptions>, defaultOpts: option<dateOptions>) =>
@@ -146,87 +139,79 @@ let mergeJsonOptions = (fieldOpts: option<jsonOptions>, defaultOpts: option<json
 
 let resolveDefaults = (defaults: option<schemaDefaults>, fieldType: fieldType): fieldType => {
   let visitor: FieldTypeVisitor.fieldTypeVisitor<fieldType> = {
-    text: opts =>
-      Text(
-        mergeTextOptions(
-          opts,
-          switch defaults {
-          | Some(d) => d.text
-          | None => None
-          },
-        ),
+    text: opts => Text(
+      mergeTextOptions(
+        opts,
+        switch defaults {
+        | Some(d) => d.text
+        | None => None
+        },
       ),
+    ),
     attribute: cfg => Attribute(cfg),
-    html: opts =>
-      Html(
-        mergeHtmlOptions(
-          opts,
-          switch defaults {
-          | Some(d) => d.html
-          | None => None
-          },
-        ),
+    html: opts => Html(
+      mergeHtmlOptions(
+        opts,
+        switch defaults {
+        | Some(d) => d.html
+        | None => None
+        },
       ),
-    number: opts =>
-      Number(
-        mergeNumberOptions(
-          opts,
-          switch defaults {
-          | Some(d) => d.number
-          | None => None
-          },
-        ),
+    ),
+    number: opts => Number(
+      mergeNumberOptions(
+        opts,
+        switch defaults {
+        | Some(d) => d.number
+        | None => None
+        },
       ),
-    boolean: opts =>
-      Boolean(
-        mergeBooleanOptions(
-          opts,
-          switch defaults {
-          | Some(d) => d.boolean
-          | None => None
-          },
-        ),
+    ),
+    boolean: opts => Boolean(
+      mergeBooleanOptions(
+        opts,
+        switch defaults {
+        | Some(d) => d.boolean
+        | None => None
+        },
       ),
-    count: opts =>
-      Count(
-        mergeCountOptions(
-          opts,
-          switch defaults {
-          | Some(d) => d.count
-          | None => None
-          },
-        ),
+    ),
+    count: opts => Count(
+      mergeCountOptions(
+        opts,
+        switch defaults {
+        | Some(d) => d.count
+        | None => None
+        },
       ),
-    url: opts =>
-      Url(
-        mergeUrlOptions(
-          opts,
-          switch defaults {
-          | Some(d) => d.url
-          | None => None
-          },
-        ),
+    ),
+    url: opts => Url(
+      mergeUrlOptions(
+        opts,
+        switch defaults {
+        | Some(d) => d.url
+        | None => None
+        },
       ),
-    json: opts =>
-      Json(
-        mergeJsonOptions(
-          opts,
-          switch defaults {
-          | Some(d) => d.json
-          | None => None
-          },
-        ),
+    ),
+    json: opts => Json(
+      mergeJsonOptions(
+        opts,
+        switch defaults {
+        | Some(d) => d.json
+        | None => None
+        },
       ),
-    datetime: opts =>
-      DateTime(
-        mergeDateOptions(
-          opts,
-          switch defaults {
-          | Some(d) => d.datetime
-          | None => None
-          },
-        ),
+    ),
+    datetime: opts => DateTime(
+      mergeDateOptions(
+        opts,
+        switch defaults {
+        | Some(d) => d.datetime
+        | None => None
+        },
       ),
+    ),
     list: opts => List(opts),
     table: opts => Table(opts),
   }

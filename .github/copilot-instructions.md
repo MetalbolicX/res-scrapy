@@ -12,7 +12,9 @@ This file helps Copilot sessions quickly understand, build, run, and edit the re
 - Run locally without bundling: `node src/Main.res.mjs` or `pnpm start`.
 
 Notes:
-- There are no automated test or lint scripts in package.json. Use the examples in `examples/` for manual verification.
+- Run tests: `pnpm run res:test` (444 tests via rescript-test).
+- Run coverage: `pnpm run res:coverage` (uses c8).
+- Check formatting: `pnpm run res:lint` (runs `rescript format --check`).
 - Manual single-run examples (use from repo root):
   - Selector-based single extraction:
     `cat examples/sample.html | node src/Main.res.mjs -s '.product-title' -e text`
@@ -34,7 +36,7 @@ Notes:
 - Bindings & utilities:
   - `src/bindings` holds JS interop for `node-html-parser`, process/json helpers and other Node interop.
 - Build output:
-  - Bundled artifact is `dist/main.js` (produced by rolldown). The package `bin` field points to `src/Main.res.mjs` for CLI execution in development.
+  - Bundled artifact is `dist/main.mjs` (produced by rolldown). The package `bin` field points to `src/Main.res.mjs` for CLI execution in development.
 
 ## Key repository-specific conventions
 

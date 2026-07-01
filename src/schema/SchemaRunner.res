@@ -3,7 +3,9 @@ module Iter = NodeJsBinding.Iter
 open FieldTypes
 
 let hasOnlyAggregateFields = (schema: Schema.schema) =>
-  schema.fields->Iter.values->Iter.every(((_, field)) =>
+  schema.fields
+  ->Iter.values
+  ->Iter.every(((_, field)) =>
     switch field.fieldType {
     | Count(_) | List(_) => true
     | _ => false
@@ -36,17 +38,13 @@ let runSchemaMode = (
   options: ParseCli.parseOptions,
 ) => {
   switch loadSchema(ctx, source)->ResultX.mapError(AppError.mapSchemaError) {
-  | Error(err) => {
- ctx.io.err(AppError.toMessage(err))
-      ctx.io.exit(1)
-    }
+  | Error(err) => AppContext.exitWithError(ctx, err)
   | Ok(schema) => {
       warnIfZipAggregateOnly(ctx, schema)
-      switch ctx.deps.schema.applySchema(document, schema)->ResultX.mapError(AppError.mapSchemaError) {
-      | Error(err) => {
- ctx.io.err(AppError.toMessage(err))
-          ctx.io.exit(1)
-        }
+      switch ctx.deps.schema.applySchema(document, schema)->ResultX.mapError(
+        AppError.mapSchemaError,
+      ) {
+      | Error(err) => AppContext.exitWithError(ctx, err)
       | Ok(json) => OutputWriter.writeOutput(ctx, options, ctx.deps.serialize.stringifyJson(json))
       }
     }

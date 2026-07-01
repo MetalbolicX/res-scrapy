@@ -9,18 +9,18 @@ update your row when done.
 
 | Plan | Title | Priority | Effort | Depends on | Status |
 |------|-------|----------|--------|------------|--------|
-| 001 | Fix DX, CI, and doc inaccuracies | P1 | S | — | TODO |
-| 002 | Create CLAUDE.md for agent-assisted workflows | P2 | S | — | TODO |
+| 001 | Fix DX, CI, and doc inaccuracies | P1 | S | — | DONE |
+| 002 | Create CLAUDE.md for agent-assisted workflows | P2 | S | — | DONE |
 | 003 | Fix four extraction correctness bugs | P1 | S | — | DONE |
 | 004 | Propagate NDJSON file-write errors to exit code | P1 | S | — | DONE |
-| 005 | Deduplicate output helpers and exit-with-error boilerplate | P2 | S | — | TODO |
-| 006 | Add SelectorExtractor unit tests | P2 | S | — | TODO |
+| 005 | Deduplicate output helpers and exit-with-error boilerplate | P2 | S | — | DONE |
+| 006 | Add SelectorExtractor unit tests | P2 | S | — | DONE |
 | 007 | Harden concurrency — semaphore leak + allSettled | P1 | M | — | TODO |
 | 008 | Add UrlRunner orchestration tests | P1 | M | — | DONE |
 | 009 | Batch DOM queries to eliminate N+1 in extractors | P2 | M | — | DONE |
-| 010 | Stream JSON file output instead of buffering in memory | P3 | M | 004 | TODO |
-| 011 | Consolidate table row-resolution logic | P2 | M | 003 | TODO |
-| 012 | Consolidate DefaultsMerger (reduced scope) | P3 | M | 003 | TODO |
+| 010 | Stream JSON file output instead of buffering in memory | P3 | M | 004 | DONE |
+| 011 | Consolidate table row-resolution logic | P2 | M | 003 | DONE |
+| 012 | Consolidate DefaultsMerger (reduced scope) | P3 | M | 003 | DONE |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJECTED (with one-line rationale)
 
