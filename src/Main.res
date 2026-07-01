@@ -71,6 +71,14 @@ let isExecutedAsScript: unit => bool =
     }
   }`)
 
+/** Register global Node.js event handlers for uncaught exceptions, unhandled
+  * rejections, and termination signals. Guards against double-registration via a
+  * globalThis flag.
+  *
+  * INTENTIONAL FFI ISLAND — typed rewrite would require per-event externals and
+  * still leave the formatError helper as raw. The raw block is self-contained and
+  * isolated. See docs/architecture.md §15.
+  */
 let registerGlobalRuntimeHandlers: (string => unit, int => unit) => unit =
   %raw(`(report, exitFn) => {
     if (globalThis.__resScrapyRuntimeHandlersRegistered) {

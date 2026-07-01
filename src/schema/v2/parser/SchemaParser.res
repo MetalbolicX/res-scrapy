@@ -12,6 +12,10 @@ module Iter = NodeJsBinding.Iter
 /** Normalise the `fields` value to an object, supporting both:
   * - Object format: `{"title": {"selector": ".title"}, ...}` (v2 preferred)
   * - Array format:  `[{"name": "title", "selector": ".title"}, ...]` (v1 legacy)
+  *
+  * INTENTIONAL FFI ISLAND — typed rewrite would be substantially more verbose
+  * (Object.fromEntries with destructuring and filtering). Kept as %raw to avoid
+  * hiding the core logic behind ceremony. See docs/architecture.md §15.
   */
 let toFieldsObject: 'a => {..} = %raw(`
   (rawFields) => {

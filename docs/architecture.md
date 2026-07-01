@@ -616,5 +616,15 @@ sequenceDiagram
 2. **No streaming HTML parsing** — `node-html-parser` loads the entire document into memory. Fine for typical web pages; problematic for very large documents.
 3. **Single-threaded** — Concurrency is cooperative (Promise-based semaphore), not parallel. CPU-bound extraction runs sequentially.
 4. **TypeScript date helpers** — Date parsing/formatting is implemented in TypeScript and compiled to `.mjs`, committed to source. This is a pragmatic compromise for complex date logic.
-5. **`%raw` usage** — A few `%raw` blocks exist for things ReScript can't express (e.g., `import.meta.url` detection, `process` global handlers, JSON parsing). These are isolated and documented.
+5. **`%raw` usage — Approved FFI Islands** — The following `%raw` blocks are intentional boundaries, not technical debt:
+   - **`import.meta.url`** (`src/Main.res`, `src/cli/Cli.res`) — no ReScript equivalent; required for script-path detection and package.json resolution.
+   - **`process.on` / `globalThis` guards** (`src/Main.res:registerGlobalRuntimeHandlers`) — Node.js process event registration; typed rewrite would require per-event externals with no safety gain.
+   - **`Object.fromEntries` + destructuring** (`src/schema/v2/parser/SchemaParser.res:toFieldsObject`) — typed rewrite would be substantially more verbose than the raw block it replaces.
+   - **`RegExp` construction with safety validation** (`src/schema/v2/utils/StringUtils.res:compileSafePattern`) — validates DoS-prone patterns before compilation; the validation logic is cleaner in JS.
+   - **`process.exitCode` setter** (`src/bindings/NodeJsBinding.res`) — no ReScript equivalent for assigning to this property.
+   - **`JSON.parse`** (`src/bindings/NodeJsBinding.res:jsonParse`) — the raw boundary itself is intentional; the return type is narrowed to `option<JSON.t>` to prevent unchecked casts downstream.
+   - **Test-only JS interop** — `AppContext_test.res` uses raw JS `typeof` checks; `ExnUtils_test.res` creates JS error objects for stack testing; `MainContext_test.res` throws system errors. These are deliberately testing JS behavior, not ReScript logic.
+   - **`{..}` coercion boundary** — `Cli.res:pkg`, `SchemaParser.res:raw`, and `TestHelpers.asOpenObject` are named, singular boundaries where open JS objects must cross into typed ReScript land.
+
+   Adding a new `%raw` site requires a comment explaining why it is an intentional island, not a shortcut.
 6. **Schema v1 → v2 migration** — `Schema.res` is a thin facade that delegates to `SchemaV2`. The v2 parser supports both object and array field formats for backwards compatibility.

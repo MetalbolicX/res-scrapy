@@ -40,7 +40,8 @@ let objectFromJsonString: string => {..} = raw =>
     }
   }
 
-let stringContains: (string, string) => bool = %raw(`(source, fragment) => source.includes(fragment)`)
+let stringContains: (string, string) => bool = (source, fragment) =>
+  String.includes(source, fragment)
 
 let arrayFromJsonString: string => array<JSON.t> = raw =>
   switch NodeJsBinding.jsonParse(raw) {
