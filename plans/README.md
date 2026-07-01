@@ -11,8 +11,8 @@ update your row when done.
 |------|-------|----------|--------|------------|--------|
 | 001 | Fix DX, CI, and doc inaccuracies | P1 | S | — | TODO |
 | 002 | Create CLAUDE.md for agent-assisted workflows | P2 | S | — | TODO |
-| 003 | Fix four extraction correctness bugs | P1 | S | — | TODO |
-| 004 | Propagate NDJSON file-write errors to exit code | P1 | S | — | TODO |
+| 003 | Fix four extraction correctness bugs | P1 | S | — | DONE |
+| 004 | Propagate NDJSON file-write errors to exit code | P1 | S | — | DONE |
 | 005 | Deduplicate output helpers and exit-with-error boilerplate | P2 | S | — | TODO |
 | 006 | Add SelectorExtractor unit tests | P2 | S | — | TODO |
 | 007 | Harden concurrency — semaphore leak + allSettled | P1 | M | — | TODO |
