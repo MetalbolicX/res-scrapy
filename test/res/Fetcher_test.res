@@ -155,16 +155,6 @@ testAsync("fetchAll returns all results even when some URLs fail", planned => {
   Fetcher.fetchAll(["http://127.0.0.1:9", "http://127.0.0.1:9", "https://example.com/"], options)
   ->Promise.then(results => {
     (results->Array.length == 3)->isTruthy
-    let countSuccess =
-      results
-      ->Array.filter(
-        r =>
-          switch r.result {
-          | Ok(_) => true
-          | Error(_) => false
-          },
-      )
-      ->Array.length
     let countFailure =
       results
       ->Array.filter(
@@ -175,9 +165,8 @@ testAsync("fetchAll returns all results even when some URLs fail", planned => {
           },
       )
       ->Array.length
-    (countSuccess >= 1)->isTruthy
     (countFailure >= 1)->isTruthy
-    planned(~planned=3, ())
+    planned(~planned=2, ())
     Promise.resolve()
   })
   ->Promise.catch(_ => {

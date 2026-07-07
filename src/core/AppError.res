@@ -48,14 +48,6 @@ let mapTemplateError: TemplateParser.parseError => appError = err =>
   | UrlCountExceeded(_) as e => TemplateError(TemplateParser.parseErrorToMessage(e))
   }
 
-let mapFetchError: Fetcher.fetchError => appError = err =>
-  switch err {
-  | NetworkError(msg) => FetchError(msg)
-  | Timeout(msg) => FetchError(msg)
-  | HttpError(status, msg) => FetchError(`HTTP ${Int.toString(status)}: ${msg}`)
-  | ParseError(msg) => FetchError(msg)
-  }
-
 let toMessage: appError => string = err =>
   switch err {
   | CliError(msg)

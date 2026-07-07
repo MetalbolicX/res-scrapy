@@ -70,7 +70,7 @@ let beginJsonArraySync: (
 ) => result<unit, string> = (~writeFileSync, ~err, ~path) => {
   try {
     writeFileSync(path, "[")
-    Ok(())
+    Ok()
   } catch {
   | exn =>
     let msg = `Failed to open JSON output file "${path}": ${ExnUtils.message(exn)}`
@@ -104,7 +104,7 @@ let appendJsonRowAsync: (
   let content = isFirstRow ? joined : "," ++ joined
   try {
     await appendFile(path, content)
-    Ok(())
+    Ok()
   } catch {
   | exn =>
     let msg = `Failed to append to JSON output file "${path}": ${ExnUtils.message(exn)}`
@@ -116,13 +116,13 @@ let appendJsonRowAsync: (
 /** Synchronously writes the closing bracket of a streamed JSON array.
     On failure, emits a warning via `err` and resolves to `Error(msg)`. */
 let endJsonArraySync: (
-  ~writeFileSync: (string, string) => unit,
+  ~appendFileSync: (string, string) => unit,
   ~err: string => unit,
   ~path: string,
-) => result<unit, string> = (~writeFileSync, ~err, ~path) => {
+) => result<unit, string> = (~appendFileSync, ~err, ~path) => {
   try {
-    writeFileSync(path, "]")
-    Ok(())
+    appendFileSync(path, "]")
+    Ok()
   } catch {
   | exn =>
     let msg = `Failed to close JSON output file "${path}": ${ExnUtils.message(exn)}`

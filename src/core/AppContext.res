@@ -64,11 +64,6 @@ let exitWithError = (ctx: appContext, err: AppError.appError) => {
   ctx.io.exit(1)
 }
 
-let exitWithErrorMsg = (ctx: appContext, msg: string) => {
-  ctx.io.err(msg)
-  ctx.io.exit(1)
-}
-
 let production: appContext = {
   deps: {
     cli: {

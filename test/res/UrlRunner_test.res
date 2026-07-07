@@ -23,19 +23,26 @@ let makeState = () => {
 let makeFileMock = () => {
   let writes: ref<array<fileWrite>> = ref([])
   let record = (path, content) => writes := Array.concat(writes.contents, [{path, content}])
-  let writeFileSync = (path, content) => record(path, content)
+  let writeFileSync = (path, content) =>
+    if content == "]" {
+      failWith("endJsonArraySync must not use writeFileSync; it would overwrite the output file")
+    } else {
+      record(path, content)
+    }
+  let appendFileSync = (path, content) => record(path, content)
   let appendFile = (path, content) => {
     record(path, content)
     Promise.resolve()
   }
   let getWrites = () => writes.contents
-  (writeFileSync, appendFile, getWrites)
+  (writeFileSync, appendFileSync, appendFile, getWrites)
 }
 
 let makeUrlRunnerDeps = (
   ~fetchResults: array<Fetcher.fetchResult>,
   ~parseTemplateResult: result<array<string>, TemplateParser.parseError>,
   ~appendFile: (string, string) => promise<unit>=(_, _) => Promise.resolve(),
+  ~appendFileSync: (string, string) => unit=(_, _) => (),
   ~writeFileSync: (string, string) => unit=(_, _) => (),
 ): AppContext.dependencies => {
   cli: {
@@ -63,7 +70,7 @@ let makeUrlRunnerDeps = (
     writeFile: (_, _) => Promise.resolve(),
     appendFile,
     writeFileSync,
-    appendFileSync: (_, _) => (),
+    appendFileSync,
   },
   serialize: {
     stringifyJson: NodeJsBinding.jsonStringify,
@@ -360,7 +367,7 @@ testAsync("runUrlMode exits 1 when NDJSON file write fails", done_ => {
 
 testAsync("runUrlMode streams 3 successful fetches as a JSON array", done_ => {
   let (push, getEvents) = makeState()
-  let (writeFileSync, appendFile, getWrites) = makeFileMock()
+  let (writeFileSync, appendFileSync, appendFile, getWrites) = makeFileMock()
   let fetchResults: array<Fetcher.fetchResult> = [
     {
       url: "http://example.com/1",
@@ -377,8 +384,13 @@ testAsync("runUrlMode streams 3 successful fetches as a JSON array", done_ => {
   ]
   let deps = makeUrlRunnerDeps(
     ~fetchResults,
-    ~parseTemplateResult=Ok(["http://example.com/1", "http://example.com/2", "http://example.com/3"]),
+    ~parseTemplateResult=Ok([
+      "http://example.com/1",
+      "http://example.com/2",
+      "http://example.com/3",
+    ]),
     ~appendFile,
+    ~appendFileSync,
     ~writeFileSync,
   )
   let ctx = mkUrlRunnerCtx(~deps, ~push)
@@ -406,11 +418,15 @@ testAsync("runUrlMode streams 3 successful fetches as a JSON array", done_ => {
     // First write opens with "[", last write closes with "]"
     let first = writes->Belt.Array.get(0)
     let last = writes->Belt.Array.get(Array.length(writes) - 1)
-    isOptionEqualTo(Some({path: "out.json", content: "["}), first, ~eq=(a, b) =>
-      a.path == b.path && a.content == b.content
+    isOptionEqualTo(
+      Some({path: "out.json", content: "["}),
+      first,
+      ~eq=(a, b) => a.path == b.path && a.content == b.content,
     )
-    isOptionEqualTo(Some({path: "out.json", content: "]"}), last, ~eq=(a, b) =>
-      a.path == b.path && a.content == b.content
+    isOptionEqualTo(
+      Some({path: "out.json", content: "]"}),
+      last,
+      ~eq=(a, b) => a.path == b.path && a.content == b.content,
     )
 
     // Concatenating every recorded write yields a valid JSON array with 5
@@ -434,7 +450,7 @@ testAsync("runUrlMode streams 3 successful fetches as a JSON array", done_ => {
 
 testAsync("runUrlMode writes empty JSON array when all fetches fail", done_ => {
   let (push, getEvents) = makeState()
-  let (writeFileSync, appendFile, getWrites) = makeFileMock()
+  let (writeFileSync, appendFileSync, appendFile, getWrites) = makeFileMock()
   let fetchResults: array<Fetcher.fetchResult> = [
     {url: "http://example.com/1", result: Error(Fetcher.NetworkError("ECONNREFUSED"))},
     {url: "http://example.com/2", result: Error(Fetcher.HttpError(500, "Internal Server Error"))},
@@ -443,6 +459,7 @@ testAsync("runUrlMode writes empty JSON array when all fetches fail", done_ => {
     ~fetchResults,
     ~parseTemplateResult=Ok(["http://example.com/1", "http://example.com/2"]),
     ~appendFile,
+    ~appendFileSync,
     ~writeFileSync,
   )
   let ctx = mkUrlRunnerCtx(~deps, ~push)

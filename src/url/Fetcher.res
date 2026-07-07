@@ -139,12 +139,13 @@ let fetchOnce: (
 
   try {
     let response = await NodeJsBinding.Fetch.fetch(url, Some(options))
-    clearTimeout(timeoutId)
 
     if response.ok {
       let html = await NodeJsBinding.Fetch.text(response)
+      clearTimeout(timeoutId)
       Ok(html)
     } else {
+      clearTimeout(timeoutId)
       Error(HttpError(response.status, response.statusText))
     }
   } catch {
@@ -185,7 +186,8 @@ let fetchWithRetry: (
 
     switch result {
     | Ok(_) => result
-    | Error(err) => if attempt < maxAttempts && isRetryable(err) {
+    | Error(err) =>
+      if attempt < maxAttempts && isRetryable(err) {
         let delayMs = backoffDelay(attempt)
         await delay(delayMs)
         await tryFetch(attempt + 1, maxAttempts)
