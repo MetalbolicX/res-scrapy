@@ -267,17 +267,32 @@ let fetchAll: (array<string>, fetchOptions) => promise<array<fetchResult>> = asy
 
   let fetchWithSemaphore = async url => {
     await acquire(sem)
-    let result = await acquireStartSlot(limiter)->Promise.then(_ =>
-      fetchWithRetry(
-        url,
-        options.userAgent,
-        options.timeoutSeconds,
-        options.retryCount,
-        options.headers,
-      )
-    )
+    // NOTE: ReScript v12 has no `try/finally`. We use `try/catch` to convert
+    // any escaped exception into `Error(exn)`, then `release(sem)` is called
+    // unconditionally below — guaranteeing the slot is returned on every
+    // exit path (success OR exception). The exception is then re-thrown via
+    // `throw(exn)` so the outer `Promise.catch` in `fetchAll` still observes
+    // it as before.
+    let outcome =
+      try {
+        let result = await acquireStartSlot(limiter)->Promise.then(_ =>
+          fetchWithRetry(
+            url,
+            options.userAgent,
+            options.timeoutSeconds,
+            options.retryCount,
+            options.headers,
+          )
+        )
+        Ok({url, result})
+      } catch {
+      | exn => Error(exn)
+      }
     release(sem)
-    {url, result}
+    switch outcome {
+    | Ok(fetchResult) => fetchResult
+    | Error(exn) => throw(exn)
+    }
   }
 
   let promises = urls->Array.map(url =>
