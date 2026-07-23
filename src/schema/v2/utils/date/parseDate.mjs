@@ -69,13 +69,17 @@ const BASE_TOKENS = [
     { token: "s", regex: "(\\d{1,2})", group: "sec1" },
     { token: "a", regex: "(am|pm|AM|PM)", group: "ampm" },
 ];
+const SORTED_TOKENS = BASE_TOKENS.slice().sort((a, b) => b.token.length - a.token.length);
+const regexCache = new Map();
 const buildRegexFromFormat = (format) => {
-    const sortedTokens = BASE_TOKENS.slice().sort((a, b) => b.token.length - a.token.length);
+    const cached = regexCache.get(format);
+    if (cached !== undefined)
+        return cached;
     let remaining = format;
     let pattern = "";
     const groupNames = [];
     while (remaining.length > 0) {
-        const matchedToken = sortedTokens.find(({ token }) => remaining.startsWith(token));
+        const matchedToken = SORTED_TOKENS.find(({ token }) => remaining.startsWith(token));
         if (matchedToken) {
             pattern += matchedToken.regex;
             groupNames.push(matchedToken.group);
@@ -85,13 +89,16 @@ const buildRegexFromFormat = (format) => {
         pattern += escapeRegexCharacter(remaining[0]);
         remaining = remaining.slice(1);
     }
+    let result;
     try {
         const compiledRegex = new RegExp(`^${pattern}$`, "i");
-        return { regex: compiledRegex, groupNames };
+        result = { regex: compiledRegex, groupNames };
     }
     catch {
-        return { regex: null, groupNames: [] };
+        result = { regex: null, groupNames: [] };
     }
+    regexCache.set(format, result);
+    return result;
 };
 const escapeRegexCharacter = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const mapMatchToGroupValues = (groupNames, matches) => groupNames.reduce((mapper, groupName, i) => {

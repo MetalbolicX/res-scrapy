@@ -1,0 +1,33 @@
+schema: spec-driven
+
+context: |
+  ReScript CLI for HTML scraping with schema-driven extraction.
+  Tech stack: ReScript 12 + Node.js 22 + node-html-parser.
+  Testing: retest with .res.mjs; pnpm run release:check enforces date parity.
+  Style: hand-rolled DI via AppContext, Result<AppError.appError> in business logic.
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - One capability per change (avoid scope creep)
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - Cap each scenario at 3 lines
+  design:
+    - Document architecture decisions with rationale
+    - Show before/after for any type-signature change
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+  apply:
+    - Run pnpm run release:check before marking complete
+  verify:
+    - Map every spec scenario to a passing test or documented skip
+
+testing:
+  runner: retest
+  strict_tdd: true
+  layers:
+    unit: test/res/*.res.mjs
+  coverage: c8 (non-blocking)

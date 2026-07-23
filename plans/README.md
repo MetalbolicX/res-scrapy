@@ -15,7 +15,7 @@ update your row when done.
 | 004 | Propagate NDJSON file-write errors to exit code | P1 | S | — | DONE |
 | 005 | Deduplicate output helpers and exit-with-error boilerplate | P2 | S | — | DONE |
 | 006 | Add SelectorExtractor unit tests | P2 | S | — | DONE |
-| 007 | Harden concurrency — semaphore leak + allSettled | P1 | M | — | TODO |
+| 007 | Harden concurrency — semaphore leak + allSettled | P1 | M | — | DONE |
 | 008 | Add UrlRunner orchestration tests | P1 | M | — | DONE |
 | 009 | Batch DOM queries to eliminate N+1 in extractors | P2 | M | — | DONE |
 | 010 | Stream JSON file output instead of buffering in memory | P3 | M | 004 | DONE |
@@ -75,3 +75,20 @@ Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) | REJE
 | tech-debt | 005, 011, 012 |
 | tests | 006, 008 |
 | perf | 009, 010 |
+
+## 2026-07-23 Follow-up Phases
+
+| Plan | Title | Phase | SDD | Depends on | Status |
+|------|-------|-------|-----|------------|--------|
+| 013 | Establish baselines for follow-up refactors | 0 | No | — | TODO |
+| 014 | Quick wins for duplication and perf | 1 | No | 013 | TODO |
+| 015 | Local refactors for Fetcher and Reporter | 2 | No | 013 | TODO |
+| 016 | Split UrlRunner responsibilities | 3 | Optional design-only | 013, 014, 015 | TODO |
+| 017 | Change output data-flow and error contracts | 4 | Yes | 016 | TODO |
+
+## Phase Notes
+
+- Phase 0 is baseline-only and blocks the rest.
+- Phases 1 and 2 are parallel-safe after Phase 0.
+- Phase 3 is structural refactoring; use a design note only if the route shape is disputed.
+- Phase 4 changes inter-module contracts and should go through SDD before implementation.
