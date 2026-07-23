@@ -56,7 +56,9 @@ let _ = testAsync(
     )
     ->Promise.then(result => {
       switch result {
-      | Error(msg) => isTextEqualTo(`Failed to append to output file "out.ndjson": Disk full`, msg)
+      | Error(AppError.WriteError(msg)) =>
+        isTextEqualTo(`Failed to append to output file "out.ndjson": Disk full`, msg)
+      | Error(_) => failWith("Expected WriteError on appendFile failure")
       | Ok(_) => failWith("Expected Error on appendFile failure")
       }
       isTextEqualTo(

@@ -10,6 +10,8 @@
     }
   },
   "scripts": {
+    "test": "npm run res:test",
+    "build": "npm run res:build",
     "date:build": "tsc -p tsconfig.date.json",
     "date:check": "pnpm run date:build && git diff --exit-code -- src/schema/v2/utils/date/*.mjs",
     "res:test": "retest ./test/res/*.res.mjs",

@@ -22,6 +22,120 @@ let countRows: JSON.t => int = json => {
   }
 }
 
+/** Pre-computed extraction setup so that schema loading (and mode selection)
+    happen once per URL-mode run, not once per fetched page. */
+type extractionSetup =
+  | TableSetup(string)
+  | SchemaSetup(Schema.schema)
+  | SelectorSetup({selector: string, extract: ParseCli.extractMode, mode: ParseCli.mode})
+
+/** Mutable state threaded through the output-routing calls. */
+type outputState = {
+  mutable jsonFileStarted: bool,
+  mutable jsonRowsWritten: int,
+  mutable writeFailures: int,
+}
+
+/**
+  * Formats a `FieldTypes.schemaError` from schema loading / application into
+  * the `reason` string expected by `FetchStatsManager.recordFailure`.
+  */
+let formatSchemaFailureReason = (err: FieldTypes.schemaError): string =>
+  AppError.toMessage(AppError.mapSchemaError(err))
+
+/** Runs the extraction for one document and returns the structured JSON.
+    Each branch produces a JSON.t value at the source; no intermediate
+    string is materialised for routing purposes. */
+let extractFromDocument = (
+  ~setup: extractionSetup,
+  ~document: NodeHtmlParserBinding.htmlElement,
+  ~ctx: AppContext.appContext,
+): result<JSON.t, string> => {
+  switch setup {
+  | TableSetup(selector) =>
+    ctx.deps.doc.extractTable(document, selector)->Result.map(rows =>
+      JSON.Encode.array(rows->Array.map(row =>
+        JSON.Encode.object(Dict.fromArray(Dict.toArray(row)->Array.map(((k, v)) =>
+          (k, JSON.Encode.string(v))
+        )))
+      ))
+    )
+  | SchemaSetup(schema) =>
+    ctx.deps.schema.applySchema(document, schema)
+    ->Result.mapError(formatSchemaFailureReason)
+  | SelectorSetup({selector, extract: extractMode, mode}) =>
+    switch SelectorExtractor.extractElements(
+      ctx,
+      document,
+      selector,
+      extractMode,
+      mode,
+    ) {
+    | Error(msg) => Error(msg)
+    | Ok(contents) => Ok(JSON.Encode.array(contents->Array.map(JSON.Encode.string)))
+    }
+  }
+}
+
+/** Routes a parsed JSON value to stdout or a file, updating `state`.
+    Handles the three output modes (stdout NDJSON, file NDJSON, file JSON streaming)
+    in one place so processOne doesn't need the 3-way switch. */
+let routeOutput = async (
+  ~options: ParseCli.parseOptions,
+  ~json: JSON.t,
+  ~ctx: AppContext.appContext,
+  ~state: outputState,
+): unit => {
+  switch (options.output, options.outputFormat) {
+  | (None, _) =>
+    UrlOutputWriter.writeStdoutNdjson(
+      ~out=ctx.io.out,
+      ~stringifyJson=ctx.deps.serialize.stringifyJson,
+      ~json,
+    )
+  | (Some(path), Ndjson) => {
+      let result = await UrlOutputWriter.appendNdjsonToFile(
+        ~appendFile=ctx.deps.fs.appendFile,
+        ~err=ctx.io.err,
+        ~stringifyJson=ctx.deps.serialize.stringifyJson,
+        ~path,
+        ~json,
+      )
+      switch result {
+      | Ok(_) => ()
+      | Error(_) => state.writeFailures = state.writeFailures + 1
+      }
+    }
+  | (Some(path), Json) => {
+      if !state.jsonFileStarted {
+        state.jsonFileStarted = true
+        switch UrlOutputWriter.beginJsonArraySync(
+          ~writeFileSync=ctx.deps.fs.writeFileSync,
+          ~err=ctx.io.err,
+          ~path,
+        ) {
+        | Ok() => ()
+        | Error(_) => state.writeFailures = state.writeFailures + 1
+        }
+      }
+      let isFirstRow = state.jsonRowsWritten == 0
+      state.jsonRowsWritten = state.jsonRowsWritten + countRows(json)
+      let result = await UrlOutputWriter.appendJsonRowAsync(
+        ~appendFile=ctx.deps.fs.appendFile,
+        ~err=ctx.io.err,
+        ~stringifyJson=ctx.deps.serialize.stringifyJson,
+        ~path,
+        ~isFirstRow,
+        ~json,
+      )
+      switch result {
+      | Ok(_) => ()
+      | Error(_) => state.writeFailures = state.writeFailures + 1
+      }
+    }
+  }
+}
+
 /**
   * Formats an `AppError.appError` from `parseDocumentSafely` into the
   * `reason` string expected by `FetchStatsManager.recordFailure`. Preserves
@@ -41,13 +155,6 @@ let formatExtractionFailureReason = (err: string): string => err
   */
 let formatSchemaFailureReason = (err: FieldTypes.schemaError): string =>
   AppError.toMessage(AppError.mapSchemaError(err))
-
-/** Pre-computed extraction setup so that schema loading (and mode selection)
-    happen once per URL-mode run, not once per fetched page. */
-type extractionSetup =
-  | TableSetup(string)
-  | SchemaSetup(Schema.schema)
-  | SelectorSetup({selector: string, extract: ParseCli.extractMode, mode: ParseCli.mode})
 
 let resolveExtractionSetup: (
   AppContext.appContext,
@@ -111,9 +218,11 @@ let runUrlMode = async (
         // opened lazily on the first successful batch (no pre-allocation, no
         // 100K row cap) and closed exactly once at the end.
         let mgr = FetchStatsManager.create()
-        let writeFailures = ref(0)
-        let jsonFileStarted: ref<bool> = ref(false)
-        let jsonRowsWritten: ref<int> = ref(0)
+        let state: outputState = {
+          jsonFileStarted: false,
+          jsonRowsWritten: 0,
+          writeFailures: 0,
+        }
 
         // Process each fetch result serially. JSON rows must be appended in
         // source order with comma separators between them; serial processing
@@ -138,97 +247,16 @@ let runUrlMode = async (
             | Error(parseErr) =>
               FetchStatsManager.recordFailure(mgr, ~url, ~reason=formatParseFailureReason(parseErr))
             | Ok(document) => {
-                // Extract data
-                let extractionResult = switch setup {
-                | TableSetup(selector) =>
-                  ctx.deps.doc.extractTable(document, selector)->Result.map(
-                    ctx.deps.serialize.stringifyTableRows,
-                  )
-                | SchemaSetup(schema) =>
-                  ctx.deps.schema.applySchema(document, schema)
-                  ->Result.map(ctx.deps.serialize.stringifyJson)
-                  ->Result.mapError(formatSchemaFailureReason)
-                | SelectorSetup({selector, extract: extractMode, mode}) =>
-                  switch SelectorExtractor.extractElements(
-                    ctx,
-                    document,
-                    selector,
-                    extractMode,
-                    mode,
-                  ) {
-                  | Error(msg) => Error(msg)
-                  | Ok(contents) => Ok(ctx.deps.serialize.stringifyStrings(contents))
-                  }
-                }
-
-                switch extractionResult {
+                switch extractFromDocument(~setup, ~document, ~ctx) {
                 | Error(extractErr) =>
                   FetchStatsManager.recordFailure(
                     mgr,
                     ~url,
                     ~reason=formatExtractionFailureReason(extractErr),
                   )
-                | Ok(jsonText) =>
-                  switch NodeJsBinding.jsonParse(jsonText) {
-                  | Some(json) => {
-                      let rowCount = countRows(json)
-                      FetchStatsManager.recordSuccess(mgr, ~rowCount)
-
-                      switch (options.output, options.outputFormat) {
-                      | (None, _) =>
-                        UrlOutputWriter.writeStdoutNdjson(
-                          ~out=ctx.io.out,
-                          ~stringifyJson=ctx.deps.serialize.stringifyJson,
-                          ~json,
-                        )
-                      | (Some(path), Ndjson) => {
-                          let result = await UrlOutputWriter.appendNdjsonToFile(
-                            ~appendFile=ctx.deps.fs.appendFile,
-                            ~err=ctx.io.err,
-                            ~stringifyJson=ctx.deps.serialize.stringifyJson,
-                            ~path,
-                            ~json,
-                          )
-                          switch result {
-                          | Ok(_) => ()
-                          | Error(_) => writeFailures := writeFailures.contents + 1
-                          }
-                        }
-                      | (Some(path), Json) => {
-                          if !jsonFileStarted.contents {
-                            jsonFileStarted := true
-                            switch UrlOutputWriter.beginJsonArraySync(
-                              ~writeFileSync=ctx.deps.fs.writeFileSync,
-                              ~err=ctx.io.err,
-                              ~path,
-                            ) {
-                            | Ok() => ()
-                            | Error(_) => writeFailures := writeFailures.contents + 1
-                            }
-                          }
-                          let isFirstRow = jsonRowsWritten.contents == 0
-                          jsonRowsWritten := jsonRowsWritten.contents + rowCount
-                          let result = await UrlOutputWriter.appendJsonRowAsync(
-                            ~appendFile=ctx.deps.fs.appendFile,
-                            ~err=ctx.io.err,
-                            ~stringifyJson=ctx.deps.serialize.stringifyJson,
-                            ~path,
-                            ~isFirstRow,
-                            ~json,
-                          )
-                          switch result {
-                          | Ok(_) => ()
-                          | Error(_) => writeFailures := writeFailures.contents + 1
-                          }
-                        }
-                      }
-                    }
-                  | None =>
-                    FetchStatsManager.recordFailure(
-                      mgr,
-                      ~url,
-                      ~reason="Failed to parse extraction result",
-                    )
+                | Ok(json) => {
+                    FetchStatsManager.recordSuccess(mgr, ~rowCount=countRows(json))
+                    await routeOutput(~options, ~json, ~ctx, ~state)
                   }
                 }
               }
@@ -261,15 +289,15 @@ let runUrlMode = async (
         // emit an empty array on disk so downstream tools see valid JSON.
         switch (options.output, options.outputFormat) {
         | (Some(path), Json) =>
-          if !jsonFileStarted.contents {
-            jsonFileStarted := true
+          if !state.jsonFileStarted {
+            state.jsonFileStarted = true
             switch UrlOutputWriter.beginJsonArraySync(
               ~writeFileSync=ctx.deps.fs.writeFileSync,
               ~err=ctx.io.err,
               ~path,
             ) {
             | Ok() => ()
-            | Error(_) => writeFailures := writeFailures.contents + 1
+            | Error(_) => state.writeFailures = state.writeFailures + 1
             }
           }
           switch UrlOutputWriter.endJsonArraySync(
@@ -278,7 +306,7 @@ let runUrlMode = async (
             ~path,
           ) {
           | Ok() => ()
-          | Error(_) => writeFailures := writeFailures.contents + 1
+          | Error(_) => state.writeFailures = state.writeFailures + 1
           }
         | _ => () // Already streamed
         }
@@ -287,9 +315,9 @@ let runUrlMode = async (
         FetchStatsManager.printReport(mgr, ~err=ctx.io.err)
 
         // Exit code: 0 if any succeeded, 1 if all failed or any NDJSON write failed
-        if FetchStatsManager.shouldExitWithError(mgr) || writeFailures.contents > 0 {
-          if writeFailures.contents > 0 {
-            ctx.io.err(`Warning: ${Int.toString(writeFailures.contents)} output write(s) failed`)
+        if FetchStatsManager.shouldExitWithError(mgr) || state.writeFailures > 0 {
+          if state.writeFailures > 0 {
+            ctx.io.err(`Warning: ${Int.toString(state.writeFailures)} output write(s) failed`)
           }
           ctx.io.exit(1)
         }

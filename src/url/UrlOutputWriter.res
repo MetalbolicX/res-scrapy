@@ -25,6 +25,14 @@ let extractJsonArray: JSON.t => array<JSON.t> = json =>
   | _ => [json]
   }
 
+/** Wraps a failed file operation: emits a warning via `err` and returns Error.
+    Shared by all sync write helpers to keep error wording consistent. */
+let emitWriteError = (~err, ~path, ~operation, ~exn): result<unit, AppError.appError> => {
+  let msg = `${operation} "${path}": ${ExnUtils.message(exn)}`
+  err(`Warning: ${msg}`)
+  Error(AppError.WriteError(msg))
+}
+
 /** Writes NDJSON to stdout by iterating over a JSON array. Each row is
     serialised on the fly; nothing is accumulated in memory. */
 let writeStdoutNdjson: (
@@ -38,7 +46,7 @@ let writeStdoutNdjson: (
 
 /** Appends NDJSON rows to a file asynchronously. If appendFile throws, the
     warning is emitted on `err` and the returned promise resolves to
-    `Error(msg)` so the caller can surface a non-zero exit code while the
+    `Error(appErr)` so the caller can surface a non-zero exit code while the
     overall run continues for the remaining writes. */
 let appendNdjsonToFile: (
   ~appendFile: (string, string) => promise<unit>,
@@ -46,36 +54,30 @@ let appendNdjsonToFile: (
   ~stringifyJson: JSON.t => string,
   ~path: string,
   ~json: JSON.t,
-) => promise<result<unit, string>> = async (~appendFile, ~err, ~stringifyJson, ~path, ~json) => {
+) => promise<result<unit, AppError.appError>> = async (~appendFile, ~err, ~stringifyJson, ~path, ~json) => {
   let rows = extractJsonArray(json)
   let content = rows->Array.map(stringifyJson)->Array.join("\n") ++ "\n"
   try {
     await appendFile(path, content)
     Ok()
   } catch {
-  | exn =>
-    let msg = `Failed to append to output file "${path}": ${ExnUtils.message(exn)}`
-    err(`Warning: ${msg}`)
-    Error(msg)
+  | exn => emitWriteError(~err, ~path, ~operation="Failed to append to output file", ~exn)
   }
 }
 
 /** Synchronously writes the opening bracket of a streamed JSON array.
-    On failure, emits a warning via `err` and resolves to `Error(msg)` so
+    On failure, emits a warning via `err` and resolves to `Error(appErr)` so
     the caller can surface a non-zero exit code. */
 let beginJsonArraySync: (
   ~writeFileSync: (string, string) => unit,
   ~err: string => unit,
   ~path: string,
-) => result<unit, string> = (~writeFileSync, ~err, ~path) => {
+) => result<unit, AppError.appError> = (~writeFileSync, ~err, ~path) => {
   try {
     writeFileSync(path, "[")
     Ok()
   } catch {
-  | exn =>
-    let msg = `Failed to open JSON output file "${path}": ${ExnUtils.message(exn)}`
-    err(`Warning: ${msg}`)
-    Error(msg)
+  | exn => emitWriteError(~err, ~path, ~operation="Failed to open JSON output file", ~exn)
   }
 }
 
@@ -83,7 +85,7 @@ let beginJsonArraySync: (
     to form valid JSON; the very first row of the file (when `isFirstRow`
     is `true`) is prefixed with no extra comma, while subsequent rows are
     always comma-prefixed. On failure, emits a warning via `err` and
-    resolves to `Error(msg)`. */
+    resolves to `Error(appErr)`. */
 let appendJsonRowAsync: (
   ~appendFile: (string, string) => promise<unit>,
   ~err: string => unit,
@@ -91,7 +93,7 @@ let appendJsonRowAsync: (
   ~path: string,
   ~isFirstRow: bool,
   ~json: JSON.t,
-) => promise<result<unit, string>> = async (
+) => promise<result<unit, AppError.appError>> = async (
   ~appendFile,
   ~err,
   ~stringifyJson,
@@ -106,28 +108,22 @@ let appendJsonRowAsync: (
     await appendFile(path, content)
     Ok()
   } catch {
-  | exn =>
-    let msg = `Failed to append to JSON output file "${path}": ${ExnUtils.message(exn)}`
-    err(`Warning: ${msg}`)
-    Error(msg)
+  | exn => emitWriteError(~err, ~path, ~operation="Failed to append to JSON output file", ~exn)
   }
 }
 
 /** Synchronously writes the closing bracket of a streamed JSON array.
-    On failure, emits a warning via `err` and resolves to `Error(msg)`. */
+    On failure, emits a warning via `err` and resolves to `Error(appErr)`. */
 let endJsonArraySync: (
   ~appendFileSync: (string, string) => unit,
   ~err: string => unit,
   ~path: string,
-) => result<unit, string> = (~appendFileSync, ~err, ~path) => {
+) => result<unit, AppError.appError> = (~appendFileSync, ~err, ~path) => {
   try {
     appendFileSync(path, "]")
     Ok()
   } catch {
-  | exn =>
-    let msg = `Failed to close JSON output file "${path}": ${ExnUtils.message(exn)}`
-    err(`Warning: ${msg}`)
-    Error(msg)
+  | exn => emitWriteError(~err, ~path, ~operation="Failed to close JSON output file", ~exn)
   }
 }
 
