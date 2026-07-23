@@ -65,7 +65,7 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
         }
       }
     )
-    (name, field, resolvedFieldType, nestedDefaults, perRowEls)
+    (name, field, resolvedFieldType, nestedDefaults, isMulti, perRowEls)
   })
 
   let outputRows: array<JSON.t> = []
@@ -85,13 +85,14 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
             field,
             resolvedFieldType,
             nestedDefaults,
+            isMulti,
             perRowEls,
           )) => {
             switch fieldError.contents {
             | Some(_) => ()
             | None => {
                 let rowEls = perRowEls[rowIdx.contents]->Option.getOr([])
-                let value = if isMultiElementType(resolvedFieldType) {
+                let value = if isMulti {
                   ExtractorRegistry.extractValueList(
                     rowEls,
                     resolvedFieldType,
@@ -128,7 +129,11 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
         }
         switch pairsResult {
         | Error(e) => loopResult := Error(e)
-        | Ok(pairs) => outputRows->Array.push(JSON.Encode.object(Dict.fromArray(pairs)))
+        | Ok(pairs) => {
+            let rowObj = Dict.make()
+            pairs->Array.forEach(((k, v)) => Dict.set(rowObj, k, v))
+            outputRows->Array.push(JSON.Encode.object(rowObj))
+          }
         }
         rowIdx := rowIdx.contents + 1
       }

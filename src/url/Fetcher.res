@@ -200,59 +200,7 @@ let fetchWithRetry: (
   await tryFetch(1, retryCount)
 }
 
-/**
-  * Semaphore to limit concurrency.
-  */
-type semaphore = {
-  mutable available: int,
-  mutable waiting: array<unit => unit>,
-}
 
-let makeSemaphore = (max: int) => {
-  available: max,
-  waiting: [],
-}
-
-let acquire = (sem: semaphore) =>
-  Promise.make((resolve, _reject) => {
-    if sem.available > 0 {
-      sem.available = sem.available - 1
-      resolve()
-    } else {
-      sem.waiting->Array.push(() => resolve())
-    }
-  })
-
-let release = (sem: semaphore) => {
-  switch sem.waiting->Array.shift {
-  | Some(resolver) => resolver()
-  | None => sem.available = sem.available + 1
-  }
-}
-
-type startLimiter = {
-  mutable nextStartAt: float,
-  delayMs: int,
-}
-
-let makeStartLimiter = (delayMs: int): startLimiter => {
-  nextStartAt: 0.0,
-  delayMs,
-}
-
-let acquireStartSlot = async (limiter: startLimiter) => {
-  if limiter.delayMs <= 0 {
-    ()
-  } else {
-    let now = NodeJsBinding.Performance.now()
-    let scheduledStart = max(limiter.nextStartAt, now)
-    let waitMs = scheduledStart -. now
-    limiter.nextStartAt = scheduledStart +. Float.fromInt(limiter.delayMs)
-    if waitMs > 0.0 {
-      await delay(waitMs->Float.toInt)
-    }
-  }
-}
 
 /**
   * Fetches all URLs with concurrency control.
@@ -262,20 +210,20 @@ let fetchAll: (array<string>, fetchOptions) => promise<array<fetchResult>> = asy
   options,
 ) => {
   let concurrency = min(options.concurrency, 20) // Hard cap at 20
-  let sem = makeSemaphore(concurrency)
-  let limiter = makeStartLimiter(options.delayMs)
+  let sem = Semaphore.make(concurrency)
+  let limiter = StartLimiter.make(~delayMs=options.delayMs)
 
   let fetchWithSemaphore = async url => {
-    await acquire(sem)
+    await Semaphore.acquire(sem)
     // NOTE: ReScript v12 has no `try/finally`. We use `try/catch` to convert
-    // any escaped exception into `Error(exn)`, then `release(sem)` is called
+    // any escaped exception into `Error(exn)`, then `Semaphore.release(sem)` is called
     // unconditionally below — guaranteeing the slot is returned on every
     // exit path (success OR exception). The exception is then re-thrown via
     // `throw(exn)` so the outer `Promise.catch` in `fetchAll` still observes
     // it as before.
     let outcome =
       try {
-        let result = await acquireStartSlot(limiter)->Promise.then(_ =>
+        let result = await StartLimiter.acquireStartSlot(limiter)->Promise.then(_ =>
           fetchWithRetry(
             url,
             options.userAgent,
@@ -288,7 +236,7 @@ let fetchAll: (array<string>, fetchOptions) => promise<array<fetchResult>> = asy
       } catch {
       | exn => Error(exn)
       }
-    release(sem)
+    Semaphore.release(sem)
     switch outcome {
     | Ok(fetchResult) => fetchResult
     | Error(exn) => throw(exn)

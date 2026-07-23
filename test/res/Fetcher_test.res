@@ -187,9 +187,9 @@ testAsync("fetchAll returns all results even when some URLs fail", planned => {
    `planned`. */
 
 testAsync("fetchWithSemaphore guard pattern releases slot when critical section throws", planned => {
-  let sem = Fetcher.makeSemaphore(1)
+  let sem = Semaphore.make(1)
 
-  Fetcher.acquire(sem)
+  Semaphore.acquire(sem)
   ->Promise.then(_ => {
     // Replicate the FIX pattern: critical section throws; the guard still releases.
     let criticalSection = async () => {
@@ -201,7 +201,7 @@ testAsync("fetchWithSemaphore guard pattern releases slot when critical section 
       } catch {
       | exn => Error(exn)
       }
-      Fetcher.release(sem)
+      Semaphore.release(sem)
       switch outcome {
       | Ok() => JsError.throwWithMessage("unreachable: outcome should be Error(_)")
       | Error(exn) => throw(exn)
@@ -218,11 +218,11 @@ testAsync("fetchWithSemaphore guard pattern releases slot when critical section 
       // Critical section rejected as expected. `release(sem)` ran before the
       // re-raise, returning the slot to the semaphore. If the slot were leaked,
       // this second `acquire` would queue forever — the test would hang.
-      Fetcher.acquire(sem)
+      Semaphore.acquire(sem)
       ->Promise.then(_ => {
         passWith("Slot was released in the guard; second acquire resolved immediately")
         planned(~planned=1, ())
-        Fetcher.release(sem)
+        Semaphore.release(sem)
         Promise.resolve()
       })
       ->Promise.catch(_ => {

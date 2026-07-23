@@ -128,7 +128,9 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
       switch fieldResult {
       | Error(e) => loopResult := Error(e)
       | Ok(pairs) => {
-          rows->Array.push(JSON.Encode.object(Dict.fromArray(pairs)))
+          let rowObj = Dict.make()
+          pairs->Array.forEach(((k, v)) => Dict.set(rowObj, k, v))
+          rows->Array.push(JSON.Encode.object(rowObj))
           idx := idx.contents + 1
         }
       }

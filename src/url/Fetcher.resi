@@ -52,29 +52,7 @@ let classifyError: (
   */
 let backoffDelay: int => int
 
-/**
-  * @internal Exported for unit testing only.
-  * Semaphore primitive: counts available concurrency slots and queues waiters.
-  */
-type semaphore
 
-/**
-  * @internal Exported for unit testing only.
-  * Builds a semaphore that permits `max` concurrent holders.
-  */
-let makeSemaphore: int => semaphore
-
-/**
-  * @internal Exported for unit testing only.
-  * Resolves when a slot is available; decrements `available` by one.
-  */
-let acquire: semaphore => promise<unit>
-
-/**
-  * @internal Exported for unit testing only.
-  * Returns a slot to the pool; wakes the next waiter when present.
-  */
-let release: semaphore => unit
 
 /**
   * Fetches all URLs with concurrency control.

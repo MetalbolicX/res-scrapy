@@ -41,6 +41,9 @@ let computeOutputText = (
     }
   }
 
+let writeError = (path: string, exn): AppError.appError =>
+  AppError.WriteError("Failed to write output file \"" ++ path ++ "\": " ++ ExnUtils.message(exn))
+
 let writeText = (
   ~target: outputTarget,
   ~text: string,
@@ -57,12 +60,7 @@ let writeText = (
       writeFile(path, text)
       Ok()
     } catch {
-    | exn =>
-      Error(
-        AppError.WriteError(
-          "Failed to write output file \"" ++ path ++ "\": " ++ ExnUtils.message(exn),
-        ),
-      )
+    | exn => Error(writeError(path, exn))
     }
   }
 
@@ -93,13 +91,7 @@ let writeTextAsync = (
     writeFile(path, text)
     ->Promise.then(_ => Promise.resolve(Ok()))
     ->Promise.catch(exn =>
-      Promise.resolve(
-        Error(
-          AppError.WriteError(
-            "Failed to write output file \"" ++ path ++ "\": " ++ ExnUtils.message(exn),
-          ),
-        ),
-      )
+      Promise.resolve(Error(writeError(path, exn)))
     )
   }
 }

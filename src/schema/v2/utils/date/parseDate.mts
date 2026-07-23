@@ -240,6 +240,15 @@ const BASE_TOKENS: BaseToken[] = [
   { token: "a", regex: "(am|pm|AM|PM)", group: "ampm" },
 ];
 
+/** Hoisted and sorted once — used on every buildRegexFromFormat call. */
+const SORTED_TOKENS: BaseToken[] = BASE_TOKENS.slice().sort(
+  (a, b) => b.token.length - a.token.length,
+);
+
+/** Per-format regex cache: avoids re-sorting tokens and re-compiling the RegExp
+    on every parse call when the same format string is reused. */
+const regexCache = new Map<string, RegexBuildResult>();
+
 /**
  * Build a regular expression and a corresponding list of token groups from a
  * date format string.
@@ -282,16 +291,15 @@ const BASE_TOKENS: BaseToken[] = [
  * date formats to be defined and parsed without hardcoding specific patterns.
  */
 const buildRegexFromFormat = (format: string): RegexBuildResult => {
-  const sortedTokens = BASE_TOKENS.slice().sort(
-    (a, b) => b.token.length - a.token.length,
-  );
+  const cached = regexCache.get(format);
+  if (cached !== undefined) return cached;
 
   let remaining = format;
   let pattern = "";
   const groupNames: TokenGroup[] = [];
 
   while (remaining.length > 0) {
-    const matchedToken = sortedTokens.find(({ token }) =>
+    const matchedToken = SORTED_TOKENS.find(({ token }) =>
       remaining.startsWith(token),
     );
     if (matchedToken) {
@@ -305,12 +313,16 @@ const buildRegexFromFormat = (format: string): RegexBuildResult => {
     remaining = remaining.slice(1);
   }
 
+  let result: RegexBuildResult;
   try {
     const compiledRegex = new RegExp(`^${pattern}$`, "i");
-    return { regex: compiledRegex, groupNames };
+    result = { regex: compiledRegex, groupNames };
   } catch {
-    return { regex: null, groupNames: [] };
+    result = { regex: null, groupNames: [] };
   }
+
+  regexCache.set(format, result);
+  return result;
 };
 
 /**
