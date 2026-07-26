@@ -43,3 +43,53 @@ type stdInput = {
 
 /** Sets the character encoding for data events (e.g. `"utf8"`). */
 @send external setEncoding: (stdInput, string) => unit = "setEncoding"
+/* -------------------------------------------------------------------------- */
+/* Global runtime event handlers — typed wrapper around a %raw FFI island. */
+/* -------------------------------------------------------------------------- */
+
+/** Registers global Node.js event handlers for uncaught exceptions, unhandled
+  * rejections, and termination signals. Guards against double-registration via
+  * a globalThis flag.
+  *
+  * - `reporter` — callback invoked with each error message.
+  * - `exitFn`   — callback invoked with the desired exit code on fatal events.
+  */
+let registerGlobalRuntimeHandlers: (
+  string => unit,
+  int => unit,
+) => unit = %raw(`function(report, exitFn) {
+  if (globalThis.__resScrapyRuntimeHandlersRegistered) {
+    return;
+  }
+  globalThis.__resScrapyRuntimeHandlersRegistered = true;
+
+  var formatError = function(value) {
+    if (value && typeof value === "object") {
+      if (typeof value.stack === "string") return value.stack;
+      if (typeof value.message === "string") return value.message;
+    }
+    return String(value);
+  };
+
+  process.on("uncaughtException", function(err) {
+    report("Unexpected runtime error:");
+    report(formatError(err));
+    exitFn(1);
+  });
+
+  process.on("unhandledRejection", function(reason) {
+    report("Unhandled promise rejection:");
+    report(formatError(reason));
+    exitFn(1);
+  });
+
+  process.on("SIGINT", function() {
+    report("Interrupted (SIGINT)");
+    exitFn(130);
+  });
+
+  process.on("SIGTERM", function() {
+    report("Terminated (SIGTERM)");
+    exitFn(143);
+  });
+}`)
