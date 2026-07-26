@@ -41,11 +41,13 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
       let value = ExtractorRegistry.extractValueList(
         els,
         resolvedFieldType,
-        None,
-        schema.config.ignoreErrors,
-        field.required,
-        name,
-        field.selector,
+        {
+          defaults: None,
+          ignoreErrors: schema.config.ignoreErrors,
+          required: field.required,
+          fieldName: name,
+          selector: field.selector,
+        },
       )
       Dict.set(aggregateValues, name, value)
     }
@@ -99,8 +101,13 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
                   ExtractorRegistry.extractValue(
                     el,
                     resolvedFieldType,
-                    nestedDefaults,
-                    schema.config.ignoreErrors,
+                    {
+                      defaults: nestedDefaults,
+                      ignoreErrors: schema.config.ignoreErrors,
+                      required: field.required,
+                      fieldName: name,
+                      selector: field.selector,
+                    },
                   )
                 | None =>
                   if field.required && schema.config.ignoreErrors == false {

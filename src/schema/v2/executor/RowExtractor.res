@@ -96,11 +96,13 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
                   ExtractorRegistry.extractValueList(
                     rowEls,
                     resolvedFieldType,
-                    None,
-                    schema.config.ignoreErrors,
-                    field.required,
-                    name,
-                    field.selector,
+                    {
+                      defaults: None,
+                      ignoreErrors: schema.config.ignoreErrors,
+                      required: field.required,
+                      fieldName: name,
+                      selector: field.selector,
+                    },
                   )
                 } else {
                   let maybeEl = rowEls[0]
@@ -108,11 +110,13 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
                     maybeEl,
                     resolvedFieldType,
                     field.default,
-                    field.required,
-                    name,
-                    field.selector,
-                    nestedDefaults,
-                    schema.config.ignoreErrors,
+                    {
+                      defaults: nestedDefaults,
+                      ignoreErrors: schema.config.ignoreErrors,
+                      required: field.required,
+                      fieldName: name,
+                      selector: field.selector,
+                    },
                   )
                 }
                 switch value {

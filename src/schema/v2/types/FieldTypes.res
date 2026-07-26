@@ -225,3 +225,19 @@ let isMultiElementType: fieldType => bool = ft =>
   | List(_) => true
   | _ => false
   }
+
+// ---------------------------------------------------------------------------
+// Extraction context
+// ---------------------------------------------------------------------------
+
+/** Shared per-field parameters threaded through every extractor call.
+  * Bundled into a record so the ExtractorRegistry dispatch functions
+  * don't take 8 positional arguments. Lives in FieldTypes (not in
+  * ExtractorRegistry) to avoid an import cycle through TableFieldExtractor. */
+type extractContext = {
+  defaults: option<schemaDefaults>,
+  ignoreErrors: bool,
+  required: bool,
+  fieldName: string,
+  selector: string,
+}

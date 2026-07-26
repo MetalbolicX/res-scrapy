@@ -14,8 +14,7 @@ module Iter = NodeIter
 type cellExtractor = (
   NodeHtmlParserBinding.htmlElement,
   fieldType,
-  option<schemaDefaults>,
-  bool,
+  extractContext,
 ) => result<JSON.t, schemaError>
 
 let columnTypeToFieldType: columnFieldType => fieldType = columnType => {
@@ -51,10 +50,11 @@ let resolveColumnDefaults: (
 let extract: (
   NodeHtmlParserBinding.htmlElement,
   tableOptions,
-  option<schemaDefaults>,
-  bool,
+  extractContext,
   cellExtractor,
-) => result<JSON.t, schemaError> = (el, tableOpts, defaults, ignoreErrors, extractCell) => {
+) => result<JSON.t, schemaError> = (el, tableOpts, ctx, extractCell) => {
+  let defaults = ctx.defaults
+  let ignoreErrors = ctx.ignoreErrors
   let resolvedColumns =
     tableOpts.columns
     ->Iter.values
@@ -111,7 +111,17 @@ let extract: (
                   let maybeEl = rowEls[0]
                   switch maybeEl {
                   | Some(colEl) =>
-                    extractCell(colEl, resolvedFieldType, nestedDefaults, ignoreErrors)
+                    extractCell(
+                      colEl,
+                      resolvedFieldType,
+                      {
+                        defaults: nestedDefaults,
+                        ignoreErrors,
+                        required: col.required,
+                        fieldName: col.name,
+                        selector: col.selector,
+                      },
+                    )
                   | None =>
                     if col.required && ignoreErrors == false {
                       Error(RequiredFieldMissing({fieldName: col.name, selector: col.selector}))

@@ -87,10 +87,9 @@ module DateTimeScalar = MakeScalar({
 let rec extractValue: (
   NodeHtmlParserBinding.htmlElement,
   fieldType,
-  option<schemaDefaults>,
-  bool,
-) => result<JSON.t, schemaError> = (el, ft, defaults, ignoreErrors) => {
-  let resolved = DefaultsMerger.resolveDefaults(defaults, ft)
+  extractContext,
+) => result<JSON.t, schemaError> = (el, ft, ctx) => {
+  let resolved = DefaultsMerger.resolveDefaults(ctx.defaults, ft)
   let extractVisitor: FieldTypeVisitor.fieldTypeVisitor<result<JSON.t, schemaError>> = {
     text: opts => TextScalar.run(el, opts),
     html: opts => HtmlScalar.run(el, opts),
@@ -110,8 +109,7 @@ let rec extractValue: (
     Ok(JSON.Encode.int(1)),
     list: _ => // List requires the full element array; callers must use extractValueList.
     Ok(JSON.Encode.null),
-    table: tableOpts =>
-      TableFieldExtractor.extract(el, tableOpts, defaults, ignoreErrors, extractValue),
+    table: tableOpts => TableFieldExtractor.extract(el, tableOpts, ctx, extractValue),
   }
   FieldTypeVisitor.visitFieldType(extractVisitor, resolved)
 }
@@ -122,24 +120,12 @@ let rec extractValue: (
 let extractValueList: (
   array<NodeHtmlParserBinding.htmlElement>,
   fieldType,
-  option<schemaDefaults>,
-  bool,
-  bool,
-  string,
-  string,
-) => result<JSON.t, schemaError> = (
-  els,
-  ft,
-  defaults,
-  ignoreErrors,
-  required,
-  fieldName,
-  selector,
-) => {
-  if Array.length(els) == 0 && required && ignoreErrors == false {
-    Error(RequiredFieldMissing({fieldName, selector}))
+  extractContext,
+) => result<JSON.t, schemaError> = (els, ft, ctx) => {
+  if Array.length(els) == 0 && ctx.required && ctx.ignoreErrors == false {
+    Error(RequiredFieldMissing({fieldName: ctx.fieldName, selector: ctx.selector}))
   } else {
-    switch DefaultsMerger.resolveDefaults(defaults, ft) {
+    switch DefaultsMerger.resolveDefaults(ctx.defaults, ft) {
     | Count(_) =>
       switch CountExtractor.extract(els) {
       | Some(n) => Ok(JSON.Encode.int(n))
@@ -153,7 +139,7 @@ let extractValueList: (
     | _ =>
       // Scalar fallback: delegate to the single-element path on the first match.
       switch els[0] {
-      | Some(el) => extractValue(el, ft, defaults, ignoreErrors)
+      | Some(el) => extractValue(el, ft, ctx)
       | None => Ok(JSON.Encode.null)
       }
     }
@@ -167,23 +153,10 @@ let extractValueOrAbsent: (
   option<NodeHtmlParserBinding.htmlElement>,
   fieldType,
   option<JSON.t>,
-  bool,
-  string,
-  string,
-  option<schemaDefaults>,
-  bool,
-) => result<JSON.t, schemaError> = (
-  maybeEl,
-  ft,
-  defaultValue,
-  required,
-  fieldName,
-  selector,
-  defaults,
-  ignoreErrors,
-) => {
+  extractContext,
+) => result<JSON.t, schemaError> = (maybeEl, ft, defaultValue, ctx) => {
   switch maybeEl {
-  | Some(el) => extractValue(el, ft, defaults, ignoreErrors)
+  | Some(el) => extractValue(el, ft, ctx)
   | None =>
     switch ft {
     | Boolean(opts)
@@ -193,8 +166,8 @@ let extractValueOrAbsent: (
       } =>
       Ok(JSON.Encode.bool(false))
     | _ =>
-      if required && ignoreErrors == false {
-        Error(RequiredFieldMissing({fieldName, selector}))
+      if ctx.required && ctx.ignoreErrors == false {
+        Error(RequiredFieldMissing({fieldName: ctx.fieldName, selector: ctx.selector}))
       } else {
         Ok(
           switch defaultValue {
