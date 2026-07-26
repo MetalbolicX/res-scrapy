@@ -144,12 +144,6 @@ let formatParseFailureReason = (err: AppError.appError): string => AppError.toMe
   */
 let formatExtractionFailureReason = (err: string): string => err
 
-/**
-  * Formats a `FieldTypes.schemaError` from schema loading / application into
-  * the `reason` string expected by `FetchStatsManager.recordFailure`.
-  */
-let formatSchemaFailureReason = (err: FieldTypes.schemaError): string =>
-  AppError.toMessage(AppError.mapSchemaError(err))
 
 let resolveExtractionSetup: (
   AppContext.appContext,
