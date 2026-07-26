@@ -61,7 +61,10 @@ let mergeNumberOptions = (fieldOpts: option<numberOptions>, defaultOpts: option<
     }
   }
 
-let mergeBooleanOptions = (fieldOpts: option<booleanOptions>, defaultOpts: option<booleanOptions>) =>
+let mergeBooleanOptions = (
+  fieldOpts: option<booleanOptions>,
+  defaultOpts: option<booleanOptions>,
+) =>
   switch defaultOpts {
   | None => fieldOpts
   | Some(def) =>

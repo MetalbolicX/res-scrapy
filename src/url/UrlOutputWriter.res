@@ -54,7 +54,13 @@ let appendNdjsonToFile: (
   ~stringifyJson: JSON.t => string,
   ~path: string,
   ~json: JSON.t,
-) => promise<result<unit, AppError.appError>> = async (~appendFile, ~err, ~stringifyJson, ~path, ~json) => {
+) => promise<result<unit, AppError.appError>> = async (
+  ~appendFile,
+  ~err,
+  ~stringifyJson,
+  ~path,
+  ~json,
+) => {
   let rows = extractJsonArray(json)
   let content = rows->Array.map(stringifyJson)->Array.join("\n") ++ "\n"
   try {
