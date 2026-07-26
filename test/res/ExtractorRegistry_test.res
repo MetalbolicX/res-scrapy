@@ -17,7 +17,7 @@ test("ExtractorRegistry uses schema defaults for Text when field opts are absent
   let defaults: option<schemaDefaults> = Some({text: {trim: false}})
 
   switch ExtractorRegistry.extractValue(el, Text(None), defaults, false) {
-  | Ok(value) => isTextEqualTo("\"  Hello  \"", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("\"  Hello  \"", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected Text extraction success")
   }
 })
@@ -28,7 +28,7 @@ test("ExtractorRegistry field options override schema defaults", () => {
   let defaults: option<schemaDefaults> = Some({text: {trim: false}})
 
   switch ExtractorRegistry.extractValue(el, Text(Some({trim: true})), defaults, false) {
-  | Ok(value) => isTextEqualTo("\"Hello\"", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("\"Hello\"", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected Text extraction success")
   }
 })
@@ -37,7 +37,7 @@ test("ExtractorRegistry extractValueList handles Count", () => {
   let doc = HtmlFixture.parse("<ul><li>A</li><li>B</li><li>C</li></ul>")
   let els = HtmlFixture.selectAll(doc, "li")
   switch ExtractorRegistry.extractValueList(els, Count(None), None, false, false, "count", "li") {
-  | Ok(value) => isTextEqualTo("3", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("3", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected Count extraction success")
   }
 })
@@ -47,7 +47,7 @@ test("ExtractorRegistry extractValueList handles List", () => {
   let els = HtmlFixture.selectAll(doc, "li")
   let opts: listOptions = {itemType: ListText}
   switch ExtractorRegistry.extractValueList(els, List(opts), None, false, false, "items", "li") {
-  | Ok(value) => isTextEqualTo("[\"A\",\"B\"]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("[\"A\",\"B\"]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected List extraction success")
   }
 })
@@ -56,7 +56,7 @@ test("ExtractorRegistry extractValueList scalar fallback uses first element", ()
   let doc = HtmlFixture.parse("<h2>A</h2><h2>B</h2>")
   let els = HtmlFixture.selectAll(doc, "h2")
   switch ExtractorRegistry.extractValueList(els, Text(None), None, false, false, "title", "h2") {
-  | Ok(value) => isTextEqualTo("\"A\"", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("\"A\"", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected scalar fallback extraction success")
   }
 })
@@ -111,7 +111,7 @@ test(
       "items",
       ".item",
     ) {
-    | Ok(value) => isTextEqualTo("0", NodeJsBinding.jsonStringify(value))
+    | Ok(value) => isTextEqualTo("0", NodeUtil.jsonStringify(value))
     | Error(_) => failWith("Expected Count=0 for non-required field with empty elements")
     }
   },
@@ -128,7 +128,7 @@ test("ExtractorRegistry extractValueOrAbsent returns false for Boolean Presence"
     None,
     false,
   ) {
-  | Ok(value) => isTextEqualTo("false", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("false", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected Presence=false for missing element")
   }
 })
@@ -163,7 +163,7 @@ test("ExtractorRegistry extractValueOrAbsent uses default fallback", () => {
     None,
     true,
   ) {
-  | Ok(value) => isTextEqualTo("0", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("0", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected default fallback value")
   }
 })
@@ -193,8 +193,7 @@ test("ExtractorRegistry extractValue supports Table field", () => {
   let tableOpts: tableOptions = {columns: columns}
 
   switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
-  | Ok(value) =>
-    isTextEqualTo("[{\"name\":\"A\"},{\"name\":\"B\"}]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("[{\"name\":\"A\"},{\"name\":\"B\"}]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected table extraction success")
   }
 })
@@ -244,7 +243,7 @@ test("ExtractorRegistry table with multiple columns produces expected row object
   | Ok(value) =>
     isTextEqualTo(
       "[{\"name\":\"A\",\"price\":\"10\"},{\"name\":\"B\",\"price\":\"20\"}]",
-      NodeJsBinding.jsonStringify(value),
+      NodeUtil.jsonStringify(value),
     )
   | Error(_) => failWith("Expected table extraction success")
   }
@@ -267,7 +266,7 @@ test("ExtractorRegistry table with custom rowSelector extracts those rows", () =
   | Ok(value) =>
     isTextEqualTo(
       "[{\"label\":\"R1\"},{\"label\":\"R2\"},{\"label\":\"R3\"}]",
-      NodeJsBinding.jsonStringify(value),
+      NodeUtil.jsonStringify(value),
     )
   | Error(_) => failWith("Expected custom rowSelector extraction")
   }
@@ -285,8 +284,7 @@ test("ExtractorRegistry table without tbody falls back to skipping first tr (the
   let tableOpts: tableOptions = {columns: columns}
 
   switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
-  | Ok(value) =>
-    isTextEqualTo("[{\"name\":\"A\"},{\"name\":\"B\"}]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("[{\"name\":\"A\"},{\"name\":\"B\"}]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected thead fallback extraction")
   }
 })
@@ -301,7 +299,7 @@ test("ExtractorRegistry table with single tr and no tbody yields empty rows", ()
   let tableOpts: tableOptions = {columns: columns}
 
   switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
-  | Ok(value) => isTextEqualTo("[]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("[]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected empty rows fallback")
   }
 })
@@ -323,7 +321,7 @@ test("ExtractorRegistry table with required column uses default fallback", () =>
   let tableOpts: tableOptions = {columns: columns}
 
   switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, true) {
-  | Ok(value) => isTextEqualTo("[{\"price\":0}]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("[{\"price\":0}]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected default fallback for missing column")
   }
 })
@@ -345,7 +343,7 @@ test("ExtractorRegistry table ignoreErrors true suppresses column error", () => 
 
   /* ignoreErrors=true should swallow the ExtractionError and return null. */
   switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, true) {
-  | Ok(value) => isTextEqualTo("[{\"stock\":null}]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("[{\"stock\":null}]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected ignoreErrors to swallow error")
   }
 })
@@ -367,10 +365,7 @@ test("ExtractorRegistry table list column extracts element array per row", () =>
 
   switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
   | Ok(value) =>
-    isTextEqualTo(
-      "[{\"tags\":[\"1\",\"2\"]},{\"tags\":[\"3\"]}]",
-      NodeJsBinding.jsonStringify(value),
-    )
+    isTextEqualTo("[{\"tags\":[\"1\",\"2\"]},{\"tags\":[\"3\"]}]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected list column extraction")
   }
 })
@@ -384,7 +379,7 @@ test("ExtractorRegistry table with empty tbody yields empty array", () => {
   let tableOpts: tableOptions = {columns: columns}
 
   switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
-  | Ok(value) => isTextEqualTo("[]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("[]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected empty tbody to yield []")
   }
 })

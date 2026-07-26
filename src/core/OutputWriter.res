@@ -3,9 +3,9 @@ type outputTarget =
   | File(string)
 
 let jsonArrayToNdjson: string => option<string> = raw =>
-  switch NodeJsBinding.jsonParse(raw) {
+  switch NodeUtil.jsonParse(raw) {
   | None => None
-  | Some(JSON.Array(items)) => Some(items->Array.map(NodeJsBinding.jsonStringify)->Array.join("\n"))
+  | Some(JSON.Array(items)) => Some(items->Array.map(NodeUtil.jsonStringify)->Array.join("\n"))
   | Some(_) => None
   }
 
@@ -41,8 +41,9 @@ let computeOutputText = (
     }
   }
 
-let writeError = (path: string, exn): AppError.appError =>
-  AppError.WriteError("Failed to write output file \"" ++ path ++ "\": " ++ ExnUtils.message(exn))
+let writeError = (path: string, exn): AppError.appError => AppError.WriteError(
+  "Failed to write output file \"" ++ path ++ "\": " ++ ExnUtils.message(exn),
+)
 
 let writeText = (
   ~target: outputTarget,
@@ -90,9 +91,7 @@ let writeTextAsync = (
   | File(path) =>
     writeFile(path, text)
     ->Promise.then(_ => Promise.resolve(Ok()))
-    ->Promise.catch(exn =>
-      Promise.resolve(Error(writeError(path, exn)))
-    )
+    ->Promise.catch(exn => Promise.resolve(Error(writeError(path, exn))))
   }
 }
 

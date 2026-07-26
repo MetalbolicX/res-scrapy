@@ -5,9 +5,9 @@ open FieldTypes
 let collectStrings = (json: option<JSON.t>): array<string> => {
   switch json {
   | Some(j) =>
-    let raw = NodeJsBinding.jsonStringify(j)
+    let raw = NodeUtil.jsonStringify(j)
     let arr = TestHelpers.arrayFromJsonString(raw)
-    arr->Array.map(node => NodeJsBinding.jsonStringify(node))
+    arr->Array.map(node => NodeUtil.jsonStringify(node))
   | None => []
   }
 }
@@ -25,7 +25,7 @@ test("ListExtractor ListText returns JSON array", () => {
   isOptionEqualTo(
     Some(TestHelpers.jsonFromString("[\"A\",\"B\"]")),
     ListExtractor.extract(els, opts),
-    ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
+    ~eq=(a, b) => NodeUtil.jsonStringify(a) == NodeUtil.jsonStringify(b),
   )
 })
 
@@ -36,7 +36,7 @@ test("ListExtractor supports unique, filter and limit", () => {
   isOptionEqualTo(
     Some(TestHelpers.jsonFromString("[\"A\",\"B\"]")),
     ListExtractor.extract(els, opts),
-    ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
+    ~eq=(a, b) => NodeUtil.jsonStringify(a) == NodeUtil.jsonStringify(b),
   )
 })
 
@@ -50,17 +50,17 @@ test("ListExtractor rejects unsafe regex patterns", () => {
   isOptionEqualTo(
     Some(TestHelpers.jsonFromString("[]")),
     ListExtractor.extract(els, unsafeBackref),
-    ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
+    ~eq=(a, b) => NodeUtil.jsonStringify(a) == NodeUtil.jsonStringify(b),
   )
   isOptionEqualTo(
     Some(TestHelpers.jsonFromString("[]")),
     ListExtractor.extract(els, unsafeLookahead),
-    ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
+    ~eq=(a, b) => NodeUtil.jsonStringify(a) == NodeUtil.jsonStringify(b),
   )
   isOptionEqualTo(
     Some(TestHelpers.jsonFromString("[]")),
     ListExtractor.extract(els, unsafeAlternation),
-    ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
+    ~eq=(a, b) => NodeUtil.jsonStringify(a) == NodeUtil.jsonStringify(b),
   )
 })
 
@@ -71,7 +71,7 @@ test("ListExtractor supports join output", () => {
   isOptionEqualTo(
     Some(TestHelpers.jsonFromString("\"A|B\"")),
     ListExtractor.extract(els, opts),
-    ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
+    ~eq=(a, b) => NodeUtil.jsonStringify(a) == NodeUtil.jsonStringify(b),
   )
 })
 
@@ -85,12 +85,12 @@ test("ListExtractor ListAttribute and ListUrl", () => {
   isOptionEqualTo(
     Some(TestHelpers.jsonFromString("[\"1\",\"2\"]")),
     ListExtractor.extract(els, attrOpts),
-    ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
+    ~eq=(a, b) => NodeUtil.jsonStringify(a) == NodeUtil.jsonStringify(b),
   )
   isOptionEqualTo(
     Some(TestHelpers.jsonFromString("[\"https://a.com/\",\"https://b.com/\"]")),
     ListExtractor.extract(els, urlOpts),
-    ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
+    ~eq=(a, b) => NodeUtil.jsonStringify(a) == NodeUtil.jsonStringify(b),
   )
 })
 
@@ -168,9 +168,7 @@ test("PR 2b ListText delegates to TextExtractor.extract on each element", () => 
 
   isIntEqualTo(expected->Array.length, actual->Array.length, ~message="ListText length")
   for i in 0 to expected->Array.length - 1 {
-    let e = NodeJsBinding.jsonStringify(
-      JSON.Encode.string(expected->Array.get(i)->Option.getOr("")),
-    )
+    let e = NodeUtil.jsonStringify(JSON.Encode.string(expected->Array.get(i)->Option.getOr("")))
     isTextEqualTo(e, actual->Array.get(i)->Option.getOr(""))
   }
 })
@@ -187,9 +185,7 @@ test("PR 2b ListAttribute delegates to AttributeExtractor.extract on each elemen
 
   isIntEqualTo(expected->Array.length, actual->Array.length, ~message="ListAttr length")
   for i in 0 to expected->Array.length - 1 {
-    let e = NodeJsBinding.jsonStringify(
-      JSON.Encode.string(expected->Array.get(i)->Option.getOr("")),
-    )
+    let e = NodeUtil.jsonStringify(JSON.Encode.string(expected->Array.get(i)->Option.getOr("")))
     isTextEqualTo(e, actual->Array.get(i)->Option.getOr(""))
   }
 })
@@ -206,9 +202,7 @@ test("PR 2b ListUrl delegates to UrlExtractor.extract on each element", () => {
 
   isIntEqualTo(expected->Array.length, actual->Array.length, ~message="ListUrl length")
   for i in 0 to expected->Array.length - 1 {
-    let e = NodeJsBinding.jsonStringify(
-      JSON.Encode.string(expected->Array.get(i)->Option.getOr("")),
-    )
+    let e = NodeUtil.jsonStringify(JSON.Encode.string(expected->Array.get(i)->Option.getOr("")))
     isTextEqualTo(e, actual->Array.get(i)->Option.getOr(""))
   }
 })

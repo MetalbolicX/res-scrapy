@@ -1,7 +1,7 @@
 open Test
 open Assertions
 open TestHelpers
-open NodeJsBinding.Fetch
+open NodeFetch
 
 test("isRetryable returns true for NetworkError", () => {
   isTruthy(Fetcher.isRetryable(NetworkError("connection refused")))
@@ -186,58 +186,69 @@ testAsync("fetchAll returns all results even when some URLs fail", planned => {
    and the follow-up `acquire` would deadlock — the test would never reach
    `planned`. */
 
-testAsync("fetchWithSemaphore guard pattern releases slot when critical section throws", planned => {
-  let sem = Semaphore.make(1)
+testAsync(
+  "fetchWithSemaphore guard pattern releases slot when critical section throws",
+  planned => {
+    let sem = Semaphore.make(1)
 
-  Semaphore.acquire(sem)
-  ->Promise.then(_ => {
-    // Replicate the FIX pattern: critical section throws; the guard still releases.
-    let criticalSection = async () => {
-      let outcome = try {
-        let _ = await Promise.reject(
-          JsError.throwWithMessage("Simulated fetch failure escaping fetchOnce's try/catch"),
-        )
-        Ok()
-      } catch {
-      | exn => Error(exn)
-      }
-      Semaphore.release(sem)
-      switch outcome {
-      | Ok() => JsError.throwWithMessage("unreachable: outcome should be Error(_)")
-      | Error(exn) => throw(exn)
-      }
-    }
-
-    criticalSection()
+    Semaphore.acquire(sem)
     ->Promise.then(_ => {
-      failWith("criticalSection should have rejected — rejection was silently swallowed")
-      planned(~planned=0, ())
-      Promise.resolve()
-    })
-    ->Promise.catch(_ => {
-      // Critical section rejected as expected. `release(sem)` ran before the
-      // re-raise, returning the slot to the semaphore. If the slot were leaked,
-      // this second `acquire` would queue forever — the test would hang.
-      Semaphore.acquire(sem)
-      ->Promise.then(_ => {
-        passWith("Slot was released in the guard; second acquire resolved immediately")
-        planned(~planned=1, ())
+      // Replicate the FIX pattern: critical section throws; the guard still releases.
+      let criticalSection = async () => {
+        let outcome = try {
+          let _ = await Promise.reject(
+            JsError.throwWithMessage("Simulated fetch failure escaping fetchOnce's try/catch"),
+          )
+          Ok()
+        } catch {
+        | exn => Error(exn)
+        }
         Semaphore.release(sem)
-        Promise.resolve()
-      })
-      ->Promise.catch(_ => {
-        failWith("Second acquire failed — semaphore was leaked by critical section throw")
-        planned(~planned=0, ())
-        Promise.resolve()
-      })
+        switch outcome {
+        | Ok() => JsError.throwWithMessage("unreachable: outcome should be Error(_)")
+        | Error(exn) => throw(exn)
+        }
+      }
+
+      criticalSection()
+      ->Promise.then(
+        _ => {
+          failWith("criticalSection should have rejected — rejection was silently swallowed")
+          planned(~planned=0, ())
+          Promise.resolve()
+        },
+      )
+      ->Promise.catch(
+        _ => {
+          // Critical section rejected as expected. `release(sem)` ran before the
+          // re-raise, returning the slot to the semaphore. If the slot were leaked,
+          // this second `acquire` would queue forever — the test would hang.
+          Semaphore.acquire(sem)
+          ->Promise.then(
+            _ => {
+              passWith("Slot was released in the guard; second acquire resolved immediately")
+              planned(~planned=1, ())
+              Semaphore.release(sem)
+              Promise.resolve()
+            },
+          )
+          ->Promise.catch(
+            _ => {
+              failWith("Second acquire failed — semaphore was leaked by critical section throw")
+              planned(~planned=0, ())
+              Promise.resolve()
+            },
+          )
+          ->ignore
+          Promise.resolve()
+        },
+      )
       ->ignore
       Promise.resolve()
     })
     ->ignore
-    Promise.resolve()
-  })
-  ->ignore
-})
+  },
+)
 
 /* Integration regression test: with concurrency=1 and N>1 URLs that all fail,
    `fetchAll` MUST complete in bounded time — no fetch may deadlock on `acquire`.
@@ -245,40 +256,43 @@ testAsync("fetchWithSemaphore guard pattern releases slot when critical section 
    each failing fetch still releases its slot, so the next fetch in the queue
    proceeds. */
 
-testAsync("fetchAll with concurrency=1 processes a queue of failing URLs without deadlocking", planned => {
-  let options: Fetcher.fetchOptions = {
-    concurrency: 1,
-    userAgent: "test-agent/1.0",
-    timeoutSeconds: 1,
-    retryCount: 0,
-    delayMs: 0,
-    headers: [],
-  }
-  // Three URLs to a closed local port — all will fail with NetworkError,
-  // none should deadlock the queue.
-  let urls = ["http://127.0.0.1:9", "http://127.0.0.1:9", "http://127.0.0.1:9"]
+testAsync(
+  "fetchAll with concurrency=1 processes a queue of failing URLs without deadlocking",
+  planned => {
+    let options: Fetcher.fetchOptions = {
+      concurrency: 1,
+      userAgent: "test-agent/1.0",
+      timeoutSeconds: 1,
+      retryCount: 0,
+      delayMs: 0,
+      headers: [],
+    }
+    // Three URLs to a closed local port — all will fail with NetworkError,
+    // none should deadlock the queue.
+    let urls = ["http://127.0.0.1:9", "http://127.0.0.1:9", "http://127.0.0.1:9"]
 
-  Fetcher.fetchAll(urls, options)
-  ->Promise.then(results => {
-    (results->Array.length == 3)->isTruthy
-    let allFailed =
-      results
-      ->Array.filter(
-        r =>
-          switch r.result {
-          | Ok(_) => false
-          | Error(_) => true
-          },
-      )
-      ->Array.length
-    (allFailed == 3)->isTruthy
-    planned(~planned=2, ())
-    Promise.resolve()
-  })
-  ->Promise.catch(_ => {
-    failWith("fetchAll deadlocked or threw unexpectedly with concurrency=1 and 3 failing URLs")
-    planned(~planned=0, ())
-    Promise.resolve()
-  })
-  ->ignore
-})
+    Fetcher.fetchAll(urls, options)
+    ->Promise.then(results => {
+      (results->Array.length == 3)->isTruthy
+      let allFailed =
+        results
+        ->Array.filter(
+          r =>
+            switch r.result {
+            | Ok(_) => false
+            | Error(_) => true
+            },
+        )
+        ->Array.length
+      (allFailed == 3)->isTruthy
+      planned(~planned=2, ())
+      Promise.resolve()
+    })
+    ->Promise.catch(_ => {
+      failWith("fetchAll deadlocked or threw unexpectedly with concurrency=1 and 3 failing URLs")
+      planned(~planned=0, ())
+      Promise.resolve()
+    })
+    ->ignore
+  },
+)

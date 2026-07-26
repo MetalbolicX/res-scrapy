@@ -8,7 +8,7 @@
   */
 open FieldTypes
 
-module Iter = NodeJsBinding.Iter
+module Iter = NodeIter
 
 let getJsonSource: (NodeHtmlParserBinding.htmlElement, option<jsonOptions>) => option<string> = (
   el,
@@ -77,7 +77,7 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<jsonOptions>) => option<
   switch raw {
   | None => None
   | Some(str) =>
-    let parsed = NodeJsBinding.jsonParse(str)
+    let parsed = NodeUtil.jsonParse(str)
     switch parsed {
     | None =>
       // JSON parse failed — apply onError policy

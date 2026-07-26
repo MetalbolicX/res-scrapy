@@ -29,7 +29,7 @@ test("ZipExtractor - run with empty fields returns zero rows", () => {
   let result = ZipExtractor.run(doc, schema)
   isResultOk(result)
   switch result {
-  | Ok(json) => isTextEqualTo("[]", NodeJsBinding.jsonStringify(json))
+  | Ok(json) => isTextEqualTo("[]", NodeUtil.jsonStringify(json))
   | Error(_) => failWith("Expected empty array")
   }
 })
@@ -73,7 +73,7 @@ test("ZipExtractor - run with multiple rows preserves order and count", () => {
   isResultOk(result)
   switch result {
   | Ok(json) =>
-    let out = NodeJsBinding.jsonStringify(json)
+    let out = NodeUtil.jsonStringify(json)
     isTextEqualTo(`[{"name":"A","price":10},{"name":"B","price":20},{"name":"C","price":30}]`, out)
   | Error(_) => failWith("Expected successful multi-row extraction")
   }
@@ -118,7 +118,7 @@ test("ZipExtractor - limit config caps row count", () => {
   isResultOk(result)
   switch result {
   | Ok(json) =>
-    let out = NodeJsBinding.jsonStringify(json)
+    let out = NodeUtil.jsonStringify(json)
     isTextEqualTo(`[{"name":"A","price":10},{"name":"B","price":20}]`, out)
   | Error(_) => failWith("Expected successful extraction with limit")
   }
@@ -164,12 +164,12 @@ test("ZipExtractor - handles large row count without stack overflow", () => {
   isResultOk(result)
   switch result {
   | Ok(json) => {
-      let jsonArray = TestHelpers.arrayFromJsonString(NodeJsBinding.jsonStringify(json))
+      let jsonArray = TestHelpers.arrayFromJsonString(NodeUtil.jsonStringify(json))
       isIntEqualTo(rowCount, Array.length(jsonArray))
       // Spot-check first and last rows to confirm order preservation.
-      let firstStr = NodeJsBinding.jsonStringify(Array.getUnsafe(jsonArray, 0))
+      let firstStr = NodeUtil.jsonStringify(Array.getUnsafe(jsonArray, 0))
       isTextEqualTo(`{"name":"N0","price":0}`, firstStr)
-      let lastStr = NodeJsBinding.jsonStringify(Array.getUnsafe(jsonArray, rowCount - 1))
+      let lastStr = NodeUtil.jsonStringify(Array.getUnsafe(jsonArray, rowCount - 1))
       isTextEqualTo(
         `{"name":"N${Int.toString(rowCount - 1)}","price":${Int.toString(rowCount - 1)}}`,
         lastStr,

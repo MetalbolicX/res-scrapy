@@ -1,4 +1,4 @@
-module Iter = NodeJsBinding.Iter
+module Iter = NodeIter
 
 open FieldTypes
 

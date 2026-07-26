@@ -40,7 +40,7 @@ test("RowExtractor - run with empty fields returns array of empty objects for ea
   let result = RowExtractor.run(doc, schema)
   isResultOk(result)
   switch result {
-  | Ok(json) => isTextEqualTo("[{},{}]", NodeJsBinding.jsonStringify(json))
+  | Ok(json) => isTextEqualTo("[{},{}]", NodeUtil.jsonStringify(json))
   | Error(_) => failWith("Expected array of empty objects")
   }
 })
@@ -202,7 +202,7 @@ test("RowExtractor handles 100 rows x 10 fields without regression", () => {
   isResultOk(result)
   switch result {
   | Ok(json) => {
-      let arr = NodeJsBinding.jsonParse(NodeJsBinding.jsonStringify(json))
+      let arr = NodeUtil.jsonParse(NodeUtil.jsonStringify(json))
       let count = switch arr {
       | Some(JSON.Array(a)) => Array.length(a)
       | _ => 0

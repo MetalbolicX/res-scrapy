@@ -7,7 +7,7 @@
  *
  * Generic enough to be used by any concurrent subsystem (not coupled to HTTP).
  */
-module Iter = NodeJsBinding.Iter
+module Iter = NodeIter
 
 type t = {
   mutable available: int,

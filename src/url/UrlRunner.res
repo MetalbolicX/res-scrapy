@@ -12,7 +12,7 @@
   *   • JSON helpers — kept in this file because they are tiny and used
   *     only by the orchestrator (e.g. counting rows in a JSON array).
   */
-module Iter = NodeJsBinding.Iter
+module Iter = NodeIter
 
 /** Counts the number of rows in a JSON result. */
 let countRows: JSON.t => int = json => {
@@ -54,23 +54,18 @@ let extractFromDocument = (
   switch setup {
   | TableSetup(selector) =>
     ctx.deps.doc.extractTable(document, selector)->Result.map(rows =>
-      JSON.Encode.array(rows->Array.map(row =>
-        JSON.Encode.object(Dict.fromArray(Dict.toArray(row)->Array.map(((k, v)) =>
-          (k, JSON.Encode.string(v))
-        )))
-      ))
+      JSON.Encode.array(
+        rows->Array.map(row =>
+          JSON.Encode.object(
+            Dict.fromArray(Dict.toArray(row)->Array.map(((k, v)) => (k, JSON.Encode.string(v)))),
+          )
+        ),
+      )
     )
   | SchemaSetup(schema) =>
-    ctx.deps.schema.applySchema(document, schema)
-    ->Result.mapError(formatSchemaFailureReason)
+    ctx.deps.schema.applySchema(document, schema)->Result.mapError(formatSchemaFailureReason)
   | SelectorSetup({selector, extract: extractMode, mode}) =>
-    switch SelectorExtractor.extractElements(
-      ctx,
-      document,
-      selector,
-      extractMode,
-      mode,
-    ) {
+    switch SelectorExtractor.extractElements(ctx, document, selector, extractMode, mode) {
     | Error(msg) => Error(msg)
     | Ok(contents) => Ok(JSON.Encode.array(contents->Array.map(JSON.Encode.string)))
     }
@@ -246,18 +241,17 @@ let runUrlMode = async (
             switch Document.parseDocumentSafely(ctx.deps.doc.documentOps, html) {
             | Error(parseErr) =>
               FetchStatsManager.recordFailure(mgr, ~url, ~reason=formatParseFailureReason(parseErr))
-            | Ok(document) => {
-                switch extractFromDocument(~setup, ~document, ~ctx) {
-                | Error(extractErr) =>
-                  FetchStatsManager.recordFailure(
-                    mgr,
-                    ~url,
-                    ~reason=formatExtractionFailureReason(extractErr),
-                  )
-                | Ok(json) => {
-                    FetchStatsManager.recordSuccess(mgr, ~rowCount=countRows(json))
-                    await routeOutput(~options, ~json, ~ctx, ~state)
-                  }
+            | Ok(document) =>
+              switch extractFromDocument(~setup, ~document, ~ctx) {
+              | Error(extractErr) =>
+                FetchStatsManager.recordFailure(
+                  mgr,
+                  ~url,
+                  ~reason=formatExtractionFailureReason(extractErr),
+                )
+              | Ok(json) => {
+                  FetchStatsManager.recordSuccess(mgr, ~rowCount=countRows(json))
+                  await routeOutput(~options, ~json, ~ctx, ~state)
                 }
               }
             }

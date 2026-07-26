@@ -5,7 +5,7 @@
 open FieldTypes
 open JsonUtils
 
-module Iter = NodeJsBinding.Iter
+module Iter = NodeIter
 
 // ---------------------------------------------------------------------------
 // text options

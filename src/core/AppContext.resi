@@ -1,6 +1,6 @@
 type cliDeps = {
-  parseCli: unit => NodeJsBinding.Util.cliValues,
-  validateArgs: NodeJsBinding.Util.cliValues => result<ParseCli.parseOptions, ParseCli.parseError>,
+  parseCli: unit => NodeUtil.cliValues,
+  validateArgs: NodeUtil.cliValues => result<ParseCli.parseOptions, ParseCli.parseError>,
   readStdin: unit => promise<Result.t<string, StdIn.stdInError>>,
   getCliVersion: unit => string,
 }

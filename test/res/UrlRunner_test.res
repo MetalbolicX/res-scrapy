@@ -73,9 +73,9 @@ let makeUrlRunnerDeps = (
     appendFileSync,
   },
   serialize: {
-    stringifyJson: NodeJsBinding.jsonStringify,
-    stringifyTableRows: NodeJsBinding.jsonStringify,
-    stringifyStrings: NodeJsBinding.jsonStringify,
+    stringifyJson: NodeUtil.jsonStringify,
+    stringifyTableRows: NodeUtil.jsonStringify,
+    stringifyStrings: NodeUtil.jsonStringify,
   },
   doc: {
     documentOps: NodeHtmlDocument.operations,
@@ -432,7 +432,7 @@ testAsync("runUrlMode streams 3 successful fetches as a JSON array", done_ => {
     // Concatenating every recorded write yields a valid JSON array with 5
     // rows in source order: A, B, C, D, E.
     let reassembled = writes->Array.map(w => w.content)->Array.join("")
-    switch NodeJsBinding.jsonParse(reassembled) {
+    switch NodeUtil.jsonParse(reassembled) {
     | Some(JSON.Array(rows)) => isIntEqualTo(5, Array.length(rows))
     | _ => failWith(`reassembled output is not a JSON array: ${reassembled}`)
     }
@@ -496,7 +496,7 @@ testAsync("runUrlMode writes empty JSON array when all fetches fail", done_ => {
     }
 
     let reassembled = writes->Array.map(w => w.content)->Array.join("")
-    switch NodeJsBinding.jsonParse(reassembled) {
+    switch NodeUtil.jsonParse(reassembled) {
     | Some(JSON.Array(rows)) => isIntEqualTo(0, Array.length(rows))
     | _ => failWith("reassembled output is not an empty JSON array")
     }

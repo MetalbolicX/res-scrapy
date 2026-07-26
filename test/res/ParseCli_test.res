@@ -57,49 +57,49 @@ let isMultiple = opts =>
   | _ => false
   }
 
-let emptyValues: NodeJsBinding.Util.cliValues = {}
+let emptyValues: NodeUtil.cliValues = {}
 
-let withSelector = (values, sel): NodeJsBinding.Util.cliValues => {
+let withSelector = (values, sel): NodeUtil.cliValues => {
   ...values,
   selector: sel,
 }
 
-let withExtract = (values, ex): NodeJsBinding.Util.cliValues => {
+let withExtract = (values, ex): NodeUtil.cliValues => {
   ...values,
   extract: ex,
 }
 
-let withMode = (values, m): NodeJsBinding.Util.cliValues => {
+let withMode = (values, m): NodeUtil.cliValues => {
   ...values,
   mode: m,
 }
 
-let withSchema = (values, s): NodeJsBinding.Util.cliValues => {
+let withSchema = (values, s): NodeUtil.cliValues => {
   ...values,
   schema: s,
 }
 
-let withSchemaPath = (values, p): NodeJsBinding.Util.cliValues => {
+let withSchemaPath = (values, p): NodeUtil.cliValues => {
   ...values,
   schemaPath: p,
 }
 
-let withTable = (values, t): NodeJsBinding.Util.cliValues => {
+let withTable = (values, t): NodeUtil.cliValues => {
   ...values,
   table: t,
 }
 
-let withOutput = (values, path): NodeJsBinding.Util.cliValues => {
+let withOutput = (values, path): NodeUtil.cliValues => {
   ...values,
   output: path,
 }
 
-let withFormat = (values, format): NodeJsBinding.Util.cliValues => {
+let withFormat = (values, format): NodeUtil.cliValues => {
   ...values,
   format,
 }
 
-let withUserAgent = (values, ua): NodeJsBinding.Util.cliValues => {
+let withUserAgent = (values, ua): NodeUtil.cliValues => {
   ...values,
   userAgent: ua,
 }

@@ -7,7 +7,7 @@
   */
 open FieldTypes
 
-module Iter = NodeJsBinding.Iter
+module Iter = NodeIter
 
 let defaultTrueValues = ["true", "yes", "1", "on", "in stock"]
 let defaultFalseValues = ["false", "no", "0", "off", "out of stock"]

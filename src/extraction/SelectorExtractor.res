@@ -1,4 +1,4 @@
-module Iter = NodeJsBinding.Iter
+module Iter = NodeIter
 
 /** Extracts element content from a document using selector + extract mode.
   * Returns array of strings for Single/Multiple mode. */

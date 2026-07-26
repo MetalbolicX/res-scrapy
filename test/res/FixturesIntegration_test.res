@@ -21,7 +21,7 @@ test("fixtures: attributes case", () => {
     "\"joinedAttrs\":{\"selector\":\"a.all-attrs\",\"type\":\"attribute\",\"attributes\":[\"href\",\"title\",\"rel\"],\"attrMode\":\"join\"}" ++ "}}"
   switch runFixture(~html, ~schema) {
   | Ok(value) => {
-      let out = NodeJsBinding.jsonStringify(value)
+      let out = NodeUtil.jsonStringify(value)
       isTruthy(TestHelpers.stringContains(out, "lazy-image.jpg"))
       isTruthy(TestHelpers.stringContains(out, "/foo"))
     }
@@ -39,7 +39,7 @@ test("fixtures: dates case", () => {
     "\"euro\":{\"selector\":\".euro\",\"type\":\"datetime\",\"dateOptions\":{\"formats\":[\"dd-MM-yyyy\"],\"output\":\"iso8601\"}}" ++ "}}"
   switch runFixture(~html, ~schema) {
   | Ok(value) => {
-      let out = NodeJsBinding.jsonStringify(value)
+      let out = NodeUtil.jsonStringify(value)
       isTruthy(TestHelpers.stringContains(out, "2024-06-01T00:00:00Z"))
     }
   | Error(_) => failWith("dates fixture should parse")
@@ -55,7 +55,7 @@ test("fixtures: inner_outer case", () => {
     "\"bodyClean\":{\"selector\":\"#card-1 .body\",\"type\":\"html\",\"htmlOptions\":{\"mode\":\"inner\",\"stripScripts\":true,\"stripStyles\":true}}" ++ "}}"
   switch runFixture(~html, ~schema) {
   | Ok(value) => {
-      let out = NodeJsBinding.jsonStringify(value)
+      let out = NodeUtil.jsonStringify(value)
       isTruthy(TestHelpers.stringContains(out, "Card One"))
       isTruthy(TestHelpers.stringContains(out, "First"))
     }
@@ -74,7 +74,7 @@ test("fixtures: other case", () => {
     "\"schemaPrice\":{\"selector\":\"script[type='application/ld+json']\",\"type\":\"json\",\"jsonOptions\":{\"path\":\"offers.price\"}}" ++ "}}"
   switch runFixture(~html, ~schema) {
   | Ok(value) => {
-      let out = NodeJsBinding.jsonStringify(value)
+      let out = NodeUtil.jsonStringify(value)
       isTruthy(TestHelpers.stringContains(out, "1234.56"))
       isTruthy(TestHelpers.stringContains(out, "fast"))
       isTruthy(TestHelpers.stringContains(out, "cheap"))
@@ -95,7 +95,7 @@ test("fixtures: row mode with default fallback on missing required", () => {
   | Ok(value) =>
     isTextEqualTo(
       "[{\"name\":\"A\",\"price\":10},{\"name\":\"B\",\"price\":0}]",
-      NodeJsBinding.jsonStringify(value),
+      NodeUtil.jsonStringify(value),
     )
   | Error(_) => failWith("Expected row mode fallback output")
   }
@@ -113,7 +113,7 @@ test("fixtures: zip mode aggregate + scalar behavior", () => {
   | Ok(value) =>
     isTextEqualTo(
       "[{\"title\":\"A\",\"tagCount\":3,\"tags\":[\"x\",\"y\"]},{\"title\":\"B\",\"tagCount\":3,\"tags\":[\"x\",\"y\"]}]",
-      NodeJsBinding.jsonStringify(value),
+      NodeUtil.jsonStringify(value),
     )
   | Error(_) => failWith("Expected zip aggregate behavior")
   }

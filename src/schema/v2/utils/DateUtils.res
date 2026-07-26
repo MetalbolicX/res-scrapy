@@ -5,7 +5,7 @@
   */
 open FieldTypes
 
-module Iter = NodeJsBinding.Iter
+module Iter = NodeIter
 
 type jsDate
 

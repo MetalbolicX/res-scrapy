@@ -23,7 +23,7 @@ let maxStdinMs =
   30 * 1000
 
 let hasStdinData: unit => bool = () => {
-  open NodeJsBinding.Process
+  open NodeProcess
   switch stdin.isTTY {
   | Some(true) => false
   | _ => true
@@ -47,7 +47,7 @@ let readFromStdin: unit => promise<Result.t<string, stdInError>> = () => {
       complete(Result.Error(NoInput("No HTML input provided via stdin")))
     } else {
       try {
-        open NodeJsBinding.Process
+        open NodeProcess
 
         stdin->setEncoding("utf8")
 
@@ -112,7 +112,8 @@ let readFromStdin: unit => promise<Result.t<string, stdInError>> = () => {
 
         stdin->resume
       } catch {
-      | exn => if !settled.contents {
+      | exn =>
+        if !settled.contents {
           let errorMessage = switch exn->JsExn.fromException {
           | Some(jsExn) => jsExn->JsExn.message->Option.getOr("Unknown error")
           | None => "Unknown error"

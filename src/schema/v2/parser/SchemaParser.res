@@ -5,7 +5,7 @@
 open FieldTypes
 open JsonUtils
 
-module Iter = NodeJsBinding.Iter
+module Iter = NodeIter
 
 @val external objectKeys: 'a => array<string> = "Object.keys"
 

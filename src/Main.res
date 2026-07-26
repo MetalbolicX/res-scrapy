@@ -24,14 +24,16 @@ let mainWithContext: AppContext.appContext => promise<unit> = async ctx => {
 
         // Check if URL mode or stdin mode
         switch options.url {
-        | Some(urlTemplate) => // URL mode: fetch pages and extract
+        | Some(urlTemplate) =>
+          // URL mode: fetch pages and extract
           await UrlRunner.runUrlMode(ctx, urlTemplate, options)
         | None => {
             // Stdin mode: existing behavior
             let stdinResult = await ctx.deps.cli.readStdin()
             switch stdinResult->ResultX.mapError(AppError.mapStdInError) {
             | Error(err) => exitWithError(ctx, err)
-            | Ok(html) => switch Document.parseDocumentSafely(ctx.deps.doc.documentOps, html) {
+            | Ok(html) =>
+              switch Document.parseDocumentSafely(ctx.deps.doc.documentOps, html) {
               | Error(err) => exitWithError(ctx, err)
               | Ok(document) =>
                 switch ExtractionMode.fromOptions(options) {
@@ -123,6 +125,6 @@ let registerGlobalRuntimeHandlers: (
   }`)
 
 if isExecutedAsScript() {
-  registerGlobalRuntimeHandlers(Console.error, NodeJsBinding.Process.setExitCode)
+  registerGlobalRuntimeHandlers(Console.error, NodeProcess.setExitCode)
   await main()
 }

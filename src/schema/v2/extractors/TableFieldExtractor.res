@@ -6,7 +6,7 @@
   * cell value, so the recursive extractor is passed in as a callback. */
 open FieldTypes
 
-module Iter = NodeJsBinding.Iter
+module Iter = NodeIter
 
 /** Callback signature for resolving a single (non-list) cell value inside a
   * row. This is satisfied by `ExtractorRegistry.extractValue` and lets the

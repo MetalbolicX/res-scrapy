@@ -46,4 +46,4 @@ type parseError =
   | InvalidHeader(string)
   | InvalidUrlMode(string)
 
-let runArgsValidation: NodeJsBinding.Util.cliValues => result<parseOptions, parseError>
+let runArgsValidation: NodeUtil.cliValues => result<parseOptions, parseError>
