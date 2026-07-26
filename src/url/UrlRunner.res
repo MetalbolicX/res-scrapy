@@ -164,6 +164,49 @@ let resolveExtractionSetup: (
   | SelectorMode({selector, extract, mode}) => Ok(SelectorSetup({selector, extract, mode}))
   }
 
+/** Runs the per-item pipeline: parse document, extract, route output, update stats.
+    Promoted to top-level so it can be unit-tested in isolation. Closure-captured
+    state (ctx, options, mgr, state) is now passed explicitly. */
+let processOne = async (
+  ~setup: extractionSetup,
+  ~item: Fetcher.fetchResult,
+  ~ctx: AppContext.appContext,
+  ~options: ParseCli.parseOptions,
+  ~mgr: FetchStatsManager.t,
+  ~state: outputState,
+) => {
+  let {url, result} = item
+  switch result {
+  | Error(fetchErr) => {
+      let reason = switch fetchErr {
+      | NetworkError(msg) => msg
+      | Timeout(msg) => msg
+      | HttpError(status, msg) => `HTTP ${Int.toString(status)}: ${msg}`
+      | ParseError(msg) => msg
+      }
+      FetchStatsManager.recordFailure(mgr, ~url, ~reason)
+    }
+  | Ok(html) =>
+    switch Document.parseDocumentSafely(ctx.deps.doc.documentOps, html) {
+    | Error(parseErr) =>
+      FetchStatsManager.recordFailure(mgr, ~url, ~reason=formatParseFailureReason(parseErr))
+    | Ok(document) =>
+      switch extractFromDocument(~setup, ~document, ~ctx) {
+      | Error(extractErr) =>
+        FetchStatsManager.recordFailure(
+          mgr,
+          ~url,
+          ~reason=formatExtractionFailureReason(extractErr),
+        )
+      | Ok(json) => {
+          FetchStatsManager.recordSuccess(mgr, ~rowCount=countRows(json))
+          await routeOutput(~options, ~json, ~ctx, ~state)
+        }
+      }
+    }
+  }
+}
+
 /** Runs URL mode: fetch multiple pages, extract from each, merge results. */
 let runUrlMode = async (
   ctx: AppContext.appContext,
@@ -225,39 +268,6 @@ let runUrlMode = async (
         // queue. Stdout / NDJSON paths are also serial here, which keeps
         // file I/O deterministic with negligible cost (Node's libuv
         // serialises writes per FD anyway).
-        let processOne = async (setup: extractionSetup, item: Fetcher.fetchResult) => {
-          let {url, result} = item
-          switch result {
-          | Error(fetchErr) => {
-              let reason = switch fetchErr {
-              | NetworkError(msg) => msg
-              | Timeout(msg) => msg
-              | HttpError(status, msg) => `HTTP ${Int.toString(status)}: ${msg}`
-              | ParseError(msg) => msg
-              }
-              FetchStatsManager.recordFailure(mgr, ~url, ~reason)
-            }
-          | Ok(html) =>
-            switch Document.parseDocumentSafely(ctx.deps.doc.documentOps, html) {
-            | Error(parseErr) =>
-              FetchStatsManager.recordFailure(mgr, ~url, ~reason=formatParseFailureReason(parseErr))
-            | Ok(document) =>
-              switch extractFromDocument(~setup, ~document, ~ctx) {
-              | Error(extractErr) =>
-                FetchStatsManager.recordFailure(
-                  mgr,
-                  ~url,
-                  ~reason=formatExtractionFailureReason(extractErr),
-                )
-              | Ok(json) => {
-                  FetchStatsManager.recordSuccess(mgr, ~rowCount=countRows(json))
-                  await routeOutput(~options, ~json, ~ctx, ~state)
-                }
-              }
-            }
-          }
-        }
-
         let rec processAll = async (setup: extractionSetup, idx: int) => {
           if idx >= Array.length(fetchResults) {
             ()
@@ -265,7 +275,7 @@ let runUrlMode = async (
             switch Belt.Array.get(fetchResults, idx) {
             | None => ()
             | Some(item) => {
-                await processOne(setup, item)
+                await processOne(~setup, ~item, ~ctx, ~options, ~mgr, ~state)
                 await processAll(setup, idx + 1)
               }
             }
