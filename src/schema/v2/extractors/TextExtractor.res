@@ -1,7 +1,7 @@
 /** Extract and transform text content from an HTML element. */
 open FieldTypes
 
-module Iter = NodeJsBinding.Iter
+module Iter = NodeIter
 
 let extract: (NodeHtmlParserBinding.htmlElement, option<textOptions>) => option<string> = (
   el,

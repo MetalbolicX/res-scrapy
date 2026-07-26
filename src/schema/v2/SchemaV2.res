@@ -9,7 +9,7 @@ open FieldTypes
 // ---------------------------------------------------------------------------
 
 let loadSchemaFromString: string => result<schema, schemaError> = raw =>
-  switch NodeJsBinding.jsonParse(raw) {
+  switch NodeUtil.jsonParse(raw) {
   | None => Error(InvalidJson("Schema is not valid JSON"))
   | Some(json) => SchemaParser.parseSchema(json)
   }
@@ -19,7 +19,7 @@ let loadSchema: (~isInline: bool, string) => result<schema, schemaError> = (~isI
     loadSchemaFromString(source)
   } else {
     try {
-      let raw = NodeJsBinding.Fs.readFileSync(source)
+      let raw = NodeFs.readFileSync(source)
       loadSchemaFromString(raw)
     } catch {
     | exn => {

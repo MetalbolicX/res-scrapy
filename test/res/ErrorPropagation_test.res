@@ -63,7 +63,7 @@ test("schema without type defaults to text extractor", () => {
   isResultOk(out)
   switch out {
   | Ok(value) => {
-      let outStr = NodeJsBinding.jsonStringify(value)
+      let outStr = NodeUtil.jsonStringify(value)
       isTruthy(TestHelpers.stringContains(outStr, "\"Product\""))
     }
   | Error(_) => failWith("Expected successful extraction with default text type")
@@ -92,7 +92,7 @@ test("missing selector in optional field produces null, not error", () => {
   isResultOk(out)
   switch out {
   | Ok(value) => {
-      let outStr = NodeJsBinding.jsonStringify(value)
+      let outStr = NodeUtil.jsonStringify(value)
       isTruthy(TestHelpers.stringContains(outStr, "\"Product\""))
       isTruthy(TestHelpers.stringContains(outStr, "null"))
     }
@@ -113,7 +113,7 @@ test("optional field with default value uses default when selector missing", () 
   isResultOk(out)
   switch out {
   | Ok(value) => {
-      let outStr = NodeJsBinding.jsonStringify(value)
+      let outStr = NodeUtil.jsonStringify(value)
       isTruthy(TestHelpers.stringContains(outStr, "No notes available"))
     }
   | Error(_) => failWith("Expected successful extraction with default value")
@@ -154,7 +154,7 @@ test("ignoreErrors mode with required missing field returns default for that fie
   isResultOk(out)
   switch out {
   | Ok(value) => {
-      let outStr = NodeJsBinding.jsonStringify(value)
+      let outStr = NodeUtil.jsonStringify(value)
       isTruthy(TestHelpers.stringContains(outStr, "\"Product\""))
       isTruthy(TestHelpers.stringContains(outStr, "0"))
     }

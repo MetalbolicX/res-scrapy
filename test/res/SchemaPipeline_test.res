@@ -17,7 +17,7 @@ let runSchema = (~html, ~schemaRaw) => {
 }
 
 let isJsonFieldEqual = (expected: string, json: JSON.t, _fieldName: string): unit => {
-  let outStr = NodeJsBinding.jsonStringify(json)
+  let outStr = NodeUtil.jsonStringify(json)
   // Simple string contains check for field value
   isTruthy(TestHelpers.stringContains(outStr, expected))
 }
@@ -36,7 +36,7 @@ test(
     isResultOk(out)
     switch out {
     | Ok(value) => {
-        let outStr = NodeJsBinding.jsonStringify(value)
+        let outStr = NodeUtil.jsonStringify(value)
         isTruthy(TestHelpers.stringContains(outStr, "\"Product A\""))
         isTruthy(TestHelpers.stringContains(outStr, "\"42\""))
       }
@@ -64,7 +64,7 @@ test(
     isResultOk(out)
     switch out {
     | Ok(value) => {
-        let outStr = NodeJsBinding.jsonStringify(value)
+        let outStr = NodeUtil.jsonStringify(value)
         isTruthy(TestHelpers.stringContains(outStr, "\"First Item\""))
         isTruthy(TestHelpers.stringContains(outStr, "\"Second Item\""))
         isTruthy(TestHelpers.stringContains(outStr, "\"42\""))
@@ -93,7 +93,7 @@ test(
     isResultOk(out)
     switch out {
     | Ok(value) => {
-        let outStr = NodeJsBinding.jsonStringify(value)
+        let outStr = NodeUtil.jsonStringify(value)
         isTruthy(TestHelpers.stringContains(outStr, "\"Shoes\""))
         isTruthy(TestHelpers.stringContains(outStr, "\"19.99\""))
         isTruthy(TestHelpers.stringContains(outStr, "\"Great shoes\""))
@@ -124,7 +124,7 @@ test(
     isResultOk(out)
     switch out {
     | Ok(value) => {
-        let outStr = NodeJsBinding.jsonStringify(value)
+        let outStr = NodeUtil.jsonStringify(value)
         isTruthy(TestHelpers.stringContains(outStr, "\"Breaking News\""))
         isTruthy(TestHelpers.stringContains(outStr, "\"Something happened.\""))
         isTruthy(TestHelpers.stringContains(outStr, "\"John Doe\""))
@@ -151,7 +151,7 @@ test(
     isResultOk(out)
     switch out {
     | Ok(value) => {
-        let outStr = NodeJsBinding.jsonStringify(value)
+        let outStr = NodeUtil.jsonStringify(value)
         isTruthy(TestHelpers.stringContains(outStr, "\"Widget\""))
         isTruthy(TestHelpers.stringContains(outStr, "null"))
       }

@@ -56,9 +56,9 @@ let simpleDeps = (
     appendFileSync: (_, _) => (),
   },
   serialize: {
-    stringifyJson: NodeJsBinding.jsonStringify,
-    stringifyTableRows: NodeJsBinding.jsonStringify,
-    stringifyStrings: NodeJsBinding.jsonStringify,
+    stringifyJson: NodeUtil.jsonStringify,
+    stringifyTableRows: NodeUtil.jsonStringify,
+    stringifyStrings: NodeUtil.jsonStringify,
   },
   doc: {
     documentOps: NodeHtmlDocument.operations,

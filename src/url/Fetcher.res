@@ -82,9 +82,7 @@ let delay: int => promise<unit> = ms =>
     let _timerId = setTimeout(() => resolve(), ms)
   })
 
-let createEnvProxyDispatcher: unit => promise<
-  option<NodeJsBinding.Fetch.dispatcher>,
-> = %raw(`async () => {
+let createEnvProxyDispatcher: unit => promise<option<NodeFetch.dispatcher>> = %raw(`async () => {
     const hasProxy = Boolean(
       process.env.HTTP_PROXY ||
       process.env.HTTPS_PROXY ||
@@ -100,9 +98,9 @@ let createEnvProxyDispatcher: unit => promise<
     }
   }`)
 
-let proxyDispatcherPromise: ref<option<promise<option<NodeJsBinding.Fetch.dispatcher>>>> = ref(None)
+let proxyDispatcherPromise: ref<option<promise<option<NodeFetch.dispatcher>>>> = ref(None)
 
-let getEnvProxyDispatcher = (): promise<option<NodeJsBinding.Fetch.dispatcher>> =>
+let getEnvProxyDispatcher = (): promise<option<NodeFetch.dispatcher>> =>
   switch proxyDispatcherPromise.contents {
   | Some(promise) => promise
   | None => {
@@ -123,25 +121,25 @@ let fetchOnce: (
 ) => promise<result<string, fetchError>> = async (url, userAgent, timeoutSeconds, headers) => {
   let timeoutMs = timeoutSeconds * 1000
   // Set up controller and timeout OUTSIDE try so timeoutId is accessible in catch.
-  let controller = NodeJsBinding.Fetch.AbortSignal.makeController()
+  let controller = NodeFetch.AbortSignal.makeController()
   let timeoutId = setTimeout(() => {
-    NodeJsBinding.Fetch.AbortSignal.abort(controller)
+    NodeFetch.AbortSignal.abort(controller)
   }, timeoutMs)
 
   let headerPairs = Array.concat([("User-Agent", userAgent)], headers)
   let dispatcher = await getEnvProxyDispatcher()
-  let options: NodeJsBinding.Fetch.options = {
+  let options: NodeFetch.options = {
     method: "GET",
     headers: Dict.fromArray(headerPairs),
-    signal: NodeJsBinding.Fetch.AbortSignal.signal(controller),
+    signal: NodeFetch.AbortSignal.signal(controller),
     ?dispatcher,
   }
 
   try {
-    let response = await NodeJsBinding.Fetch.fetch(url, Some(options))
+    let response = await NodeFetch.fetch(url, Some(options))
 
     if response.ok {
-      let html = await NodeJsBinding.Fetch.text(response)
+      let html = await NodeFetch.text(response)
       clearTimeout(timeoutId)
       Ok(html)
     } else {
@@ -157,9 +155,7 @@ let fetchOnce: (
       }
 
       // Classify via the signal state, not the exception message text.
-      let isAborted = NodeJsBinding.Fetch.AbortSignal.aborted(
-        NodeJsBinding.Fetch.AbortSignal.signal(controller),
-      )
+      let isAborted = NodeFetch.AbortSignal.aborted(NodeFetch.AbortSignal.signal(controller))
       classifyError(~message, ~isAborted, ~timeoutSeconds)
     }
   }

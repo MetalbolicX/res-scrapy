@@ -3,7 +3,7 @@
  */
 @get_index external getObjectKey: ({..}, string) => option<'a> = ""
 
-module Iter = NodeJsBinding.Iter
+module Iter = NodeIter
 
 let candidatePackagePaths: unit => array<string> = %raw(`() => {
   try {
@@ -18,8 +18,8 @@ let candidatePackagePaths: unit => array<string> = %raw(`() => {
 
 let parseVersionFromPath: string => option<string> = path => {
   try {
-    let raw = NodeJsBinding.Fs.readFileSync(path)
-    switch NodeJsBinding.jsonParse(raw) {
+    let raw = NodeFs.readFileSync(path)
+    switch NodeUtil.jsonParse(raw) {
     | None => None
     | Some(json) => {
         let pkg: {..} = Obj.magic(json)
@@ -66,11 +66,11 @@ let showHelp: unit => unit = () => {
     --header           Add request header for URL mode; repeatable (e.g. --header 'Accept: text/html')
     --cookie           Add Cookie header value for URL mode; repeatable
   `)
-  NodeJsBinding.Process.exit(0)
+  NodeProcess.exit(0)
 }
 
 /**
-  * Parses the command line arguments using NodeJsBinding.Util.parseArgs and returns the values
+  * Parses the command line arguments using NodeUtil.parseArgs and returns the values
   * If the help flag is present, it shows the help message and exits
   * The expected arguments are:
   * --selector/-s: a required string argument specifying the CSS selector to use for scraping
@@ -81,8 +81,8 @@ let showHelp: unit => unit = () => {
   * --table/-t: an optional boolean flag to extract a table as JSON (uses --selector, defaults to "table")
   * The function returns an object containing the parsed values for these arguments, which can then be validated and used in the main logic of the application
  */
-let parse: unit => NodeJsBinding.Util.cliValues = () => {
-  open NodeJsBinding.Util
+let parse: unit => NodeUtil.cliValues = () => {
+  open NodeUtil
   let options = Dict.fromArray([
     ("version", {type_: "boolean", short: "v", default: Bool(false)}),
     ("mode", {type_: "boolean", short: "m", default: Bool(false)}),
@@ -105,7 +105,7 @@ let parse: unit => NodeJsBinding.Util.cliValues = () => {
   ])
 
   let args = parseArgs({
-    args: NodeJsBinding.Process.argv->Array.slice(~start=2),
+    args: NodeProcess.argv->Array.slice(~start=2),
     allowPositionals: false,
     options,
     strict: true,
@@ -121,7 +121,7 @@ let parse: unit => NodeJsBinding.Util.cliValues = () => {
   switch values.version {
   | Some(true) => {
       Console.log(getCliVersion())
-      NodeJsBinding.Process.exit(0)
+      NodeProcess.exit(0)
     }
   | _ => ()
   }

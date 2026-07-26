@@ -17,7 +17,7 @@ test("JsonExtractor parses JSON from text", () => {
   isOptionEqualTo(
     Some(TestHelpers.jsonFromString("{\"a\":1,\"b\":2}")),
     JsonExtractor.extract(el, None),
-    ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
+    ~eq=(a, b) => NodeUtil.jsonStringify(a) == NodeUtil.jsonStringify(b),
   )
 })
 
@@ -28,7 +28,7 @@ test("JsonExtractor parses JSON from attribute", () => {
   isOptionEqualTo(
     Some(TestHelpers.jsonFromString("{\"a\":1}")),
     JsonExtractor.extract(el, opts),
-    ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
+    ~eq=(a, b) => NodeUtil.jsonStringify(a) == NodeUtil.jsonStringify(b),
   )
 })
 
@@ -38,7 +38,7 @@ test("JsonExtractor supports dot path", () => {
   isOptionEqualTo(
     Some(TestHelpers.jsonFromString("42")),
     JsonExtractor.extract(el, Some({path: "offer.price"})),
-    ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
+    ~eq=(a, b) => NodeUtil.jsonStringify(a) == NodeUtil.jsonStringify(b),
   )
 })
 
@@ -48,9 +48,9 @@ test("JsonExtractor handles parse errors with onError policy", () => {
   isOptionEqualTo(
     Some(TestHelpers.jsonFromString("\"not-json\"")),
     JsonExtractor.extract(el, Some({onError: ReturnText})),
-    ~eq=(a, b) => NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b),
+    ~eq=(a, b) => NodeUtil.jsonStringify(a) == NodeUtil.jsonStringify(b),
   )
   isOptionEqualTo(None, JsonExtractor.extract(el, None), ~eq=(a, b) =>
-    NodeJsBinding.jsonStringify(a) == NodeJsBinding.jsonStringify(b)
+    NodeUtil.jsonStringify(a) == NodeUtil.jsonStringify(b)
   )
 })

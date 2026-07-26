@@ -20,7 +20,7 @@
   */
 open FieldTypes
 
-module Iter = NodeJsBinding.Iter
+module Iter = NodeIter
 
 /* listTrim applies the trim+filter-empty normalisation that list semantics
    require. TextExtractor already trims and filters empty, and UrlExtractor

@@ -184,7 +184,7 @@ test("PR 2b UrlOutputWriter.writeStdoutNdjson invokes out once per row with the 
   }
   let json = TestHelpers.jsonFromString("[{\"name\":\"Alice\"},{\"name\":\"Bob\"}]")
 
-  UrlOutputWriter.writeStdoutNdjson(~out=outMock, ~stringifyJson=NodeJsBinding.jsonStringify, ~json)
+  UrlOutputWriter.writeStdoutNdjson(~out=outMock, ~stringifyJson=NodeUtil.jsonStringify, ~json)
 
   isIntEqualTo(2, calls.contents->Array.length, ~message="one out call per row")
   isTextEqualTo("{\"name\":\"Alice\"}", calls.contents->Array.get(0)->Option.getOr(""))
@@ -200,7 +200,7 @@ test("PR 2b UrlOutputWriter.writeStdoutNdjson yields NDJSON when out appends new
   }
   let json = TestHelpers.jsonFromString("[{\"name\":\"Alice\"},{\"name\":\"Bob\"}]")
 
-  UrlOutputWriter.writeStdoutNdjson(~out=outMock, ~stringifyJson=NodeJsBinding.jsonStringify, ~json)
+  UrlOutputWriter.writeStdoutNdjson(~out=outMock, ~stringifyJson=NodeUtil.jsonStringify, ~json)
 
   let lines = received.contents->String.split("\n")
   isTextEqualTo("{\"name\":\"Alice\"}", lines->Array.get(0)->Option.getOr(""))
@@ -219,7 +219,7 @@ test("PR 2b UrlOutputWriter.appendNdjsonToFile appends one NDJSON line per row",
   let _ = UrlOutputWriter.appendNdjsonToFile(
     ~appendFile=appendFileMock,
     ~err=errMock,
-    ~stringifyJson=NodeJsBinding.jsonStringify,
+    ~stringifyJson=NodeUtil.jsonStringify,
     ~path="/tmp/out.ndjson",
     ~json,
   )
@@ -246,7 +246,7 @@ test("PR 2b UrlOutputWriter.writeFileJson writes a JSON array to file synchronou
   let result = UrlOutputWriter.writeFileJsonSync(
     ~writeFileSync=writeFileMock,
     ~err=errMock,
-    ~stringifyJson=NodeJsBinding.jsonStringify,
+    ~stringifyJson=NodeUtil.jsonStringify,
     ~path="/tmp/out.json",
     ~rows,
   )

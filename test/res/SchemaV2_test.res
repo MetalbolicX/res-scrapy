@@ -17,7 +17,7 @@ test("SchemaV2.applySchema integrates parse and execute", () => {
       isResultOk(out)
       switch out {
       | Ok(value) =>
-        isTextEqualTo("[{\"title\":\"A\"},{\"title\":\"B\"}]", NodeJsBinding.jsonStringify(value))
+        isTextEqualTo("[{\"title\":\"A\"},{\"title\":\"B\"}]", NodeUtil.jsonStringify(value))
       | Error(_) => ()
       }
     }

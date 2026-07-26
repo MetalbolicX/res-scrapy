@@ -10,7 +10,7 @@ let _ = testAsync("UrlOutputWriter - appendNdjsonToFile returns Ok(()) on succes
     Promise.resolve()
   }
   let errMock = msg => errReceived := msg
-  let stringifyJson = NodeJsBinding.jsonStringify
+  let stringifyJson = NodeUtil.jsonStringify
   let aValue = JSON.Encode.int(1)
   let row = JSON.Encode.object(Dict.fromArray([("a", aValue)]))
   let json = JSON.Encode.array([row])
@@ -42,7 +42,7 @@ let _ = testAsync(
     }
     let errReceived = ref("")
     let errMock = msg => errReceived := msg
-    let stringifyJson = NodeJsBinding.jsonStringify
+    let stringifyJson = NodeUtil.jsonStringify
     let aValue = JSON.Encode.int(1)
     let row = JSON.Encode.object(Dict.fromArray([("a", aValue)]))
     let json = JSON.Encode.array([row])
@@ -80,7 +80,7 @@ let _ = testAsync(
       fileReceived := (path, text)
       Promise.resolve()
     }
-    let stringifyJson = NodeJsBinding.jsonStringify
+    let stringifyJson = NodeUtil.jsonStringify
     let bareValue = JSON.Encode.string("value")
     let json = JSON.Encode.object(Dict.fromArray([("bare", bareValue)]))
 

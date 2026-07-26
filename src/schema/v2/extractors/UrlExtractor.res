@@ -74,14 +74,14 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<urlOptions>) => option<s
       // 2. Resolve relative URL if needed
       let resolvedUrl = if shouldResolve && baseUrl->Option.isSome {
         try {
-          Some(NodeJsBinding.Url.make(urlStr, baseUrl))
+          Some(NodeUrl.make(urlStr, baseUrl))
         } catch {
         | _ => None
         }
       } else {
         // Still parse to validate
         try {
-          Some(NodeJsBinding.Url.make(urlStr, None))
+          Some(NodeUrl.make(urlStr, None))
         } catch {
         | _ => None
         }

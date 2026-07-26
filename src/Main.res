@@ -125,6 +125,6 @@ let registerGlobalRuntimeHandlers: (
   }`)
 
 if isExecutedAsScript() {
-  registerGlobalRuntimeHandlers(Console.error, NodeJsBinding.Process.setExitCode)
+  registerGlobalRuntimeHandlers(Console.error, NodeProcess.setExitCode)
   await main()
 }

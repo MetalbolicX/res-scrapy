@@ -27,7 +27,7 @@ let acquireStartSlot = async (limiter: t): Promise.t<unit> => {
   if limiter.delayMs <= 0 {
     Promise.resolve()
   } else {
-    let now = NodeJsBinding.Performance.now()
+    let now = NodePerformance.now()
     let scheduledStart = max(limiter.nextStartAt, now)
     let waitMs = scheduledStart -. now
     limiter.nextStartAt = scheduledStart +. Float.fromInt(limiter.delayMs)

@@ -1,6 +1,6 @@
 type cliDeps = {
-  parseCli: unit => NodeJsBinding.Util.cliValues,
-  validateArgs: NodeJsBinding.Util.cliValues => result<ParseCli.parseOptions, ParseCli.parseError>,
+  parseCli: unit => NodeUtil.cliValues,
+  validateArgs: NodeUtil.cliValues => result<ParseCli.parseOptions, ParseCli.parseError>,
   readStdin: unit => promise<Result.t<string, StdIn.stdInError>>,
   getCliVersion: unit => string,
 }
@@ -73,15 +73,15 @@ let production: appContext = {
       getCliVersion: Cli.getCliVersion,
     },
     fs: {
-      writeFile: NodeJsBinding.Fs.writeFile,
-      appendFile: NodeJsBinding.Fs.appendFile,
-      writeFileSync: NodeJsBinding.Fs.writeFileSync,
-      appendFileSync: NodeJsBinding.Fs.appendFileSync,
+      writeFile: NodeFs.writeFile,
+      appendFile: NodeFs.appendFile,
+      writeFileSync: NodeFs.writeFileSync,
+      appendFileSync: NodeFs.appendFileSync,
     },
     serialize: {
-      stringifyJson: NodeJsBinding.jsonStringify,
-      stringifyTableRows: NodeJsBinding.jsonStringify,
-      stringifyStrings: NodeJsBinding.jsonStringify,
+      stringifyJson: NodeUtil.jsonStringify,
+      stringifyTableRows: NodeUtil.jsonStringify,
+      stringifyStrings: NodeUtil.jsonStringify,
     },
     doc: {
       documentOps: NodeHtmlDocument.operations,
@@ -96,13 +96,13 @@ let production: appContext = {
       fetchAll: Fetcher.fetchAll,
     },
     perf: {
-      performanceNow: NodeJsBinding.Performance.now,
+      performanceNow: NodePerformance.now,
     },
   },
   io: {
     out: Console.log,
     err: Console.error,
     warn: Console.error,
-    exit: NodeJsBinding.Process.setExitCode,
+    exit: NodeProcess.setExitCode,
   },
 }

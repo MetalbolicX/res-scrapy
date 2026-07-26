@@ -1,7 +1,7 @@
 /** Extract one or more attributes from an element according to attributeConfig. */
 open FieldTypes
 
-module Iter = NodeJsBinding.Iter
+module Iter = NodeIter
 
 let getAttr: (NodeHtmlParserBinding.htmlElement, string) => option<string> = (el, name) =>
   switch NodeHtmlParserBinding.getAttribute(el, name)->Nullable.toOption {

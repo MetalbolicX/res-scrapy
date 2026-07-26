@@ -12,7 +12,7 @@
   *   • JSON helpers — kept in this file because they are tiny and used
   *     only by the orchestrator (e.g. counting rows in a JSON array).
   */
-module Iter = NodeJsBinding.Iter
+module Iter = NodeIter
 
 /** Counts the number of rows in a JSON result. */
 let countRows: JSON.t => int = json => {

@@ -124,7 +124,7 @@ let isResultError: (result<'a, 'b>, ~message: string=?) => unit = (value, ~messa
 let isNull: (JSON.t, ~message: string=?) => unit = (value, ~message as msg="") =>
   assertion(
     (a, b) => a == b,
-    NodeJsBinding.jsonStringify(value),
+    NodeUtil.jsonStringify(value),
     "null",
     ~operator="JSON is null",
     ~message=msg,
@@ -144,8 +144,8 @@ let isJsonEqualTo: (JSON.t, JSON.t, ~message: string=?) => unit = (
 ) =>
   assertion(
     (a, b) => a == b,
-    NodeJsBinding.jsonStringify(expected),
-    NodeJsBinding.jsonStringify(actual),
+    NodeUtil.jsonStringify(expected),
+    NodeUtil.jsonStringify(actual),
     ~operator="JSON equals to",
     ~message=msg,
   )

@@ -274,7 +274,7 @@ let formatWarning: (option<string>, option<string>) => array<string> = (outputOp
 }
 
 /* Pure: produce the list of fetch-related flag names that were set on the CLI. */
-let fetchFlagNames: NodeJsBinding.Util.cliValues => array<string> = values => {
+let fetchFlagNames: NodeUtil.cliValues => array<string> = values => {
   let names: ref<array<string>> = ref([])
   switch values.userAgent {
   | Some(_) => names := names.contents->Array.concat(["--user-agent"])
@@ -398,10 +398,7 @@ type validatedScalars = {
   delayMs: int,
 }
 
-let validateScalars: NodeJsBinding.Util.cliValues => result<
-  validatedScalars,
-  parseError,
-> = values => {
+let validateScalars: NodeUtil.cliValues => result<validatedScalars, parseError> = values => {
   validateUserAgent(values.userAgent)->ResultX.flatMap(userAgent =>
     validateUrl(values.url)->ResultX.flatMap(url =>
       validateConcurrency(values.concurrency)->ResultX.flatMap(
@@ -430,7 +427,7 @@ let validateScalars: NodeJsBinding.Util.cliValues => result<
 /* Composes request-headers validation with warning computation that depends
  on the parsed headers. */
 let validateHeadersAndWarnings: (
-  NodeJsBinding.Util.cliValues,
+  NodeUtil.cliValues,
   option<string>,
   array<string>,
 ) => result<(array<headerEntry>, array<string>), parseError> = (values, urlOpt, fetchFlags) => {
@@ -450,10 +447,7 @@ let validateHeadersAndWarnings: (
   * returning `result`; this entry-point composes them with ResultX.flatMap
   * instead of nested switches.
   */
-let runArgsValidation: NodeJsBinding.Util.cliValues => result<
-  parseOptions,
-  parseError,
-> = values => {
+let runArgsValidation: NodeUtil.cliValues => result<parseOptions, parseError> = values => {
   let fetchFlags = fetchFlagNames(values)
 
   validateScalars(values)->ResultX.flatMap(scalars => {

@@ -19,7 +19,7 @@ let expectOk = (value, ~message="Expected Ok(_) result") =>
   }
 
 let jsonFromString: string => JSON.t = raw =>
-  switch NodeJsBinding.jsonParse(raw) {
+  switch NodeUtil.jsonParse(raw) {
   | Some(v) => v
   | None => {
       failWith("Invalid JSON literal in test")
@@ -32,7 +32,7 @@ let jsonFromString: string => JSON.t = raw =>
 let asOpenObject: JSON.t => {..} = Obj.magic
 
 let objectFromJsonString: string => {..} = raw =>
-  switch NodeJsBinding.jsonParse(raw) {
+  switch NodeUtil.jsonParse(raw) {
   | Some(v) => asOpenObject(v)
   | None => {
       failWith("Invalid JSON object in test")
@@ -44,7 +44,7 @@ let stringContains: (string, string) => bool = (source, fragment) =>
   String.includes(source, fragment)
 
 let arrayFromJsonString: string => array<JSON.t> = raw =>
-  switch NodeJsBinding.jsonParse(raw) {
+  switch NodeUtil.jsonParse(raw) {
   | Some(JSON.Array(items)) => items
   | Some(_) => {
       failWith("Expected JSON array in test")
@@ -57,7 +57,7 @@ let arrayFromJsonString: string => array<JSON.t> = raw =>
   }
 
 let stringArrayFromJsonString: string => array<string> = raw =>
-  switch NodeJsBinding.jsonParse(raw) {
+  switch NodeUtil.jsonParse(raw) {
   | Some(JSON.Array(items)) => items->Array.map(v => Obj.magic(v))
   | Some(_) => {
       failWith("Expected JSON string array in test")
@@ -70,7 +70,7 @@ let stringArrayFromJsonString: string => array<string> = raw =>
   }
 
 let objectArrayFromJsonString: string => array<{..}> = raw =>
-  switch NodeJsBinding.jsonParse(raw) {
+  switch NodeUtil.jsonParse(raw) {
   | Some(JSON.Array(items)) => items->Array.map(v => asOpenObject(v))
   | Some(_) => {
       failWith("Expected JSON object array in test")

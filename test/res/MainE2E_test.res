@@ -425,7 +425,7 @@ testAsync("output file: writes json when --output is provided", planned => {
   ->Promise.then(result => {
     isIntEqualTo(0, result.exitCode)
     isTextEqualTo("", result.stdout)
-    let fileContent = NodeJsBinding.Fs.readFileSync(outPath)
+    let fileContent = NodeFs.readFileSync(outPath)
     let arr: array<string> = fileContent->TestHelpers.stringArrayFromJsonString
     isIntEqualTo(3, arr->Array.length)
     planned(~planned=3, ())
@@ -458,7 +458,7 @@ testAsync("output file: writes ndjson when --format ndjson is provided", planned
   ->Promise.then(result => {
     isIntEqualTo(0, result.exitCode)
     isTextEqualTo("", result.stdout)
-    let fileContent = NodeJsBinding.Fs.readFileSync(outPath)
+    let fileContent = NodeFs.readFileSync(outPath)
     let lines = fileContent->String.trim->String.split("\n")
     isIntEqualTo(3, lines->Array.length)
     let first = lines->Array.get(0)->Option.getOr("")

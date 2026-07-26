@@ -25,7 +25,7 @@ test("SchemaExecutor routes to RowExtractor when rowSelector is set", () => {
   isResultOk(out)
   switch out {
   | Ok(value) =>
-    isTextEqualTo("[{\"title\":\"A\"},{\"title\":\"B\"}]", NodeJsBinding.jsonStringify(value))
+    isTextEqualTo("[{\"title\":\"A\"},{\"title\":\"B\"}]", NodeUtil.jsonStringify(value))
   | Error(_) => ()
   }
 })
@@ -41,7 +41,7 @@ test("SchemaExecutor routes to ZipExtractor when rowSelector is absent", () => {
   | Ok(value) =>
     isTextEqualTo(
       "[{\"title\":\"A\",\"rank\":1},{\"title\":\"B\",\"rank\":2}]",
-      NodeJsBinding.jsonStringify(value),
+      NodeUtil.jsonStringify(value),
     )
   | Error(_) => ()
   }
@@ -67,8 +67,7 @@ test("RowExtractor honors ignoreErrors and default for missing required", () => 
     ~schemaRaw="{\"fields\":{\"title\":{\"selector\":\".title\",\"type\":\"text\"},\"price\":{\"selector\":\".price\",\"type\":\"number\",\"required\":true,\"default\":0}},\"config\":{\"rowSelector\":\".row\",\"ignoreErrors\":true}}",
   )
   switch out {
-  | Ok(value) =>
-    isTextEqualTo("[{\"title\":\"A\",\"price\":0}]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("[{\"title\":\"A\",\"price\":0}]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected ignoreErrors to produce output")
   }
 })
@@ -79,7 +78,7 @@ test("RowExtractor boolean presence returns false when selector is absent", () =
     ~schemaRaw="{\"fields\":{\"available\":{\"selector\":\".flag\",\"type\":\"boolean\",\"required\":true,\"booleanOptions\":{\"mode\":\"presence\"}}},\"config\":{\"rowSelector\":\".row\"}}",
   )
   switch out {
-  | Ok(value) => isTextEqualTo("[{\"available\":false}]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("[{\"available\":false}]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected presence=false for missing selector")
   }
 })
@@ -93,7 +92,7 @@ test("RowExtractor computes Count/List relative to each row", () => {
   | Ok(value) =>
     isTextEqualTo(
       "[{\"tagCount\":2,\"tags\":[\"a\",\"b\"]},{\"tagCount\":1,\"tags\":[\"c\"]}]",
-      NodeJsBinding.jsonStringify(value),
+      NodeUtil.jsonStringify(value),
     )
   | Error(_) => failWith("Expected row-relative count/list output")
   }
@@ -106,7 +105,7 @@ test("RowExtractor limit truncates row output", () => {
   )
   switch out {
   | Ok(value) =>
-    isTextEqualTo("[{\"title\":\"A\"},{\"title\":\"B\"}]", NodeJsBinding.jsonStringify(value))
+    isTextEqualTo("[{\"title\":\"A\"},{\"title\":\"B\"}]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected limited row output")
   }
 })
@@ -120,7 +119,7 @@ test("ZipExtractor fills null for missing non-required values", () => {
   | Ok(value) =>
     isTextEqualTo(
       "[{\"title\":\"A\",\"price\":1},{\"title\":\"B\",\"price\":null}]",
-      NodeJsBinding.jsonStringify(value),
+      NodeUtil.jsonStringify(value),
     )
   | Error(_) => failWith("Expected null fallback in zip mode")
   }
@@ -149,7 +148,7 @@ test("ZipExtractor uses default when ignoreErrors true", () => {
   | Ok(value) =>
     isTextEqualTo(
       "[{\"title\":\"A\",\"price\":1},{\"title\":\"B\",\"price\":0}]",
-      NodeJsBinding.jsonStringify(value),
+      NodeUtil.jsonStringify(value),
     )
   | Error(_) => failWith("Expected ignoreErrors default behavior in zip mode")
   }
@@ -164,7 +163,7 @@ test("ZipExtractor repeats aggregate Count/List values per row", () => {
   | Ok(value) =>
     isTextEqualTo(
       "[{\"title\":\"A\",\"totalTags\":3,\"tags\":[\"x\",\"y\"]},{\"title\":\"B\",\"totalTags\":3,\"tags\":[\"x\",\"y\"]}]",
-      NodeJsBinding.jsonStringify(value),
+      NodeUtil.jsonStringify(value),
     )
   | Error(_) => failWith("Expected aggregate values repeated in zip mode")
   }
@@ -176,7 +175,7 @@ test("ZipExtractor with only aggregate fields returns empty array", () => {
     ~schemaRaw="{\"fields\":{\"totalTags\":{\"selector\":\".tag\",\"type\":\"count\"},\"tags\":{\"selector\":\".tag\",\"type\":\"list\",\"listOptions\":{\"itemType\":\"text\"}}}}",
   )
   switch out {
-  | Ok(value) => isTextEqualTo("[]", NodeJsBinding.jsonStringify(value))
+  | Ok(value) => isTextEqualTo("[]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected empty output when only aggregate fields exist")
   }
 })

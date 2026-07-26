@@ -3,9 +3,9 @@ type outputTarget =
   | File(string)
 
 let jsonArrayToNdjson: string => option<string> = raw =>
-  switch NodeJsBinding.jsonParse(raw) {
+  switch NodeUtil.jsonParse(raw) {
   | None => None
-  | Some(JSON.Array(items)) => Some(items->Array.map(NodeJsBinding.jsonStringify)->Array.join("\n"))
+  | Some(JSON.Array(items)) => Some(items->Array.map(NodeUtil.jsonStringify)->Array.join("\n"))
   | Some(_) => None
   }
 

@@ -1,7 +1,7 @@
 open Test
 open Assertions
 open TestHelpers
-open NodeJsBinding.Fetch
+open NodeFetch
 
 test("isRetryable returns true for NetworkError", () => {
   isTruthy(Fetcher.isRetryable(NetworkError("connection refused")))

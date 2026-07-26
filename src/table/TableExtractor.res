@@ -23,7 +23,7 @@
   * Extracts the table matching `selector` from `document` and returns an array of
   * row objects, or an error string when no table is found.
  */
-module Iter = NodeJsBinding.Iter
+module Iter = NodeIter
 
 let extract: (NodeHtmlParserBinding.htmlElement, string) => result<array<dict<string>>, string> = (
   document,
