@@ -41,7 +41,8 @@ test("ConfigParser.parseConfig parses defaults section with text, number, boolea
       }
       switch d.boolean {
       | None => failWith("Expected boolean defaults")
-      | Some(boolOpts) => switch boolOpts.mode {
+      | Some(boolOpts) =>
+        switch boolOpts.mode {
         | Some(Presence) => pass()
         | _ => failWith("Expected presence mode")
         }

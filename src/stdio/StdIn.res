@@ -112,7 +112,8 @@ let readFromStdin: unit => promise<Result.t<string, stdInError>> = () => {
 
         stdin->resume
       } catch {
-      | exn => if !settled.contents {
+      | exn =>
+        if !settled.contents {
           let errorMessage = switch exn->JsExn.fromException {
           | Some(jsExn) => jsExn->JsExn.message->Option.getOr("Unknown error")
           | None => "Unknown error"

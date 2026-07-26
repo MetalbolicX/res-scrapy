@@ -200,8 +200,6 @@ let fetchWithRetry: (
   await tryFetch(1, retryCount)
 }
 
-
-
 /**
   * Fetches all URLs with concurrency control.
   */
@@ -221,21 +219,20 @@ let fetchAll: (array<string>, fetchOptions) => promise<array<fetchResult>> = asy
     // exit path (success OR exception). The exception is then re-thrown via
     // `throw(exn)` so the outer `Promise.catch` in `fetchAll` still observes
     // it as before.
-    let outcome =
-      try {
-        let result = await StartLimiter.acquireStartSlot(limiter)->Promise.then(_ =>
-          fetchWithRetry(
-            url,
-            options.userAgent,
-            options.timeoutSeconds,
-            options.retryCount,
-            options.headers,
-          )
+    let outcome = try {
+      let result = await StartLimiter.acquireStartSlot(limiter)->Promise.then(_ =>
+        fetchWithRetry(
+          url,
+          options.userAgent,
+          options.timeoutSeconds,
+          options.retryCount,
+          options.headers,
         )
-        Ok({url, result})
-      } catch {
-      | exn => Error(exn)
-      }
+      )
+      Ok({url, result})
+    } catch {
+    | exn => Error(exn)
+    }
     Semaphore.release(sem)
     switch outcome {
     | Ok(fetchResult) => fetchResult

@@ -131,15 +131,18 @@ let padZero: (int, int) => string = (num, width) => {
   */
 let parse: string => result<array<string>, parseError> = url => {
   switch extractTemplate(url) {
-  | None => // No template found; check for stray braces
+  | None =>
+    // No template found; check for stray braces
     if String.includes(url, "{") || String.includes(url, "}") {
       Error(InvalidSyntax("URL contains unmatched or multiple template braces"))
     } else {
       Ok([url])
     }
-  | Some((prefix, content, suffix)) => switch parseRange(content) {
+  | Some((prefix, content, suffix)) =>
+    switch parseRange(content) {
     | Error(e) => Error(e)
-    | Ok((start, end_, step, zeroPad)) => switch generateSequence(start, end_, step) {
+    | Ok((start, end_, step, zeroPad)) =>
+      switch generateSequence(start, end_, step) {
       | Error(e) => Error(e)
       | Ok(sequence) => {
           let urls = sequence->Array.map(num => {

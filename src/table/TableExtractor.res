@@ -35,8 +35,7 @@ let extract: (NodeHtmlParserBinding.htmlElement, string) => result<array<dict<st
       // -----------------------------------------------------------------------
       // 1. Resolve headers
       // -----------------------------------------------------------------------
-      let headerEls: array<NodeHtmlParserBinding.htmlElement> =
-        TableUtils.resolveHeaders(table)
+      let headerEls: array<NodeHtmlParserBinding.htmlElement> = TableUtils.resolveHeaders(table)
 
       let headers: array<string> =
         headerEls
@@ -50,8 +49,7 @@ let extract: (NodeHtmlParserBinding.htmlElement, string) => result<array<dict<st
       // -----------------------------------------------------------------------
       // 2. Resolve data rows
       // -----------------------------------------------------------------------
-      let rowEls: array<NodeHtmlParserBinding.htmlElement> =
-        TableUtils.resolveRows(table, None)
+      let rowEls: array<NodeHtmlParserBinding.htmlElement> = TableUtils.resolveRows(table, None)
       // -----------------------------------------------------------------------
       // 3. Build row objects
       // -----------------------------------------------------------------------
