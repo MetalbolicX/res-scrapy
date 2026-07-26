@@ -275,32 +275,17 @@ let formatWarning: (option<string>, option<string>) => array<string> = (outputOp
 
 /* Pure: produce the list of fetch-related flag names that were set on the CLI. */
 let fetchFlagNames: NodeUtil.cliValues => array<string> = values => {
-  let names: ref<array<string>> = ref([])
-  switch values.userAgent {
-  | Some(_) => names := names.contents->Array.concat(["--user-agent"])
-  | None => ()
-  }
-  switch values.timeout {
-  | Some(_) => names := names.contents->Array.concat(["--timeout"])
-  | None => ()
-  }
-  switch values.retry {
-  | Some(_) => names := names.contents->Array.concat(["--retry"])
-  | None => ()
-  }
-  switch values.delay {
-  | Some(_) => names := names.contents->Array.concat(["--delay"])
-  | None => ()
-  }
-  switch values.header {
-  | Some(_) => names := names.contents->Array.concat(["--header"])
-  | None => ()
-  }
-  switch values.cookie {
-  | Some(_) => names := names.contents->Array.concat(["--cookie"])
-  | None => ()
-  }
-  names.contents
+  let entries: array<(string, bool)> = [
+    ("--user-agent", values.userAgent->Option.isSome),
+    ("--timeout", values.timeout->Option.isSome),
+    ("--retry", values.retry->Option.isSome),
+    ("--delay", values.delay->Option.isSome),
+    ("--header", values.header->Option.isSome),
+    ("--cookie", values.cookie->Option.isSome),
+  ]
+  entries
+  ->Array.filter(((_, present)) => present)
+  ->Array.map(((name, _)) => name)
 }
 
 let fetchWarning: (option<string>, array<string>) => array<string> = (urlOpt, flags) => {
@@ -398,30 +383,39 @@ type validatedScalars = {
   delayMs: int,
 }
 
+/* Accumulator threaded through the runArgsValidation pipeline. Each step
+ receives the current accumulator and returns either an updated accumulator
+ or an error. */
+type runState = {
+  scalars: validatedScalars,
+  schemaSource: option<schemaSource>,
+  requestHeaders: array<headerEntry>,
+  warnings: array<string>,
+  output: option<string>,
+  outputFormat: option<outputFormat>,
+  selector: string,
+  extract: extractMode,
+}
+
 let validateScalars: NodeUtil.cliValues => result<validatedScalars, parseError> = values => {
-  validateUserAgent(values.userAgent)->ResultX.flatMap(userAgent =>
-    validateUrl(values.url)->ResultX.flatMap(url =>
-      validateConcurrency(values.concurrency)->ResultX.flatMap(
-        concurrency =>
-          validateTimeout(values.timeout)->ResultX.flatMap(
-            timeoutSeconds =>
-              validateRetry(values.retry)->ResultX.flatMap(
-                retryCount =>
-                  validateDelay(values.delay)->Result.map(
-                    delayMs => {
-                      userAgent,
-                      url,
-                      concurrency,
-                      timeoutSeconds,
-                      retryCount,
-                      delayMs,
-                    },
-                  ),
-              ),
-          ),
-      )
-    )
-  )
+  let initial: validatedScalars = {
+    userAgent: None,
+    url: None,
+    concurrency: 5,
+    timeoutSeconds: 30,
+    retryCount: 3,
+    delayMs: 0,
+  }
+  let steps: array<validatedScalars => result<validatedScalars, parseError>> = [
+    acc => validateUserAgent(values.userAgent)->Result.map(userAgent => {...acc, userAgent}),
+    acc => validateUrl(values.url)->Result.map(url => {...acc, url}),
+    acc =>
+      validateConcurrency(values.concurrency)->Result.map(concurrency => {...acc, concurrency}),
+    acc => validateTimeout(values.timeout)->Result.map(timeoutSeconds => {...acc, timeoutSeconds}),
+    acc => validateRetry(values.retry)->Result.map(retryCount => {...acc, retryCount}),
+    acc => validateDelay(values.delay)->Result.map(delayMs => {...acc, delayMs}),
+  ]
+  Belt.Array.reduce(steps, Ok(initial), (acc, step) => acc->ResultX.flatMap(step))
 }
 
 /* Composes request-headers validation with warning computation that depends
@@ -444,56 +438,88 @@ let validateHeadersAndWarnings: (
   * Checks that the mode is valid if provided, defaulting to "single"
   *
   * Flat-pipeline implementation: each validation step is a small function
-  * returning `result`; this entry-point composes them with ResultX.flatMap
-  * instead of nested switches.
+  * returning `result`; the entry point threads them through a `Belt.Array.reduce`
+  * accumulator so the validation order is explicit and each step is a single line.
   */
 let runArgsValidation: NodeUtil.cliValues => result<parseOptions, parseError> = values => {
   let fetchFlags = fetchFlagNames(values)
 
-  validateScalars(values)->ResultX.flatMap(scalars => {
-    let {userAgent, url, concurrency, timeoutSeconds, retryCount, delayMs} = scalars
+  let initial: runState = {
+    scalars: {
+      userAgent: None,
+      url: None,
+      concurrency: 5,
+      timeoutSeconds: 30,
+      retryCount: 3,
+      delayMs: 0,
+    },
+    schemaSource: None,
+    requestHeaders: [],
+    warnings: [],
+    output: None,
+    outputFormat: None,
+    selector: "",
+    extract: OuterHtml,
+  }
 
-    let tableSource = validateTableSelector(values.selector, values.table->Option.getOr(false))
+  let tableSource = validateTableSelector(values.selector, values.table->Option.getOr(false))
 
-    validateSchemaSource(
-      values.schema,
-      values.schemaPath,
-      tableSource,
-    )->ResultX.flatMap(schemaSource =>
-      validateHeadersAndWarnings(values, url, fetchFlags)->ResultX.flatMap(
-        ((requestHeaders, warnings)) => {
-          let output = validateOutputPath(values.output)
+  let steps: array<runState => result<runState, parseError>> = [
+    acc => validateScalars(values)->Result.map(scalars => {...acc, scalars}),
+    acc =>
+      validateSchemaSource(
+        values.schema,
+        values.schemaPath,
+        tableSource,
+      )->Result.map(schemaSource => {...acc, schemaSource}),
+    acc =>
+      validateHeadersAndWarnings(values, acc.scalars.url, fetchFlags)->Result.map(((
+        requestHeaders,
+        warnings,
+      )) => {...acc, requestHeaders, warnings}),
+    acc => Ok({...acc, output: validateOutputPath(values.output)}),
+    acc =>
+      validateOutputFormat(acc.output, values.format)->Result.map(outputFormat => {
+        ...acc,
+        outputFormat: Some(outputFormat),
+      }),
+    acc =>
+      validateSelector(acc.scalars.url, values.selector, acc.schemaSource)->Result.map(selector => {
+        ...acc,
+        selector,
+      }),
+    acc => validateExtract(values.extract)->Result.map(extract => {...acc, extract}),
+  ]
 
-          validateOutputFormat(output, values.format)->ResultX.flatMap(
-            outputFormat =>
-              validateSelector(url, values.selector, schemaSource)->ResultX.flatMap(
-                selector =>
-                  validateExtract(values.extract)->Result.map(
-                    extract => {
-                      let modeFromBoolValue = values.mode->Option.getOr(false)
-                      let mode = modeFromBool(modeFromBoolValue)
-                      {
-                        selector,
-                        extract,
-                        mode,
-                        ?schemaSource,
-                        ?output,
-                        outputFormat,
-                        warnings,
-                        ?url,
-                        concurrency,
-                        ?userAgent,
-                        timeoutSeconds,
-                        retryCount,
-                        delayMs,
-                        requestHeaders,
-                      }
-                    },
-                  ),
-              ),
-          )
-        },
-      )
-    )
+  Belt.Array.reduce(steps, Ok(initial), (acc, step) =>
+    acc->ResultX.flatMap(step)
+  )->ResultX.flatMap(state => {
+    let {
+      scalars: {userAgent, url, concurrency, timeoutSeconds, retryCount, delayMs},
+      schemaSource,
+      requestHeaders,
+      warnings,
+      output,
+      outputFormat,
+      selector,
+      extract,
+    } = state
+    let mode = modeFromBool(values.mode->Option.getOr(false))
+    Ok({
+      selector,
+      extract,
+      mode,
+      ?schemaSource,
+      ?output,
+      outputFormat: outputFormat->Option.getOr(Json),
+      warnings,
+      ?url,
+      concurrency,
+      ?userAgent,
+      timeoutSeconds,
+      retryCount,
+      delayMs,
+      requestHeaders,
+    })
   })
 }

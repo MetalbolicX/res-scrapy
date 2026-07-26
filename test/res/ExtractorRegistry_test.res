@@ -11,12 +11,20 @@ let getElement = (doc, selector) =>
     }
   }
 
+let mkCtx = (
+  ~defaults: option<schemaDefaults>,
+  ~ignoreErrors=false,
+  ~required=false,
+  ~fieldName="root",
+  ~selector=".",
+): extractContext => {defaults, ignoreErrors, required, fieldName, selector}
+
 test("ExtractorRegistry uses schema defaults for Text when field opts are absent", () => {
   let doc = HtmlFixture.parse("<div class='v'>  Hello  </div>")
   let el = getElement(doc, ".v")
   let defaults: option<schemaDefaults> = Some({text: {trim: false}})
 
-  switch ExtractorRegistry.extractValue(el, Text(None), defaults, false) {
+  switch ExtractorRegistry.extractValue(el, Text(None), mkCtx(~defaults, ~ignoreErrors=false)) {
   | Ok(value) => isTextEqualTo("\"  Hello  \"", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected Text extraction success")
   }
@@ -27,7 +35,11 @@ test("ExtractorRegistry field options override schema defaults", () => {
   let el = getElement(doc, ".v")
   let defaults: option<schemaDefaults> = Some({text: {trim: false}})
 
-  switch ExtractorRegistry.extractValue(el, Text(Some({trim: true})), defaults, false) {
+  switch ExtractorRegistry.extractValue(
+    el,
+    Text(Some({trim: true})),
+    mkCtx(~defaults, ~ignoreErrors=false),
+  ) {
   | Ok(value) => isTextEqualTo("\"Hello\"", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected Text extraction success")
   }
@@ -36,7 +48,11 @@ test("ExtractorRegistry field options override schema defaults", () => {
 test("ExtractorRegistry extractValueList handles Count", () => {
   let doc = HtmlFixture.parse("<ul><li>A</li><li>B</li><li>C</li></ul>")
   let els = HtmlFixture.selectAll(doc, "li")
-  switch ExtractorRegistry.extractValueList(els, Count(None), None, false, false, "count", "li") {
+  switch ExtractorRegistry.extractValueList(
+    els,
+    Count(None),
+    mkCtx(~defaults=None, ~ignoreErrors=false, ~required=false, ~fieldName="count", ~selector="li"),
+  ) {
   | Ok(value) => isTextEqualTo("3", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected Count extraction success")
   }
@@ -46,7 +62,11 @@ test("ExtractorRegistry extractValueList handles List", () => {
   let doc = HtmlFixture.parse("<ul><li>A</li><li>B</li></ul>")
   let els = HtmlFixture.selectAll(doc, "li")
   let opts: listOptions = {itemType: ListText}
-  switch ExtractorRegistry.extractValueList(els, List(opts), None, false, false, "items", "li") {
+  switch ExtractorRegistry.extractValueList(
+    els,
+    List(opts),
+    mkCtx(~defaults=None, ~ignoreErrors=false, ~required=false, ~fieldName="items", ~selector="li"),
+  ) {
   | Ok(value) => isTextEqualTo("[\"A\",\"B\"]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected List extraction success")
   }
@@ -55,7 +75,11 @@ test("ExtractorRegistry extractValueList handles List", () => {
 test("ExtractorRegistry extractValueList scalar fallback uses first element", () => {
   let doc = HtmlFixture.parse("<h2>A</h2><h2>B</h2>")
   let els = HtmlFixture.selectAll(doc, "h2")
-  switch ExtractorRegistry.extractValueList(els, Text(None), None, false, false, "title", "h2") {
+  switch ExtractorRegistry.extractValueList(
+    els,
+    Text(None),
+    mkCtx(~defaults=None, ~ignoreErrors=false, ~required=false, ~fieldName="title", ~selector="h2"),
+  ) {
   | Ok(value) => isTextEqualTo("\"A\"", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected scalar fallback extraction success")
   }
@@ -68,11 +92,13 @@ test(
     switch ExtractorRegistry.extractValueList(
       els,
       Count(None),
-      None,
-      false,
-      true,
-      "items",
-      ".item",
+      mkCtx(
+        ~defaults=None,
+        ~ignoreErrors=false,
+        ~required=true,
+        ~fieldName="items",
+        ~selector=".item",
+      ),
     ) {
     | Error(RequiredFieldMissing({fieldName, selector})) => {
         isTextEqualTo("items", fieldName)
@@ -88,7 +114,17 @@ test(
   () => {
     let els = []
     let opts: listOptions = {itemType: ListText}
-    switch ExtractorRegistry.extractValueList(els, List(opts), None, false, true, "tags", ".tag") {
+    switch ExtractorRegistry.extractValueList(
+      els,
+      List(opts),
+      mkCtx(
+        ~defaults=None,
+        ~ignoreErrors=false,
+        ~required=true,
+        ~fieldName="tags",
+        ~selector=".tag",
+      ),
+    ) {
     | Error(RequiredFieldMissing({fieldName, selector})) => {
         isTextEqualTo("tags", fieldName)
         isTextEqualTo(".tag", selector)
@@ -105,11 +141,13 @@ test(
     switch ExtractorRegistry.extractValueList(
       els,
       Count(None),
-      None,
-      false,
-      false,
-      "items",
-      ".item",
+      mkCtx(
+        ~defaults=None,
+        ~ignoreErrors=false,
+        ~required=false,
+        ~fieldName="items",
+        ~selector=".item",
+      ),
     ) {
     | Ok(value) => isTextEqualTo("0", NodeUtil.jsonStringify(value))
     | Error(_) => failWith("Expected Count=0 for non-required field with empty elements")
@@ -122,11 +160,13 @@ test("ExtractorRegistry extractValueOrAbsent returns false for Boolean Presence"
     None,
     Boolean(Some({mode: Presence})),
     None,
-    true,
-    "available",
-    ".flag",
-    None,
-    false,
+    mkCtx(
+      ~defaults=None,
+      ~ignoreErrors=false,
+      ~required=true,
+      ~fieldName="available",
+      ~selector=".flag",
+    ),
   ) {
   | Ok(value) => isTextEqualTo("false", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected Presence=false for missing element")
@@ -138,11 +178,13 @@ test("ExtractorRegistry extractValueOrAbsent returns RequiredFieldMissing", () =
     None,
     Number(None),
     None,
-    true,
-    "price",
-    ".price",
-    None,
-    false,
+    mkCtx(
+      ~defaults=None,
+      ~ignoreErrors=false,
+      ~required=true,
+      ~fieldName="price",
+      ~selector=".price",
+    ),
   ) {
   | Error(RequiredFieldMissing({fieldName, selector})) => {
       isTextEqualTo("price", fieldName)
@@ -157,11 +199,13 @@ test("ExtractorRegistry extractValueOrAbsent uses default fallback", () => {
     None,
     Number(None),
     Some(JSON.Encode.int(0)),
-    true,
-    "price",
-    ".price",
-    None,
-    true,
+    mkCtx(
+      ~defaults=None,
+      ~ignoreErrors=true,
+      ~required=true,
+      ~fieldName="price",
+      ~selector=".price",
+    ),
   ) {
   | Ok(value) => isTextEqualTo("0", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected default fallback value")
@@ -171,7 +215,11 @@ test("ExtractorRegistry extractValueOrAbsent uses default fallback", () => {
 test("ExtractorRegistry propagates extractor errors", () => {
   let doc = HtmlFixture.parse("<div class='v'>maybe</div>")
   let el = getElement(doc, ".v")
-  switch ExtractorRegistry.extractValue(el, Boolean(Some({onUnknown: UnknownError})), None, false) {
+  switch ExtractorRegistry.extractValue(
+    el,
+    Boolean(Some({onUnknown: UnknownError})),
+    mkCtx(~defaults=None, ~ignoreErrors=false),
+  ) {
   | Error(ExtractionError(_)) => passWith("error propagated")
   | _ => failWith("Expected boolean UnknownError propagation")
   }
@@ -192,7 +240,11 @@ test("ExtractorRegistry extractValue supports Table field", () => {
   ]
   let tableOpts: tableOptions = {columns: columns}
 
-  switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
+  switch ExtractorRegistry.extractValue(
+    tableEl,
+    Table(tableOpts),
+    mkCtx(~defaults=None, ~ignoreErrors=false),
+  ) {
   | Ok(value) => isTextEqualTo("[{\"name\":\"A\"},{\"name\":\"B\"}]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected table extraction success")
   }
@@ -213,7 +265,11 @@ test("ExtractorRegistry table columns honor required error behavior", () => {
   ]
   let tableOpts: tableOptions = {columns: columns}
 
-  switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
+  switch ExtractorRegistry.extractValue(
+    tableEl,
+    Table(tableOpts),
+    mkCtx(~defaults=None, ~ignoreErrors=false),
+  ) {
   | Error(RequiredFieldMissing({fieldName, selector})) => {
       isTextEqualTo("price", fieldName)
       isTextEqualTo(".price", selector)
@@ -239,7 +295,11 @@ test("ExtractorRegistry table with multiple columns produces expected row object
   ]
   let tableOpts: tableOptions = {columns: columns}
 
-  switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
+  switch ExtractorRegistry.extractValue(
+    tableEl,
+    Table(tableOpts),
+    mkCtx(~defaults=None, ~ignoreErrors=false),
+  ) {
   | Ok(value) =>
     isTextEqualTo(
       "[{\"name\":\"A\",\"price\":\"10\"},{\"name\":\"B\",\"price\":\"20\"}]",
@@ -262,7 +322,11 @@ test("ExtractorRegistry table with custom rowSelector extracts those rows", () =
   ]
   let tableOpts: tableOptions = {rowSelector: ".row", columns}
 
-  switch ExtractorRegistry.extractValue(containerEl, Table(tableOpts), None, false) {
+  switch ExtractorRegistry.extractValue(
+    containerEl,
+    Table(tableOpts),
+    mkCtx(~defaults=None, ~ignoreErrors=false),
+  ) {
   | Ok(value) =>
     isTextEqualTo(
       "[{\"label\":\"R1\"},{\"label\":\"R2\"},{\"label\":\"R3\"}]",
@@ -283,7 +347,11 @@ test("ExtractorRegistry table without tbody falls back to skipping first tr (the
   ]
   let tableOpts: tableOptions = {columns: columns}
 
-  switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
+  switch ExtractorRegistry.extractValue(
+    tableEl,
+    Table(tableOpts),
+    mkCtx(~defaults=None, ~ignoreErrors=false),
+  ) {
   | Ok(value) => isTextEqualTo("[{\"name\":\"A\"},{\"name\":\"B\"}]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected thead fallback extraction")
   }
@@ -298,7 +366,11 @@ test("ExtractorRegistry table with single tr and no tbody yields empty rows", ()
   ]
   let tableOpts: tableOptions = {columns: columns}
 
-  switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
+  switch ExtractorRegistry.extractValue(
+    tableEl,
+    Table(tableOpts),
+    mkCtx(~defaults=None, ~ignoreErrors=false),
+  ) {
   | Ok(value) => isTextEqualTo("[]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected empty rows fallback")
   }
@@ -320,7 +392,11 @@ test("ExtractorRegistry table with required column uses default fallback", () =>
   ]
   let tableOpts: tableOptions = {columns: columns}
 
-  switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, true) {
+  switch ExtractorRegistry.extractValue(
+    tableEl,
+    Table(tableOpts),
+    mkCtx(~defaults=None, ~ignoreErrors=true),
+  ) {
   | Ok(value) => isTextEqualTo("[{\"price\":0}]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected default fallback for missing column")
   }
@@ -342,7 +418,11 @@ test("ExtractorRegistry table ignoreErrors true suppresses column error", () => 
   let tableOpts: tableOptions = {columns: columns}
 
   /* ignoreErrors=true should swallow the ExtractionError and return null. */
-  switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, true) {
+  switch ExtractorRegistry.extractValue(
+    tableEl,
+    Table(tableOpts),
+    mkCtx(~defaults=None, ~ignoreErrors=true),
+  ) {
   | Ok(value) => isTextEqualTo("[{\"stock\":null}]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected ignoreErrors to swallow error")
   }
@@ -363,7 +443,11 @@ test("ExtractorRegistry table list column extracts element array per row", () =>
   ]
   let tableOpts: tableOptions = {columns: columns}
 
-  switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
+  switch ExtractorRegistry.extractValue(
+    tableEl,
+    Table(tableOpts),
+    mkCtx(~defaults=None, ~ignoreErrors=false),
+  ) {
   | Ok(value) =>
     isTextEqualTo("[{\"tags\":[\"1\",\"2\"]},{\"tags\":[\"3\"]}]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected list column extraction")
@@ -378,7 +462,11 @@ test("ExtractorRegistry table with empty tbody yields empty array", () => {
   ]
   let tableOpts: tableOptions = {columns: columns}
 
-  switch ExtractorRegistry.extractValue(tableEl, Table(tableOpts), None, false) {
+  switch ExtractorRegistry.extractValue(
+    tableEl,
+    Table(tableOpts),
+    mkCtx(~defaults=None, ~ignoreErrors=false),
+  ) {
   | Ok(value) => isTextEqualTo("[]", NodeUtil.jsonStringify(value))
   | Error(_) => failWith("Expected empty tbody to yield []")
   }

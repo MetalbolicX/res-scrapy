@@ -928,3 +928,78 @@ test("PR 2b preserves comma-separated list of fetch flags in single warning", ()
   | Error(_) => failWith("Expected fetch-flag warning aggregation")
   }
 })
+
+/* ============================================================================
+   Phase 2.4: Validation ordering characterization tests
+   These pin the order in which the validation pipeline surfaces errors when
+   multiple validators would fail simultaneously. Any refactor that re-shapes
+   the chain (e.g., into a flat pipeline) MUST preserve these orderings.
+   ============================================================================ */
+
+test("ordering: validateScalars userAgent error surfaces before concurrency error", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    userAgent: "",
+    concurrency: "abc",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch e {
+    | ParseError({message: m}) => stringContains(m, "--user-agent")->isTruthy
+    | _ => failWith("Expected userAgent ParseError (concurrency would be later in the chain)")
+    }
+  | Ok(_) => failWith("Expected an error when both userAgent and concurrency are invalid")
+  }
+})
+
+test("ordering: validateScalars concurrency error surfaces before retry error", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    concurrency: "21",
+    retry: "0",
+  }
+  switch runArgsValidation(values) {
+  | Error(InvalidRetry(_)) => failWith("Expected InvalidConcurrency to surface before InvalidRetry")
+  | Error(InvalidConcurrency(msg)) =>
+    isTextEqualTo("Concurrency must be between 1 and 20, got 21", msg)
+  | Error(_) => failWith("Expected InvalidConcurrency or InvalidRetry error")
+  | Ok(_) => failWith("Expected an error when both concurrency and retry are invalid")
+  }
+})
+
+test("ordering: runArgsValidation surfaces scalars error before extract error", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    userAgent: "",
+    extract: "garbage",
+  }
+  switch runArgsValidation(values) {
+  | Error(e) =>
+    switch e {
+    | ParseError({message: m}) => stringContains(m, "--user-agent")->isTruthy
+    | _ =>
+      failWith(
+        "Expected userAgent ParseError to surface first (extract runs later in the pipeline)",
+      )
+    }
+  | Ok(_) => failWith("Expected an error when both userAgent and extract are invalid")
+  }
+})
+
+test("ordering: runArgsValidation surfaces InvalidHeader before invalid --format", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    header: ["BadHeader"],
+    output: "./out",
+    format: "xml",
+  }
+  switch runArgsValidation(values) {
+  | Error(InvalidHeader(_)) => pass()
+  | Error(_) => failWith("Expected InvalidHeader to surface before invalid --format")
+  | Ok(_) => failWith("Expected an error when both header and format are invalid")
+  }
+})

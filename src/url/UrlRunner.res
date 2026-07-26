@@ -144,7 +144,6 @@ let formatParseFailureReason = (err: AppError.appError): string => AppError.toMe
   */
 let formatExtractionFailureReason = (err: string): string => err
 
-
 let resolveExtractionSetup: (
   AppContext.appContext,
   ParseCli.parseOptions,
