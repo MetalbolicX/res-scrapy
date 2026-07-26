@@ -7,6 +7,13 @@ open JsonUtils
 
 module Iter = NodeJsBinding.Iter
 
+// Local helper: unwrap an option<{..}> and apply dictGet to the inner value
+let dictGetField = (raw: option<{..}>, key: string) =>
+  switch raw {
+  | Some(r) => dictGet(r, key)
+  | None => None
+  }
+
 // ---------------------------------------------------------------------------
 // text options
 // ---------------------------------------------------------------------------
@@ -219,30 +226,14 @@ let parseListItemType: string => listItemType = s => {
 
 let parseListOptions: {..} => listOptions = fieldJson => {
   let raw: option<{..}> = dictGet(fieldJson, "listOptions")
-  let itemType = switch raw {
-  | Some(r) =>
-    switch dictGet(r, "itemType") {
-    | Some(s) => parseListItemType(s)
-    | None => ListText
-    }
+  let itemType = switch dictGetField(raw, "itemType") {
+  | Some(s) => parseListItemType(s)
   | None => ListText
   }
-  let unique: option<bool> = switch raw {
-  | Some(r) => dictGet(r, "unique")
-  | None => None
-  }
-  let filter: option<string> = switch raw {
-  | Some(r) => dictGet(r, "filter")
-  | None => None
-  }
-  let limit: option<int> = switch raw {
-  | Some(r) => dictGet(r, "limit")
-  | None => None
-  }
-  let join: option<string> = switch raw {
-  | Some(r) => dictGet(r, "join")
-  | None => None
-  }
+  let unique: option<bool> = dictGetField(raw, "unique")
+  let filter: option<string> = dictGetField(raw, "filter")
+  let limit: option<int> = dictGetField(raw, "limit")
+  let join: option<string> = dictGetField(raw, "join")
   {itemType, ?unique, ?filter, ?limit, ?join}
 }
 
