@@ -63,66 +63,13 @@ let mainWithContext: AppContext.appContext => promise<unit> = async ctx => {
 
 let main: unit => promise<unit> = () => mainWithContext(AppContext.production)
 
-let isExecutedAsScript: unit => bool = %raw(`() => {
-    try {
-      if (typeof process === "undefined" || !process.argv || process.argv.length < 2) {
-        return false;
-      }
-      const currentPath = new URL(import.meta.url).pathname;
-      const invokedPath = process.argv[1];
-      return currentPath === invokedPath || decodeURIComponent(currentPath) === invokedPath;
-    } catch {
-      return false;
-    }
-  }`)
+let isExecutedAsScript = ImportMetaBinding.isExecutedAsScript
 
 /** Register global Node.js event handlers for uncaught exceptions, unhandled
-  * rejections, and termination signals. Guards against double-registration via a
-  * globalThis flag.
-  *
-  * INTENTIONAL FFI ISLAND — typed rewrite would require per-event externals and
-  * still leave the formatError helper as raw. The raw block is self-contained and
-  * isolated. See docs/architecture.md §15.
+  * rejections, and termination signals. Delegates to the typed binding in
+  * src/bindings/NodeProcess.res.
   */
-let registerGlobalRuntimeHandlers: (
-  string => unit,
-  int => unit,
-) => unit = %raw(`(report, exitFn) => {
-    if (globalThis.__resScrapyRuntimeHandlersRegistered) {
-      return;
-    }
-    globalThis.__resScrapyRuntimeHandlersRegistered = true;
-
-    const formatError = (value) => {
-      if (value && typeof value === "object") {
-        if (typeof value.stack === "string") return value.stack;
-        if (typeof value.message === "string") return value.message;
-      }
-      return String(value);
-    };
-
-    process.on("uncaughtException", (err) => {
-      report("Unexpected runtime error:");
-      report(formatError(err));
-      exitFn(1);
-    });
-
-    process.on("unhandledRejection", (reason) => {
-      report("Unhandled promise rejection:");
-      report(formatError(reason));
-      exitFn(1);
-    });
-
-    process.on("SIGINT", () => {
-      report("Interrupted (SIGINT)");
-      exitFn(130);
-    });
-
-    process.on("SIGTERM", () => {
-      report("Terminated (SIGTERM)");
-      exitFn(143);
-    });
-  }`)
+let registerGlobalRuntimeHandlers = NodeProcess.registerGlobalRuntimeHandlers
 
 if isExecutedAsScript() {
   registerGlobalRuntimeHandlers(Console.error, NodeProcess.setExitCode)

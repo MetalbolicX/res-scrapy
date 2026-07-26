@@ -13,22 +13,9 @@ module Iter = NodeIter
   * - Object format: `{"title": {"selector": ".title"}, ...}` (v2 preferred)
   * - Array format:  `[{"name": "title", "selector": ".title"}, ...]` (v1 legacy)
   *
-  * INTENTIONAL FFI ISLAND — typed rewrite would be substantially more verbose
-  * (Object.fromEntries with destructuring and filtering). Kept as %raw to avoid
-  * hiding the core logic behind ceremony. See docs/architecture.md §15.
+  * Delegates to the typed binding in src/bindings/ObjectBinding.res.
   */
-let toFieldsObject: 'a => {..} = %raw(`
-  (rawFields) => {
-    if (Array.isArray(rawFields)) {
-      return Object.fromEntries(
-        rawFields
-          .filter(f => f && typeof f === 'object' && typeof f.name === 'string')
-          .map(({ name, ...rest }) => [name, rest])
-      );
-    }
-    return rawFields;
-  }
-`)
+let toFieldsObject = ObjectBinding.toFieldsObject
 
 /** Convert the `fields` object (keys → field defs) into a sorted array. */
 let normalizeFields: {..} => result<array<(string, schemaField)>, schemaError> = fieldsObj => {
