@@ -5,16 +5,7 @@
 
 module Iter = NodeIter
 
-let candidatePackagePaths: unit => array<string> = %raw(`() => {
-  try {
-    return [
-      decodeURIComponent(new URL('../package.json', import.meta.url).pathname),
-      decodeURIComponent(new URL('../../package.json', import.meta.url).pathname),
-    ];
-  } catch {
-    return [];
-  }
-}`)
+let candidatePackagePaths = ImportMetaBinding.candidatePackagePaths
 
 let parseVersionFromPath: string => option<string> = path => {
   try {

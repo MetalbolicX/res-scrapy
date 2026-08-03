@@ -22,37 +22,10 @@ let toUpper: string => string = text => String.toUpperCase(text)
 /* net in step 1 keeps the surface small. */
 /* -------------------------------------------------------------------------- */
 
-let compileSafePattern: string => option<RegExp.t> = %raw(`
-pattern => {
-  if (!pattern || typeof pattern !== "string") return undefined;
-  if (pattern.length > 200) return undefined;
+let compileSafePattern = RegexBinding.compileSafePattern
 
-  // Disallow backreferences: \1, \2, ...
-  if (/\\[1-9][0-9]*/.test(pattern)) return undefined;
-
-  // Disallow lookaheads/lookbehinds
-  if (/\(\?[:=!<]/.test(pattern)) return undefined;
-
-  // Disallow nested quantified groups (e.g. (a+)+, (a*)+, (a{1,3})*)
-  if (/\([^)]*[+*?][^)]*\)\s*[+*?]/.test(pattern)) return undefined;
-  if (/\([^)]*\{[^}]+\}[^)]*\)\s*[+*?]/.test(pattern)) return undefined;
-
-  // Disallow quantified alternation groups (often expensive)
-  if (/\((?:[^()]*\|){1,}[^()]*\)\s*[+*{]/.test(pattern)) return undefined;
-
-  // Disallow very large explicit quantifiers
-  if (/\{(?:\d{4,}|\d+,\d{4,}|\d{4,},)\}/.test(pattern)) return undefined;
-
-  try {
-    return new RegExp(pattern);
-  } catch {
-    return undefined;
-  }
-}
-`)
-
-@send external regexTest: (RegExp.t, string) => bool = "test"
-@send external regexExec: (RegExp.t, string) => Null.t<array<string>> = "exec"
+@send external regexTest: (RegexBinding.compiledRegex, string) => bool = "test"
+@send external regexExec: (RegexBinding.compiledRegex, string) => Null.t<array<string>> = "exec"
 
 /** Run an in-process regex match. Mirrors the prior child-process contract:
   * returns None when there is no match OR when the matched substring is empty

@@ -82,25 +82,11 @@ let delay: int => promise<unit> = ms =>
     let _timerId = setTimeout(() => resolve(), ms)
   })
 
-let createEnvProxyDispatcher: unit => promise<option<NodeFetch.dispatcher>> = %raw(`async () => {
-    const hasProxy = Boolean(
-      process.env.HTTP_PROXY ||
-      process.env.HTTPS_PROXY ||
-      process.env.ALL_PROXY
-    );
-    if (!hasProxy) return undefined;
-    try {
-      const undici = await import('undici');
-      return new undici.EnvHttpProxyAgent();
-    } catch {
-      console.error("Warning: HTTP_PROXY/HTTPS_PROXY/ALL_PROXY is set but undici is unavailable — proxy will be ignored. Install undici with: npm install undici");
-      return undefined;
-    }
-  }`)
+let createEnvProxyDispatcher = NodeUndiciBinding.createEnvProxyDispatcher
 
-let proxyDispatcherPromise: ref<option<promise<option<NodeFetch.dispatcher>>>> = ref(None)
+let proxyDispatcherPromise: ref<option<promise<option<NodeUndiciBinding.dispatcher>>>> = ref(None)
 
-let getEnvProxyDispatcher = (): promise<option<NodeFetch.dispatcher>> =>
+let getEnvProxyDispatcher = (): promise<option<NodeUndiciBinding.dispatcher>> =>
   switch proxyDispatcherPromise.contents {
   | Some(promise) => promise
   | None => {
@@ -128,11 +114,14 @@ let fetchOnce: (
 
   let headerPairs = Array.concat([("User-Agent", userAgent)], headers)
   let dispatcher = await getEnvProxyDispatcher()
-  let options: NodeFetch.options = {
+  let baseOptions: NodeFetch.options = {
     method: "GET",
     headers: Dict.fromArray(headerPairs),
     signal: NodeFetch.AbortSignal.signal(controller),
-    ?dispatcher,
+  }
+  let options: NodeFetch.options = switch dispatcher {
+  | Some(d) => {...baseOptions, dispatcher: Obj.magic(d)}
+  | None => baseOptions
   }
 
   try {
