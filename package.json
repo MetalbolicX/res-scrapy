@@ -26,6 +26,7 @@
     "security:audit": "pnpm audit --audit-level=high",
     "res:lint": "rescript format --check",
     "prepare": "pnpm run bundle && node ./scripts/ensure-cli.mjs",
+    "prepublishOnly": "pnpm run release:check",
     "res:coverage": "c8 pnpm run res:test"
   },
   "bin": {
@@ -40,6 +41,10 @@
   },
   "bugs": {
     "url": "https://github.com/MetalbolicX/res-scrapy/issues"
+  },
+  "homepage": "https://github.com/MetalbolicX/res-scrapy#readme",
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "dist"
