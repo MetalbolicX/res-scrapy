@@ -10,9 +10,21 @@ let isExecutedAsScript: unit => bool = %raw(`function() {
     if (typeof process === "undefined" || !process.argv || process.argv.length < 2) {
       return false;
     }
-    var currentPath = new URL(import.meta.url).pathname;
+    var url = process.getBuiltinModule('node:url');
+    var fs = process.getBuiltinModule('node:fs');
+    var currentPath = url.fileURLToPath(import.meta.url);
     var invokedPath = process.argv[1];
-    return currentPath === invokedPath || decodeURIComponent(currentPath) === invokedPath;
+    // Resolve npm .bin symlinks before comparing the invoked CLI path.
+    var resolvedCurrent;
+    var resolvedInvoked;
+    try {
+      resolvedCurrent = fs.realpathSync(currentPath);
+      resolvedInvoked = fs.realpathSync(invokedPath);
+    } catch (e) {
+      resolvedCurrent = currentPath;
+      resolvedInvoked = invokedPath;
+    }
+    return resolvedCurrent === resolvedInvoked;
   } catch (e) {
     return false;
   }
