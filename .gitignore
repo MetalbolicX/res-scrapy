@@ -166,3 +166,6 @@ dist
 # including the unselected-findings record in plans/README.md)
 /plans/
 /odd/
+
+# Agent tooling artifacts (skill-registry cache + generated registry)
+/.atl/
