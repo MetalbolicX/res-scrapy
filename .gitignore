@@ -161,3 +161,8 @@ dist
 
 # For elm language
 /elm-stuff
+
+# Agent planning artifacts (improve-skill plans, ODD task docs,
+# including the unselected-findings record in plans/README.md)
+/plans/
+/odd/
