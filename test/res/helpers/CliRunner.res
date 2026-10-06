@@ -15,9 +15,17 @@ let runCli = (
   %raw(`
     (async (args, input, cwd, timeoutMs) => {
       const { spawn } = await import('node:child_process');
+      const fs = await import('node:fs');
       const { join } = await import('node:path');
       const workDir = cwd && cwd.length > 0 ? cwd : process.cwd();
       const cliPath = join(workDir, 'dist', 'main.mjs');
+      if (!fs.existsSync(cliPath)) {
+        return {
+          stdout: '',
+          stderr: 'dist/main.mjs not found — run \`pnpm run bundle\` before E2E tests',
+          exitCode: 127,
+        };
+      }
       return new Promise((resolve) => {
         const proc = spawn('node', [cliPath, ...args], {
           stdio: ['pipe', 'pipe', 'pipe'],
@@ -70,6 +78,14 @@ let runCliWithSchemaFile = (
       const tempDir = fs.mkdtempSync(join(os.tmpdir(), 'res-scrapy-test-'));
       const schemaPath = join(tempDir, 'schema.json');
       fs.writeFileSync(schemaPath, schemaContent);
+      if (!fs.existsSync(cliPath)) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+        return {
+          stdout: '',
+          stderr: 'dist/main.mjs not found — run \`pnpm run bundle\` before E2E tests',
+          exitCode: 127,
+        };
+      }
 
       return new Promise((resolve) => {
         const proc = spawn('node', [cliPath, ...cliArgs, '--schemaPath', schemaPath], {

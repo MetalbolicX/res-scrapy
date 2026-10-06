@@ -21,11 +21,11 @@
     "prebundle": "pnpm run date:build",
     "res:clean": "rescript clean",
     "docs": "docsify serve docs",
-    "release:check": "pnpm run res:build && pnpm run res:test && pnpm run bundle && pnpm run date:check",
+    "release:check": "pnpm run res:build && pnpm run bundle && pnpm run res:test && pnpm run date:check",
     "bundle": "rolldown -c",
     "security:audit": "pnpm audit --audit-level=high",
     "res:lint": "rescript format --check",
-    "prepare": "pnpm run bundle && node ./scripts/ensure-cli.mjs",
+    "prepare": "pnpm run res:build && pnpm run bundle && node ./scripts/ensure-cli.mjs",
     "prepublishOnly": "pnpm run release:check",
     "res:coverage": "c8 pnpm run res:test"
   },

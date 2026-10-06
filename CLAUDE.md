@@ -7,18 +7,19 @@ ReScript CLI for HTML scraping with schema-driven extraction. This guide gives A
 ```bash
 pnpm install
 pnpm run res:build      # Compile ReScript → src/**/*.res.mjs
-pnpm run res:test       # Run *.res.mjs tests via retest
 pnpm run bundle         # Bundle src/Main.res.mjs → dist/main.mjs
+pnpm run res:test       # Run *.res.mjs tests via retest
 node dist/main.mjs --help
 ```
 
-`prepare` runs `bundle` automatically after install. The CLI is invoked as `res-scrapy` (bin entry).
+E2E suites spawn `dist/main.mjs`, so run `pnpm run bundle` before `pnpm run res:test` when invoking them directly (or use `pnpm run release:check`). `prepare` compiles and bundles automatically after install. The CLI is invoked as `res-scrapy` (bin entry).
 
 ## Build & Test Commands
 
 | Command | Effect |
 |---|---|
 | `pnpm run res:build` | Run `rescript` compiler. Output: `src/**/*.res.mjs`. |
+| `pnpm run res:lint` | Check ReScript formatting with `rescript format --check`. |
 | `pnpm run res:dev` | `rescript watch` — incremental compile for development. |
 | `pnpm run res:clean` | `rescript clean` — wipe generated `.res.mjs` artifacts. |
 | `pnpm run res:test` | `retest ./test/res/*.res.mjs` — run the test suite. |
