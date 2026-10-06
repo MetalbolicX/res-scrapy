@@ -570,7 +570,7 @@ Top-level `config` keys you will use:
 
 - `rowSelector` (string): root selector for row-based extraction
 - `ignoreErrors` (boolean): when true, extraction will skip failing fields and continue (defaults: false)
-- `limit` (number): max rows to return (0 = unlimited)
+- `limit` (number): max rows to return (0 = unlimited). Explicit `null` is accepted and means unlimited (same as `0`).
 - `defaults`: object to set per-type default options (text, number, boolean, datetime, url)
 
 Default values (summary):

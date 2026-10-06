@@ -31,7 +31,7 @@ test("ConfigParser rejects invalid config.limit values", () => {
     }
   })
 
-  let validLimits = [("0", 0), ("5", 5)]
+  let validLimits = [("0", 0), ("5", 5), ("null", 0)]
   validLimits->Array.forEach(((limitJson, expected)) => {
     let schemaJson = `{"fields":{"item":{"selector":".x"}},"config":{"limit":${limitJson}}}`
     switch SchemaParser.parseSchema(TestHelpers.objectFromJsonString(schemaJson)) {

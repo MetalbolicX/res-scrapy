@@ -154,6 +154,7 @@ let parseConfigResult: {..} => result<schemaConfig, schemaError> = schemaJson =>
       }
       let limitResult: result<int, schemaError> = switch dictGet(raw, "limit") {
       | None => Ok(0)
+      | Some(JSON.Null) => Ok(0)
       | Some(limit) if ObjectBinding.isNonNegativeInteger(limit) => Ok(Obj.magic(limit))
       | Some(limit) =>
         Error(
