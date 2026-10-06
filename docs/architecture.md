@@ -16,7 +16,7 @@ in the `res-scrapy` CLI scraper.
 - **Interop with Node.js** — ReScript's `@module`, `@val`, `@send` externals provide type-safe bindings to Node.js APIs (`node:util`, `node:fs`, `fetch`, `node-html-parser`) without a heavy FFI layer.
 - **Immutable by default** — All data structures are immutable, which simplifies reasoning about the extraction pipeline. Mutation is explicit via `ref` (e.g., `stats`, `acc` accumulators).
 
-**Tradeoff:** The ReScript ecosystem is small. The project compensates by writing thin bindings (`NodeJsBinding.res`, `NodeHtmlParserBinding.res`) to the exact Node.js surface needed.
+**Tradeoff:** The ReScript ecosystem is small. The project compensates by writing thin bindings (`NodeFs.res`, `NodeUrl.res`, `NodeUtil.res`, `NodeProcess.res`, `NodeIter.res`, `NodeFetch.res`, `NodeUndiciBinding.res`, `ImportMetaBinding.res`, and `NodeHtmlParserBinding.res`) to the exact Node.js surface needed.
 
 ---
 
@@ -189,7 +189,7 @@ graph LR
     end
 
     subgraph "App Error"
-        AE2["appError<br/>CliError / InputError / SchemaError<br/>ExtractionError / FileError / WriteError<br/>FetchError / TemplateError"]
+        AE2["appError<br/>CliError / InputError / SchemaError<br/>ExtractionError / FileError / WriteError<br/>TemplateError"]
     end
 
     PE -->|mapParseError| AE2
@@ -491,7 +491,14 @@ src/
 ├── Main.res                    # Entry point, orchestration
 ├── Main.resi                   # Public interface (main, mainWithContext)
 ├── bindings/
-│   ├── NodeJsBinding.res       # Node.js API bindings (fs, util, fetch, process, Iterator)
+│   ├── NodeFs.res              # Node.js filesystem bindings
+│   ├── NodeUrl.res             # Node.js URL bindings
+│   ├── NodeUtil.res            # Node.js utilities, including narrowed JSON parsing
+│   ├── NodeProcess.res         # Node.js process bindings
+│   ├── NodeIter.res            # Node.js iterator helpers
+│   ├── NodeFetch.res           # Global fetch binding
+│   ├── NodeUndiciBinding.res   # Undici proxy-agent binding
+│   ├── ImportMetaBinding.res   # Import-meta/runtime path helpers
 │   └── NodeHtmlParserBinding.res  # node-html-parser bindings
 ├── cli/
 │   ├── Cli.res                 # Help text, argument parsing via node:util.parseArgs
@@ -621,8 +628,8 @@ sequenceDiagram
    - **`process.on` / `globalThis` guards** (`src/Main.res:registerGlobalRuntimeHandlers`) — Node.js process event registration; typed rewrite would require per-event externals with no safety gain.
    - **`Object.fromEntries` + destructuring** (`src/schema/v2/parser/SchemaParser.res:toFieldsObject`) — typed rewrite would be substantially more verbose than the raw block it replaces.
    - **`RegExp` construction with safety validation** (`src/schema/v2/utils/StringUtils.res:compileSafePattern`) — validates DoS-prone patterns before compilation; the validation logic is cleaner in JS.
-   - **`process.exitCode` setter** (`src/bindings/NodeJsBinding.res`) — no ReScript equivalent for assigning to this property.
-   - **`JSON.parse`** (`src/bindings/NodeJsBinding.res:jsonParse`) — the raw boundary itself is intentional; the return type is narrowed to `option<JSON.t>` to prevent unchecked casts downstream.
+   - **`process.exitCode` setter** (`src/bindings/NodeProcess.res`) — no ReScript equivalent for assigning to this property.
+   - **`JSON.parse`** (`src/bindings/NodeUtil.res:jsonParse`) — the raw boundary itself is intentional; the return type is narrowed to `option<JSON.t>` to prevent unchecked casts downstream.
    - **Test-only JS interop** — `AppContext_test.res` uses raw JS `typeof` checks; `ExnUtils_test.res` creates JS error objects for stack testing; `MainContext_test.res` throws system errors. These are deliberately testing JS behavior, not ReScript logic.
    - **`{..}` coercion boundary** — `Cli.res:pkg`, `SchemaParser.res:raw`, and `TestHelpers.asOpenObject` are named, singular boundaries where open JS objects must cross into typed ReScript land.
 

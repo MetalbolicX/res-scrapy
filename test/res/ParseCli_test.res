@@ -15,12 +15,6 @@ let isParseError = e =>
   | _ => false
   }
 
-let isNoMatches = e =>
-  switch e {
-  | NoMatches(_) => true
-  | _ => false
-  }
-
 let isValidOuterHtml = opts =>
   switch opts.extract {
   | OuterHtml => true
@@ -410,10 +404,22 @@ test("runArgsValidation rejects timeout less than 1", () => {
   switch runArgsValidation(values) {
   | Error(e) =>
     switch e {
-    | InvalidTimeout(msg) => stringContains(msg, "must be >= 1")->isTruthy
+    | InvalidTimeout(msg) => stringContains(msg, "between 1 and 600")->isTruthy
     | _ => failWith("Expected InvalidTimeout for timeout < 1")
     }
   | Ok(_) => failWith("Expected InvalidTimeout for timeout < 1")
+  }
+})
+
+test("runArgsValidation rejects timeout greater than 600", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    timeout: "601",
+  }
+  switch runArgsValidation(values) {
+  | Error(InvalidTimeout(_)) => isTruthy(true)
+  | _ => failWith("Expected InvalidTimeout for timeout > 600")
   }
 })
 
@@ -554,10 +560,22 @@ test("runArgsValidation rejects retry less than 1", () => {
   switch runArgsValidation(values) {
   | Error(e) =>
     switch e {
-    | InvalidRetry(msg) => stringContains(msg, "must be >= 1")->isTruthy
+    | InvalidRetry(msg) => stringContains(msg, "between 1 and 10")->isTruthy
     | _ => failWith("Expected InvalidRetry for retry < 1")
     }
   | Ok(_) => failWith("Expected InvalidRetry for retry < 1")
+  }
+})
+
+test("runArgsValidation rejects retry greater than 10", () => {
+  let values = {
+    ...emptyValues,
+    selector: ".item",
+    retry: "11",
+  }
+  switch runArgsValidation(values) {
+  | Error(InvalidRetry(_)) => isTruthy(true)
+  | _ => failWith("Expected InvalidRetry for retry > 10")
   }
 })
 
@@ -708,7 +726,7 @@ test("PR 2b preserves exact timeout <1 error message", () => {
   switch runArgsValidation(values) {
   | Error(e) =>
     switch getInvalidMsg(e) {
-    | Some(m) => isTextEqualTo("Timeout must be >= 1 second, got 0", m)
+    | Some(m) => isTextEqualTo("Timeout must be between 1 and 600 seconds, got 0", m)
     | None => failWith("Expected timeout error")
     }
   | Ok(_) => failWith("Expected InvalidTimeout")
@@ -725,7 +743,7 @@ test("PR 2b preserves exact non-numeric timeout error message", () => {
   | Error(e) =>
     switch getInvalidMsg(e) {
     | Some(m) =>
-      isTextEqualTo("Invalid timeout value \"abc\". Expected a number of seconds (>= 1)", m)
+      isTextEqualTo("Invalid timeout value \"abc\". Expected a number of seconds (1-600)", m)
     | None => failWith("Expected timeout error")
     }
   | Ok(_) => failWith("Expected InvalidTimeout")
@@ -741,7 +759,7 @@ test("PR 2b preserves exact retry <1 error message", () => {
   switch runArgsValidation(values) {
   | Error(e) =>
     switch getInvalidMsg(e) {
-    | Some(m) => isTextEqualTo("Retry count must be >= 1, got 0", m)
+    | Some(m) => isTextEqualTo("Retry count must be between 1 and 10, got 0", m)
     | None => failWith("Expected retry error")
     }
   | Ok(_) => failWith("Expected InvalidRetry")
@@ -757,7 +775,7 @@ test("PR 2b preserves exact non-numeric retry error message", () => {
   switch runArgsValidation(values) {
   | Error(e) =>
     switch getInvalidMsg(e) {
-    | Some(m) => isTextEqualTo("Invalid retry value \"abc\". Expected a number (>= 1)", m)
+    | Some(m) => isTextEqualTo("Invalid retry value \"abc\". Expected a number (1-10)", m)
     | None => failWith("Expected retry error")
     }
   | Ok(_) => failWith("Expected InvalidRetry")

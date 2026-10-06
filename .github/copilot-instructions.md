@@ -43,7 +43,7 @@ Notes:
 - In-source compilation: `rescript.json` is configured with `in-source: true` and suffix `.res.mjs`. ReScript outputs live alongside sources; treat `.res.mjs` files as build artifacts produced by the compiler.
 - CLI validation & error handling:
   - CLI argument parsing occurs in `src/cli` (see `ParseCli.res` for validation rules and custom error types).
-  - Errors are surfaced via `Console.error` and `NodeJsBinding.Process.exit(1)`. Scripts and automation should check the CLI exit code.
+  - Errors are surfaced via `Console.error` and `NodeProcess.exit(1)`. Scripts and automation should check the CLI exit code.
 - Schema format conventions (documented in README & enforced by `Schema`):
   - Top-level `fields` map: each field must include `selector` and `type` (text|attribute|html|number|boolean). Optional `required`, `default`, and `trueValue`/`falseValue` for booleans may be present.
   - `Schema.loadSchema(~isInline=true, raw)` handles inline JSON; `Schema.loadSchema(~isInline=false, path)` reads a file path.

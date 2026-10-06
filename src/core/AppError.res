@@ -5,7 +5,6 @@ type appError =
   | ExtractionError(string)
   | FileError(string)
   | WriteError(string)
-  | FetchError(string)
   | TemplateError(string)
 
 let mapStdInError: StdIn.stdInError => appError = err =>
@@ -19,7 +18,6 @@ let mapParseError: ParseCli.parseError => appError = err =>
   switch err {
   | MissingSelector(msg) => CliError(msg)
   | ParseError({message}) => CliError(message)
-  | NoMatches({message}) => CliError(message)
   | InvalidConcurrency(msg) => CliError(msg)
   | InvalidTimeout(msg) => CliError(msg)
   | InvalidRetry(msg) => CliError(msg)
@@ -56,6 +54,5 @@ let toMessage: appError => string = err =>
   | ExtractionError(msg)
   | FileError(msg)
   | WriteError(msg)
-  | FetchError(msg)
   | TemplateError(msg) => msg
   }

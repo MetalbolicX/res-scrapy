@@ -1,3 +1,8 @@
+let defaultConcurrency = 5
+let defaultTimeout = 30
+let defaultRetry = 3
+let defaultDelay = 0
+
 type mode = Single | Multiple
 
 type extractMode =
@@ -57,7 +62,6 @@ type parseOptions = {
 type parseError =
   | MissingSelector(string)
   | ParseError({message: string, details: option<JsExn.t>})
-  | NoMatches({message: string, selector: string})
   | InvalidConcurrency(string)
   | InvalidTimeout(string)
   | InvalidRetry(string)
@@ -185,7 +189,7 @@ let validateConcurrency: option<string> => result<int, parseError> = input => {
         InvalidConcurrency(`Invalid concurrency value "${s}". Expected a number between 1 and 20`),
       )
     }
-  | None => Ok(5)
+  | None => Ok(defaultConcurrency)
   }
 }
 
@@ -193,12 +197,13 @@ let validateTimeout: option<string> => result<int, parseError> = input => {
   switch input {
   | Some(s) =>
     switch Int.fromString(s) {
-    | Some(n) if n >= 1 => Ok(n)
-    | Some(n) => Error(InvalidTimeout(`Timeout must be >= 1 second, got ${Int.toString(n)}`))
+    | Some(n) if n >= 1 && n <= 600 => Ok(n)
+    | Some(n) =>
+      Error(InvalidTimeout(`Timeout must be between 1 and 600 seconds, got ${Int.toString(n)}`))
     | None =>
-      Error(InvalidTimeout(`Invalid timeout value "${s}". Expected a number of seconds (>= 1)`))
+      Error(InvalidTimeout(`Invalid timeout value "${s}". Expected a number of seconds (1-600)`))
     }
-  | None => Ok(30)
+  | None => Ok(defaultTimeout)
   }
 }
 
@@ -206,11 +211,11 @@ let validateRetry: option<string> => result<int, parseError> = input => {
   switch input {
   | Some(s) =>
     switch Int.fromString(s) {
-    | Some(n) if n >= 1 => Ok(n)
-    | Some(n) => Error(InvalidRetry(`Retry count must be >= 1, got ${Int.toString(n)}`))
-    | None => Error(InvalidRetry(`Invalid retry value "${s}". Expected a number (>= 1)`))
+    | Some(n) if n >= 1 && n <= 10 => Ok(n)
+    | Some(n) => Error(InvalidRetry(`Retry count must be between 1 and 10, got ${Int.toString(n)}`))
+    | None => Error(InvalidRetry(`Invalid retry value "${s}". Expected a number (1-10)`))
     }
-  | None => Ok(3)
+  | None => Ok(defaultRetry)
   }
 }
 
@@ -222,7 +227,7 @@ let validateDelay: option<string> => result<int, parseError> = input => {
     | Some(n) => Error(InvalidDelay(`Delay must be >= 0 ms, got ${Int.toString(n)}`))
     | None => Error(InvalidDelay(`Invalid delay value "${s}". Expected milliseconds (>= 0)`))
     }
-  | None => Ok(0)
+  | None => Ok(defaultDelay)
   }
 }
 
@@ -401,10 +406,10 @@ let validateScalars: NodeUtil.cliValues => result<validatedScalars, parseError> 
   let initial: validatedScalars = {
     userAgent: None,
     url: None,
-    concurrency: 5,
-    timeoutSeconds: 30,
-    retryCount: 3,
-    delayMs: 0,
+    concurrency: defaultConcurrency,
+    timeoutSeconds: defaultTimeout,
+    retryCount: defaultRetry,
+    delayMs: defaultDelay,
   }
   let steps: array<validatedScalars => result<validatedScalars, parseError>> = [
     acc => validateUserAgent(values.userAgent)->Result.map(userAgent => {...acc, userAgent}),
@@ -443,15 +448,14 @@ let validateHeadersAndWarnings: (
   */
 let runArgsValidation: NodeUtil.cliValues => result<parseOptions, parseError> = values => {
   let fetchFlags = fetchFlagNames(values)
-
   let initial: runState = {
     scalars: {
       userAgent: None,
       url: None,
-      concurrency: 5,
-      timeoutSeconds: 30,
-      retryCount: 3,
-      delayMs: 0,
+      concurrency: defaultConcurrency,
+      timeoutSeconds: defaultTimeout,
+      retryCount: defaultRetry,
+      delayMs: defaultDelay,
     },
     schemaSource: None,
     requestHeaders: [],

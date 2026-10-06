@@ -5,7 +5,6 @@ type appError =
   | ExtractionError(string)
   | FileError(string)
   | WriteError(string)
-  | FetchError(string)
   | TemplateError(string)
 
 let mapStdInError: StdIn.stdInError => appError

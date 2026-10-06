@@ -38,7 +38,6 @@ type parseOptions = {
 type parseError =
   | MissingSelector(string)
   | ParseError({message: string, details: option<JsExn.t>})
-  | NoMatches({message: string, selector: string})
   | InvalidConcurrency(string)
   | InvalidTimeout(string)
   | InvalidRetry(string)

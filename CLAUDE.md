@@ -73,7 +73,7 @@ Every CLI command receives its dependencies from a single `AppContext.t`. New mo
 | `src/core/NodeHtmlDocument.res` | `node-html-parser` adapter for `Document`. |
 | `src/core/OutputWriter.res` | Output sink interface. |
 | `src/bindings/NodeHtmlParserBinding.res` | FFI bindings to `node-html-parser`. |
-| `src/bindings/NodeJsBinding.res` | FFI bindings to Node.js (`fs`, `url`, `path`, etc.). |
+| `src/bindings/NodeFs.res`, `NodeUrl.res`, `NodeUtil.res`, `NodeProcess.res`, `NodeIter.res`, `NodeFetch.res`, `NodeUndiciBinding.res`, `ImportMetaBinding.res` | Typed FFI bindings to Node.js APIs, split by concern. |
 | `src/url/UrlRunner.res` | Orchestrates URL fetch + extract + write. |
 | `src/url/Fetcher.res` | HTTP fetch interface. |
 | `src/url/UrlOutputWriter.res` | Per-URL output writing. |
@@ -98,9 +98,9 @@ Every CLI command receives its dependencies from a single `AppContext.t`. New mo
 - **Never throw** in business logic — return `Result<`a`, `AppError.t>`. Reserve exceptions for truly unrecoverable startup failures.
 - **Use `ResultX.flatMap`** (and other `ResultX.*` combinators) instead of nested `switch` ladders over `Result`.
 - **Open `FieldTypes` locally** — modules that pattern-match on field type variants open `FieldTypes` near the match site; do not add it to module-level `open`.
-- **Treat `NodeJsBinding.Iter` as the iterator abstraction** — loop over file/dir entries through `Iter.fold` / `Iter.toArray` rather than reaching for raw `for` loops or callback APIs.
+- **Treat `NodeIter.Iter` as the iterator abstraction** — loop over file/dir entries through `Iter.fold` / `Iter.toArray` rather than reaching for raw `for` loops or callback APIs.
 - **`%raw` belongs only in `src/bindings/`** — never use `%raw` outside the FFI layer; expose typed wrappers instead.
-- **Prefer `JSON.t`** over `Js.Json.t` for new code — narrow `NodeJsBinding.jsonParse` returns `option<JSON.t>`.
+- **Prefer `JSON.t`** over `Js.Json.t` for new code — narrow `NodeUtil.jsonParse` returns `option<JSON.t>`.
 - **Match with named constructors** — avoid `as _` when a name clarifies intent.
 
 ## Conventions
