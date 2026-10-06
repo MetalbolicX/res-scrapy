@@ -19,7 +19,7 @@ Quick reference for the flags at your disposal:
 - `-j` (`--concurrency`) — max concurrent fetches in URL mode (default: 5).
 - `--user-agent` — custom User-Agent header for URL mode.
 - `--timeout` — request timeout in seconds (default: 30).
-- `--retry` — max retries on failure (default: 3).
+- `--retry` — total fetch attempts per URL on retryable failures (default: 3); waits ~2s before the 2nd attempt, then ~4s, 8s, ... (doubling, ±0.5s jitter).
 - `--delay` — minimum delay between request starts in ms.
 - `--header` — custom HTTP header in "Key: Value" format (repeatable).
 - `--cookie` — cookie value (repeatable, sugar for `--header`).

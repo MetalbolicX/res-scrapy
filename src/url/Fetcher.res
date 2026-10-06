@@ -38,7 +38,7 @@ let randomJitter: unit => int = () => {
 
 /**
   * Calculates exponential backoff delay for retry attempt.
-  * attempt=0 → 1s, attempt=1 → 2s, attempt=2 → 4s
+  * The first retry waits backoffDelay(1) ≈ 2s (±500ms jitter); the 1s base applies only if a caller starts at attempt=0.
   */
 let backoffDelay: int => int = attempt => {
   let exponent = Float.fromInt(attempt)

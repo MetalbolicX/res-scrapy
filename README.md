@@ -90,7 +90,7 @@ Options:
 -j, --concurrency Max concurrent fetches (default: 5, max: 20)
 --user-agent Custom User-Agent header (default: "res-scrapy/{version}")
 --timeout Request timeout in seconds (default: 30, range: 1-600)
---retry Max retries on failure (default: 3, range: 1-10)
+--retry Total fetch attempts per URL on retryable failures (default: 3, range: 1-10). Waits ~2s before the 2nd attempt, then ~4s, 8s, ... (doubling, ±0.5s jitter).
 --delay Minimum delay between request starts in ms (default: 0)
 --header Custom HTTP header in "Key: Value" format (repeatable). Headers are sent to the requested URL and to same-origin redirects; cross-origin redirects receive only the User-Agent.
 --cookie Cookie value (repeatable, sugar for --header)
