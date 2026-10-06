@@ -448,6 +448,171 @@ testAsync("runUrlMode streams 3 successful fetches as a JSON array", done_ => {
   ->ignore
 })
 
+testAsync("runUrlMode stops JSON writes after an append failure", done_ => {
+  let (push, getEvents) = makeState()
+  let fileContent: ref<string> = ref("")
+  let appendCalls: ref<int> = ref(0)
+  let writeFileSync = (_path, content) => fileContent := content
+  let appendFileSync = (_path, content) => fileContent := fileContent.contents ++ content
+  let appendFile = (_path, content) => {
+    appendCalls := appendCalls.contents + 1
+    if appendCalls.contents == 1 {
+      %raw(`Promise.reject(new Error("Disk full"))`)
+    } else {
+      fileContent := fileContent.contents ++ content
+      Promise.resolve()
+    }
+  }
+  let fetchResults: array<Fetcher.fetchResult> = [
+    {url: "http://example.com/1", result: Ok("<div class=\"item\">A</div>")},
+    {url: "http://example.com/2", result: Ok("<div class=\"item\">B</div>")},
+  ]
+  let deps = makeUrlRunnerDeps(
+    ~fetchResults,
+    ~parseTemplateResult=Ok(["http://example.com/1", "http://example.com/2"]),
+    ~appendFile,
+    ~appendFileSync,
+    ~writeFileSync,
+  )
+  let ctx = mkUrlRunnerCtx(~deps, ~push)
+  let options: ParseCli.parseOptions = {
+    selector: ".item",
+    extract: ParseCli.Text,
+    mode: ParseCli.Multiple,
+    output: "failed-append.json",
+    outputFormat: ParseCli.Json,
+    warnings: [],
+    concurrency: 5,
+    timeoutSeconds: 30,
+    retryCount: 3,
+    delayMs: 0,
+    requestHeaders: [],
+  }
+
+  UrlRunner.runUrlMode(ctx, "http://example.com/{1..2}", options)
+  ->Promise.then(_ => {
+    let events = getEvents()
+    isOptionEqualTo(Some(1), exitCodeOf(events), ~eq=(a, b) => a == b)
+    isTextEqualTo("[", fileContent.contents)
+    isIntEqualTo(1, appendCalls.contents)
+    let hasWriteWarning = events->Array.some(
+      e =>
+        switch e {
+        | Err(message) => String.includes(message, "output write(s) failed")
+        | _ => false
+        },
+    )
+    isOptionEqualTo(Some(true), Some(hasWriteWarning), ~eq=(a, b) => a == b)
+    done_(~planned=4, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("runUrlMode should not throw")
+    done_(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("runUrlMode stops JSON writes when opening the file fails", done_ => {
+  let (push, getEvents) = makeState()
+  let appendCalls: ref<int> = ref(0)
+  let appendFile = (_path, _content) => {
+    appendCalls := appendCalls.contents + 1
+    Promise.resolve()
+  }
+  let writeFileSync = (_path, _content) => %raw(`(() => { throw new Error("open failed") })()`)
+  let fetchResults: array<Fetcher.fetchResult> = [
+    {url: "http://example.com/1", result: Ok("<div class=\"item\">A</div>")},
+  ]
+  let deps = makeUrlRunnerDeps(
+    ~fetchResults,
+    ~parseTemplateResult=Ok(["http://example.com/1"]),
+    ~appendFile,
+    ~writeFileSync,
+  )
+  let ctx = mkUrlRunnerCtx(~deps, ~push)
+  let options: ParseCli.parseOptions = {
+    selector: ".item",
+    extract: ParseCli.Text,
+    mode: ParseCli.Multiple,
+    output: "failed-open.json",
+    outputFormat: ParseCli.Json,
+    warnings: [],
+    concurrency: 5,
+    timeoutSeconds: 30,
+    retryCount: 3,
+    delayMs: 0,
+    requestHeaders: [],
+  }
+
+  UrlRunner.runUrlMode(ctx, "http://example.com/{1..1}", options)
+  ->Promise.then(_ => {
+    isOptionEqualTo(Some(1), exitCodeOf(getEvents()), ~eq=(a, b) => a == b)
+    isIntEqualTo(0, appendCalls.contents)
+    done_(~planned=2, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("runUrlMode should not throw")
+    done_(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync(
+  "runUrlMode writes exactly an empty JSON array for successful zero-row extraction",
+  done_ => {
+    let (push, getEvents) = makeState()
+    let fileContent: ref<string> = ref("")
+    let writeFileSync = (_path, content) => fileContent := content
+    let appendFileSync = (_path, content) => fileContent := fileContent.contents ++ content
+    let appendFile = (_path, content) => {
+      fileContent := fileContent.contents ++ content
+      Promise.resolve()
+    }
+    let fetchResults: array<Fetcher.fetchResult> = [
+      {url: "http://example.com/1", result: Ok("<div class=\"other\">A</div>")},
+    ]
+    let deps = makeUrlRunnerDeps(
+      ~fetchResults,
+      ~parseTemplateResult=Ok(["http://example.com/1"]),
+      ~appendFile,
+      ~appendFileSync,
+      ~writeFileSync,
+    )
+    let ctx = mkUrlRunnerCtx(~deps, ~push)
+    let options: ParseCli.parseOptions = {
+      selector: ".item",
+      extract: ParseCli.Text,
+      mode: ParseCli.Multiple,
+      output: "zero-rows.json",
+      outputFormat: ParseCli.Json,
+      warnings: [],
+      concurrency: 5,
+      timeoutSeconds: 30,
+      retryCount: 3,
+      delayMs: 0,
+      requestHeaders: [],
+    }
+
+    UrlRunner.runUrlMode(ctx, "http://example.com/{1..1}", options)
+    ->Promise.then(_ => {
+      isTextEqualTo("[]", fileContent.contents)
+      isOptionEqualTo(None, exitCodeOf(getEvents()), ~eq=(a, b) => a == b)
+      done_(~planned=2, ())
+      Promise.resolve()
+    })
+    ->Promise.catch(_ => {
+      failWith("runUrlMode should not throw")
+      done_(~planned=0, ())
+      Promise.resolve()
+    })
+    ->ignore
+  },
+)
+
 testAsync("runUrlMode writes empty JSON array when all fetches fail", done_ => {
   let (push, getEvents) = makeState()
   let (writeFileSync, appendFileSync, appendFile, getWrites) = makeFileMock()

@@ -33,6 +33,7 @@ type extractionSetup =
 type outputState = {
   mutable jsonFileStarted: bool,
   mutable jsonRowsWritten: int,
+  mutable jsonWriteFailed: bool,
   mutable writeFailures: int,
 }
 
@@ -101,31 +102,43 @@ let routeOutput = async (
       | Error(_) => state.writeFailures = state.writeFailures + 1
       }
     }
-  | (Some(path), Json) => {
+  | (Some(path), Json) =>
+    // Framing state advances only after a successful write. After any
+    // JSON-path write failure the file is left untouched for the rest of
+    // the run (it may be truncated): a partially-written row cannot be
+    // repaired by further appends, so surface the failure through exit 1
+    // and the existing warning instead.
+    if !state.jsonWriteFailed {
       if !state.jsonFileStarted {
-        state.jsonFileStarted = true
         switch UrlOutputWriter.beginJsonArraySync(
           ~writeFileSync=ctx.deps.fs.writeFileSync,
           ~err=ctx.io.err,
           ~path,
         ) {
-        | Ok() => ()
-        | Error(_) => state.writeFailures = state.writeFailures + 1
+        | Ok() => state.jsonFileStarted = true
+        | Error(_) => {
+            state.writeFailures = state.writeFailures + 1
+            state.jsonWriteFailed = true
+          }
         }
       }
-      let isFirstRow = state.jsonRowsWritten == 0
-      state.jsonRowsWritten = state.jsonRowsWritten + countRows(json)
-      let result = await UrlOutputWriter.appendJsonRowAsync(
-        ~appendFile=ctx.deps.fs.appendFile,
-        ~err=ctx.io.err,
-        ~stringifyJson=ctx.deps.serialize.stringifyJson,
-        ~path,
-        ~isFirstRow,
-        ~json,
-      )
-      switch result {
-      | Ok(_) => ()
-      | Error(_) => state.writeFailures = state.writeFailures + 1
+      if !state.jsonWriteFailed {
+        let isFirstRow = state.jsonRowsWritten == 0
+        let result = await UrlOutputWriter.appendJsonRowAsync(
+          ~appendFile=ctx.deps.fs.appendFile,
+          ~err=ctx.io.err,
+          ~stringifyJson=ctx.deps.serialize.stringifyJson,
+          ~path,
+          ~isFirstRow,
+          ~json,
+        )
+        switch result {
+        | Ok(_) => state.jsonRowsWritten = state.jsonRowsWritten + countRows(json)
+        | Error(_) => {
+            state.writeFailures = state.writeFailures + 1
+            state.jsonWriteFailed = true
+          }
+        }
       }
     }
   }
@@ -252,6 +265,7 @@ let runUrlMode = async (
         let state: outputState = {
           jsonFileStarted: false,
           jsonRowsWritten: 0,
+          jsonWriteFailed: false,
           writeFailures: 0,
         }
 
@@ -285,25 +299,30 @@ let runUrlMode = async (
         // opening bracket was never emitted; in that case we still need to
         // emit an empty array on disk so downstream tools see valid JSON.
         switch (options.output, options.outputFormat) {
-        | (Some(path), Json) =>
-          if !state.jsonFileStarted {
-            state.jsonFileStarted = true
-            switch UrlOutputWriter.beginJsonArraySync(
-              ~writeFileSync=ctx.deps.fs.writeFileSync,
-              ~err=ctx.io.err,
-              ~path,
-            ) {
-            | Ok() => ()
-            | Error(_) => state.writeFailures = state.writeFailures + 1
+        | (Some(path), Json) => {
+            if !state.jsonWriteFailed && !state.jsonFileStarted {
+              switch UrlOutputWriter.beginJsonArraySync(
+                ~writeFileSync=ctx.deps.fs.writeFileSync,
+                ~err=ctx.io.err,
+                ~path,
+              ) {
+              | Ok() => state.jsonFileStarted = true
+              | Error(_) => {
+                  state.writeFailures = state.writeFailures + 1
+                  state.jsonWriteFailed = true
+                }
+              }
             }
-          }
-          switch UrlOutputWriter.endJsonArraySync(
-            ~appendFileSync=ctx.deps.fs.appendFileSync,
-            ~err=ctx.io.err,
-            ~path,
-          ) {
-          | Ok() => ()
-          | Error(_) => state.writeFailures = state.writeFailures + 1
+            if !state.jsonWriteFailed {
+              switch UrlOutputWriter.endJsonArraySync(
+                ~appendFileSync=ctx.deps.fs.appendFileSync,
+                ~err=ctx.io.err,
+                ~path,
+              ) {
+              | Ok() => ()
+              | Error(_) => state.writeFailures = state.writeFailures + 1
+              }
+            }
           }
         | _ => () // Already streamed
         }
