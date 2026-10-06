@@ -241,7 +241,7 @@ testAsync("table extraction: custom selector", planned => {
 })
 
 testAsync("schema extraction: minimal schema", planned => {
-  let schema = `{"fields":{}}`
+  let schema = "{\"fields\":{\"t\":{\"selector\":\"p\",\"type\":\"text\"}}}"
   runCli(~args=["--schema", schema], ~input=html)
   ->Promise.then(result => {
     isIntEqualTo(0, result.exitCode)

@@ -70,12 +70,31 @@ let parseField: ({..}, string) => result<schemaField, schemaError> = (fieldJson,
       | Some(t) => t
       | None => "text"
       }
-      switch parseFieldType(fieldJson, rawType) {
-      | Error(msg) => Error(InvalidFieldType({field: fieldName, got: msg}))
-      | Ok(fieldType) => {
-          let required: bool = (dictGet(fieldJson, "required"): option<bool>)->Option.getOr(false)
-          let default: option<JSON.t> = dictGet(fieldJson, "default")
-          Ok({selector, fieldType, required, ?default})
+      let attributesValid = switch (rawType, dictGet(fieldJson, "attributes")) {
+      | ("attribute", Some(attributes)) => ObjectBinding.isNonEmptyStringArray(attributes)
+      | _ => true
+      }
+      if !attributesValid {
+        switch dictGet(fieldJson, "attributes") {
+        | Some(attributes) =>
+          Error(
+            InvalidFieldType({
+              field: `${fieldName}.attributes`,
+              got: `expected a non-empty array of strings, got ${ObjectBinding.jsonType(
+                  attributes,
+                )}`,
+            }),
+          )
+        | None => Error(InvalidFieldType({field: `${fieldName}.attributes`, got: "missing"}))
+        }
+      } else {
+        switch parseFieldType(fieldJson, rawType) {
+        | Error(msg) => Error(InvalidFieldType({field: fieldName, got: msg}))
+        | Ok(fieldType) => {
+            let required: bool = (dictGet(fieldJson, "required"): option<bool>)->Option.getOr(false)
+            let default: option<JSON.t> = dictGet(fieldJson, "default")
+            Ok({selector, fieldType, required, ?default})
+          }
         }
       }
     }

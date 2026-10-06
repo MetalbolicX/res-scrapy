@@ -11,10 +11,48 @@
 let toFieldsObject: 'a => {..} = %raw(`function(rawFields) {
   if (Array.isArray(rawFields)) {
     return Object.fromEntries(
-      rawFields
-        .filter(function(f) { return f && typeof f === 'object' && typeof f.name === 'string'; })
-        .map(function(f) { return [f.name, f]; })
+      rawFields.map(function(f) { return [f.name, f]; })
     );
   }
   return rawFields;
+}`)
+
+let jsonType: 'a => string = %raw(`function(value) {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  return typeof value;
+}`)
+
+let isObject: 'a => bool = %raw(`function(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}`)
+
+let isArray: 'a => bool = %raw(`function(value) { return Array.isArray(value); }`)
+
+let isNonEmptyStringArray: 'a => bool = %raw(`function(value) {
+  return Array.isArray(value) && value.length > 0 && value.every(function(item) {
+    return typeof item === "string";
+  });
+}`)
+
+let firstNonObjectArrayIndex: 'a => option<int> = %raw(`function(value) {
+  if (!Array.isArray(value)) return undefined;
+  for (var index = 0; index < value.length; index++) {
+    var item = value[index];
+    if (item === null || typeof item !== "object" || Array.isArray(item)) return index;
+  }
+  return undefined;
+}`)
+
+let firstInvalidLegacyFieldIndex: 'a => option<int> = %raw(`function(value) {
+  if (!Array.isArray(value)) return undefined;
+  for (var index = 0; index < value.length; index++) {
+    var item = value[index];
+    if (item === null || typeof item !== "object" || Array.isArray(item) || typeof item.name !== "string") return index;
+  }
+  return undefined;
+}`)
+
+let isNonNegativeInteger: 'a => bool = %raw(`function(value) {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }`)

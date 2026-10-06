@@ -42,16 +42,51 @@ let parseSchema: 'a => result<schema, schemaError> = jsonValue => {
   let raw: {..} = Obj.magic(jsonValue)
   switch dictGet(raw, "fields") {
   | None => Error(MissingFields("Schema JSON is missing the \"fields\" key"))
-  | Some(fieldsRaw) =>
-    let fieldsObj = toFieldsObject(fieldsRaw)
-    switch normalizeFields(fieldsObj) {
-    | Error(e) => Error(e)
-    | Ok(fields) => {
-        let config = ConfigParser.parseConfig(raw)
-        let version: option<string> = dictGet(raw, "version")
-        let name: option<string> = dictGet(raw, "name")
-        let description: option<string> = dictGet(raw, "description")
-        Ok({?version, ?name, ?description, fields, config})
+  | Some(fieldsRaw) if !ObjectBinding.isObject(fieldsRaw) && !ObjectBinding.isArray(fieldsRaw) =>
+    Error(
+      MissingFields(
+        `Schema fields must be an object or array, got ${ObjectBinding.jsonType(fieldsRaw)}`,
+      ),
+    )
+  | Some(fieldsRaw) => {
+      let fieldsShapeResult = if ObjectBinding.isArray(fieldsRaw) {
+        switch ObjectBinding.firstInvalidLegacyFieldIndex(fieldsRaw) {
+        | None => Ok()
+        | Some(index) => {
+            let entries: array<{..}> = Obj.magic(fieldsRaw)
+            let entry = entries[index]
+            Error(
+              MissingFields(
+                `Schema fields[${Int.toString(
+                    index,
+                  )}] must be an object with a string name; got ${ObjectBinding.jsonType(entry)}`,
+              ),
+            )
+          }
+        }
+      } else {
+        Ok()
+      }
+      switch fieldsShapeResult {
+      | Error(e) => Error(e)
+      | Ok() => {
+          let fieldsObj = toFieldsObject(fieldsRaw)
+          switch normalizeFields(fieldsObj) {
+          | Error(e) => Error(e)
+          | Ok(fields) if Array.length(fields) == 0 =>
+            Error(MissingFields("Schema contains no valid field definitions"))
+          | Ok(fields) =>
+            switch ConfigParser.parseConfigResult(raw) {
+            | Error(e) => Error(e)
+            | Ok(config) => {
+                let version: option<string> = dictGet(raw, "version")
+                let name: option<string> = dictGet(raw, "name")
+                let description: option<string> = dictGet(raw, "description")
+                Ok({?version, ?name, ?description, fields, config})
+              }
+            }
+          }
+        }
       }
     }
   }

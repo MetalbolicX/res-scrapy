@@ -31,6 +31,29 @@ test("SchemaParser.parseSchema handles legacy array fields format", () => {
   }
 })
 
+test("SchemaParser rejects malformed fields shapes without throwing", () => {
+  let invalidSchemas = [
+    "{\"fields\":42}",
+    "{\"fields\":null}",
+    "{\"fields\":[{\"selector\":\".x\"}]}",
+    "{\"fields\":{}}",
+  ]
+  invalidSchemas->Array.forEach(schemaJson =>
+    switch SchemaParser.parseSchema(TestHelpers.objectFromJsonString(schemaJson)) {
+    | Error(_) => ()
+    | Ok(_) => failWith("Expected malformed fields to be rejected")
+    }
+  )
+})
+
+test("SchemaV2.loadSchema returns typed errors for malformed schema", () => {
+  switch SchemaV2.loadSchema(~isInline=true, "{\"fields\":42}") {
+  | Error(MissingFields(_)) => ()
+  | Error(_) => failWith("Expected a typed MissingFields schema error")
+  | Ok(_) => failWith("Expected malformed schema to be rejected")
+  }
+})
+
 test("SchemaParser.parseSchema fails when fields key is missing", () => {
   let raw = TestHelpers.objectFromJsonString("{\"name\":\"x\"}")
   switch SchemaParser.parseSchema(raw) {

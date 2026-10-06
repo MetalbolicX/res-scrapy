@@ -20,6 +20,31 @@ test("OptionsParser.parseTextOptions parses all keys", () => {
   }
 })
 
+test("SchemaParser rejects malformed attributes and accepts supported forms", () => {
+  let rejectedSchemas = [
+    "{\"fields\":{\"item\":{\"type\":\"attribute\",\"selector\":\".x\",\"attributes\":\"src\"}}}",
+    "{\"fields\":{\"item\":{\"type\":\"attribute\",\"selector\":\".x\",\"attributes\":[\"href\",42]}}}",
+    "{\"fields\":{\"item\":{\"type\":\"attribute\",\"selector\":\".x\",\"attributes\":[]}}}",
+  ]
+  rejectedSchemas->Array.forEach(schemaJson =>
+    switch SchemaParser.parseSchema(TestHelpers.objectFromJsonString(schemaJson)) {
+    | Error(_) => ()
+    | Ok(_) => failWith("Expected malformed attributes to be rejected")
+    }
+  )
+
+  let validSchemas = [
+    "{\"fields\":{\"item\":{\"type\":\"attribute\",\"selector\":\".x\",\"attributes\":[\"href\",\"src\"]}}}",
+    "{\"fields\":{\"item\":{\"type\":\"attribute\",\"selector\":\".x\",\"attribute\":\"src\"}}}",
+  ]
+  validSchemas->Array.forEach(schemaJson =>
+    switch SchemaParser.parseSchema(TestHelpers.objectFromJsonString(schemaJson)) {
+    | Ok(_) => ()
+    | Error(_) => failWith("Expected supported attributes to be accepted")
+    }
+  )
+})
+
 test("OptionsParser.parseAttributeConfig supports array and legacy key", () => {
   let arrayField = TestHelpers.objectFromJsonString(
     "{\"attributes\":[\"href\",\"src\"],\"attributeOptions\":{\"mode\":\"join\",\"joinSep\":\"|\"}}",
@@ -172,6 +197,27 @@ test("OptionsParser.parseListOptions parses attr itemType", () => {
   isOptionEqualTo(Some("^a"), opts.filter, ~eq=(a, b) => a == b)
   isOptionEqualTo(Some(3), opts.limit, ~eq=(a, b) => a == b)
   isOptionEqualTo(Some(","), opts.join, ~eq=(a, b) => a == b)
+})
+
+test("OptionsParser.parseTableOptions rejects malformed column shapes", () => {
+  let invalidColumns = [
+    "{\"fields\":{\"items\":{\"type\":\"table\",\"selector\":\".x\",\"tableOptions\":{\"columns\":{}}}}}",
+    "{\"fields\":{\"items\":{\"type\":\"table\",\"selector\":\".x\",\"tableOptions\":{\"columns\":[null]}}}}",
+  ]
+  invalidColumns->Array.forEach(schemaJson =>
+    switch SchemaParser.parseSchema(TestHelpers.objectFromJsonString(schemaJson)) {
+    | Error(_) => ()
+    | Ok(_) => failWith("Expected malformed columns to be rejected")
+    }
+  )
+
+  let validColumns = TestHelpers.objectFromJsonString(
+    "{\"fields\":{\"items\":{\"type\":\"table\",\"selector\":\".x\",\"tableOptions\":{\"columns\":[{\"name\":\"title\",\"selector\":\"td\"}]}}}}",
+  )
+  switch SchemaParser.parseSchema(validColumns) {
+  | Ok(_) => ()
+  | Error(_) => failWith("Expected valid columns to be accepted")
+  }
 })
 
 test("OptionsParser.parseTableOptions returns Error when tableOptions is missing", () => {

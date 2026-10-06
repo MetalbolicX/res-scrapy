@@ -144,24 +144,44 @@ let parseDefaults: {..} => option<schemaDefaults> = schemaJson => {
   }
 }
 
-let parseConfig: {..} => schemaConfig = schemaJson => {
+let parseConfigResult: {..} => result<schemaConfig, schemaError> = schemaJson => {
   switch dictGet(schemaJson, "config") {
-  | None => defaultConfig
+  | None => Ok(defaultConfig)
   | Some(raw) => {
       let ignoreErrors: bool = switch dictGet(raw, "ignoreErrors") {
       | Some(true) => true
       | _ => false
       }
-      let limit: int =
-        (dictGet(raw, "limit"): option<Nullable.t<int>>)
-        ->Option.flatMap(n => n->Nullable.toOption)
-        ->Option.getOr(0)
-      let rowSelector: option<string> = dictGet(raw, "rowSelector")
-      let defaults = parseDefaults(raw)
-      switch defaults {
-      | None => {ignoreErrors, limit, ?rowSelector}
-      | Some(defaults) => {ignoreErrors, limit, ?rowSelector, defaults}
+      let limitResult: result<int, schemaError> = switch dictGet(raw, "limit") {
+      | None => Ok(0)
+      | Some(limit) if ObjectBinding.isNonNegativeInteger(limit) => Ok(Obj.magic(limit))
+      | Some(limit) =>
+        Error(
+          InvalidJson(
+            `config.limit must be a non-negative integer (0 = unlimited), got ${NodeUtil.jsonStringify(
+                limit,
+              )}`,
+          ),
+        )
+      }
+      switch limitResult {
+      | Error(e) => Error(e)
+      | Ok(limit) => {
+          let rowSelector: option<string> = dictGet(raw, "rowSelector")
+          let defaults = parseDefaults(raw)
+          switch defaults {
+          | None => Ok({ignoreErrors, limit, ?rowSelector})
+          | Some(defaults) => Ok({ignoreErrors, limit, ?rowSelector, defaults})
+          }
+        }
       }
     }
   }
 }
+
+/** Compatibility wrapper for callers that parse trusted config records directly. */
+let parseConfig: {..} => schemaConfig = schemaJson =>
+  switch parseConfigResult(schemaJson) {
+  | Ok(config) => config
+  | Error(_) => defaultConfig
+  }

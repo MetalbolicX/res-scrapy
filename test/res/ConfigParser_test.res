@@ -20,6 +20,27 @@ test("ConfigParser.parseConfig parses top-level knobs", () => {
   isOptionEqualTo(Some(".row"), config.rowSelector, ~eq=(a, b) => a == b)
 })
 
+test("ConfigParser rejects invalid config.limit values", () => {
+  let invalidLimits = ["-1", "1.5", "\"0\""]
+  invalidLimits->Array.forEach(limitJson => {
+    let schemaJson = `{"fields":{"item":{"selector":".x"}},"config":{"limit":${limitJson}}}`
+    switch SchemaParser.parseSchema(TestHelpers.objectFromJsonString(schemaJson)) {
+    | Error(InvalidJson(msg)) => isTruthy(String.includes(msg, "config.limit"))
+    | Error(_) => failWith("Expected InvalidJson for invalid config.limit")
+    | Ok(_) => failWith("Expected invalid config.limit to be rejected")
+    }
+  })
+
+  let validLimits = [("0", 0), ("5", 5)]
+  validLimits->Array.forEach(((limitJson, expected)) => {
+    let schemaJson = `{"fields":{"item":{"selector":".x"}},"config":{"limit":${limitJson}}}`
+    switch SchemaParser.parseSchema(TestHelpers.objectFromJsonString(schemaJson)) {
+    | Ok(schema) => isIntEqualTo(expected, schema.config.limit)
+    | Error(_) => failWith("Expected valid config.limit to be accepted")
+    }
+  })
+})
+
 test("ConfigParser.parseConfig parses defaults", () => {
   let raw = TestHelpers.objectFromJsonString(
     "{\"config\":{\"defaults\":{\"text\":{\"trim\":false},\"number\":{\"precision\":2},\"boolean\":{\"mode\":\"presence\"}}}}",

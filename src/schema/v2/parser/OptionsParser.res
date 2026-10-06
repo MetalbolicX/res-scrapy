@@ -301,9 +301,18 @@ let parseColumnFieldTypeVisitor: parseColumnFieldTypeVisitor<{..}> = {
   datetime: columnJson => Ok(ColumnDateTime(parseDateOptions(columnJson))),
   list: columnJson => Ok(ColumnList(parseListOptions(columnJson))),
   attribute: columnJson =>
-    switch parseAttributeConfig(columnJson) {
-    | Some(cfg) => Ok(ColumnAttribute(cfg))
-    | None => Error("attribute column requires an \"attribute\" or \"attributes\" key")
+    switch dictGet(columnJson, "attributes") {
+    | Some(attributes) if !ObjectBinding.isNonEmptyStringArray(attributes) =>
+      Error(
+        `attributes for column must be a non-empty array of strings, got ${ObjectBinding.jsonType(
+            attributes,
+          )}`,
+      )
+    | _ =>
+      switch parseAttributeConfig(columnJson) {
+      | Some(cfg) => Ok(ColumnAttribute(cfg))
+      | None => Error("attribute column requires an \"attribute\" or \"attributes\" key")
+      }
     },
 }
 
@@ -358,30 +367,46 @@ let parseTableOptions: {..} => result<tableOptions, string> = fieldJson => {
   | None => Error("table field requires a \"tableOptions\" object")
   | Some(raw) => {
       let rowSelector: option<string> = dictGet(raw, "rowSelector")
-      let columnsRaw: option<array<{..}>> = dictGet(raw, "columns")
-      switch columnsRaw {
+      switch dictGet(raw, "columns") {
       | None => Error("table field requires \"tableOptions.columns\"")
-      | Some(cols) if Array.length(cols) == 0 =>
-        Error("table field requires at least one column in \"tableOptions.columns\"")
-      | Some(cols) => {
-          let parsedColumnsResult: result<array<columnField>, string> =
-            cols->Iter.values->Iter.reduce((acc, colJson) => {
-              switch acc {
-              | Error(e) => Error(e)
-              | Ok(parsedCols) =>
-                switch parseColumnField(colJson) {
+      | Some(columnsRaw) if !ObjectBinding.isArray(columnsRaw) =>
+        Error(`tableOptions.columns must be an array, got ${ObjectBinding.jsonType(columnsRaw)}`)
+      | Some(columnsRaw) => {
+          let cols: array<{..}> = Obj.magic(columnsRaw)
+          if Array.length(cols) == 0 {
+            Error("table field requires at least one column in \"tableOptions.columns\"")
+          } else {
+            switch ObjectBinding.firstNonObjectArrayIndex(columnsRaw) {
+            | Some(index) => {
+                let invalidColumn = cols[index]
+                Error(
+                  `tableOptions.columns[${Int.toString(
+                      index,
+                    )}] must be an object, got ${ObjectBinding.jsonType(invalidColumn)}`,
+                )
+              }
+            | None => {
+                let parsedColumnsResult: result<array<columnField>, string> =
+                  cols->Iter.values->Iter.reduce((acc, colJson) => {
+                    switch acc {
+                    | Error(e) => Error(e)
+                    | Ok(parsedCols) =>
+                      switch parseColumnField(colJson) {
+                      | Error(e) => Error(e)
+                      | Ok(col) => {
+                          parsedCols->Array.push(col)
+                          Ok(parsedCols)
+                        }
+                      }
+                    }
+                  }, Ok([]))
+
+                switch parsedColumnsResult {
                 | Error(e) => Error(e)
-                | Ok(col) => {
-                    parsedCols->Array.push(col)
-                    Ok(parsedCols)
-                  }
+                | Ok(columns) => Ok({?rowSelector, columns})
                 }
               }
-            }, Ok([]))
-
-          switch parsedColumnsResult {
-          | Error(e) => Error(e)
-          | Ok(columns) => Ok({?rowSelector, columns})
+            }
           }
         }
       }
