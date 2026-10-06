@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Changed
+- Schema configs using `number.onError`, `date.strict`, or `json.onError` (including `config.defaults.number.onError` and `config.defaults.datetime.strict`) now fail validation with an error naming the unsupported option; these keys were previously silently ignored.
+
 ## [1.1.0] - 2026-08-04
 
 ### Added

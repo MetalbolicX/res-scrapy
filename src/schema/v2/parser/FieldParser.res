@@ -21,12 +21,24 @@ type parseFieldTypeVisitor<'a> = {
 let parseFieldTypeVisitor: parseFieldTypeVisitor<{..}> = {
   text: fieldJson => Ok(Text(OptionsParser.parseTextOptions(fieldJson))),
   html: fieldJson => Ok(Html(OptionsParser.parseHtmlOptions(fieldJson))),
-  number: fieldJson => Ok(Number(OptionsParser.parseNumberOptions(fieldJson))),
+  number: fieldJson =>
+    switch OptionsParser.parseNumberOptionsResult(fieldJson) {
+    | Ok(opts) => Ok(Number(opts))
+    | Error(msg) => Error(msg)
+    },
   boolean: fieldJson => Ok(Boolean(OptionsParser.parseBooleanOptions(fieldJson))),
   count: fieldJson => Ok(Count(OptionsParser.parseCountOptions(fieldJson))),
   url: fieldJson => Ok(Url(OptionsParser.parseUrlOptions(fieldJson))),
-  json: fieldJson => Ok(Json(OptionsParser.parseJsonOptions(fieldJson))),
-  datetime: fieldJson => Ok(DateTime(OptionsParser.parseDateOptions(fieldJson))),
+  json: fieldJson =>
+    switch OptionsParser.parseJsonOptionsResult(fieldJson) {
+    | Ok(opts) => Ok(Json(opts))
+    | Error(msg) => Error(msg)
+    },
+  datetime: fieldJson =>
+    switch OptionsParser.parseDateOptionsResult(fieldJson) {
+    | Ok(opts) => Ok(DateTime(opts))
+    | Error(msg) => Error(msg)
+    },
   list: fieldJson => Ok(List(OptionsParser.parseListOptions(fieldJson))),
   table: fieldJson =>
     switch OptionsParser.parseTableOptions(fieldJson) {

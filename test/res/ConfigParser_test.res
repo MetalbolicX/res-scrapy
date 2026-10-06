@@ -41,6 +41,33 @@ test("ConfigParser rejects invalid config.limit values", () => {
   })
 })
 
+test("ConfigParser rejects inert defaults.number.onError", () => {
+  let schemaJson = "{\"fields\":{\"item\":{\"selector\":\".x\"}},\"config\":{\"defaults\":{\"number\":{\"onError\":\"returnDefault\"}}}}"
+  switch SchemaParser.parseSchema(TestHelpers.objectFromJsonString(schemaJson)) {
+  | Error(InvalidJson(msg)) => isTruthy(String.includes(msg, "config.defaults.number.onError"))
+  | Error(_) => failWith("Expected InvalidJson naming config.defaults.number.onError")
+  | Ok(_) => failWith("Expected inert defaults.number.onError to be rejected")
+  }
+})
+
+test("ConfigParser rejects inert defaults.date.strict", () => {
+  let schemaJson = "{\"fields\":{\"item\":{\"selector\":\".x\"}},\"config\":{\"defaults\":{\"date\":{\"strict\":true}}}}"
+  switch SchemaParser.parseSchema(TestHelpers.objectFromJsonString(schemaJson)) {
+  | Error(InvalidJson(msg)) => isTruthy(String.includes(msg, "defaults.date.strict"))
+  | Error(_) => failWith("Expected InvalidJson naming defaults.date.strict")
+  | Ok(_) => failWith("Expected inert defaults.date.strict to be rejected")
+  }
+})
+
+test("ConfigParser rejects inert defaults.datetime.strict", () => {
+  let schemaJson = "{\"fields\":{\"item\":{\"selector\":\".x\"}},\"config\":{\"defaults\":{\"datetime\":{\"strict\":true}}}}"
+  switch SchemaParser.parseSchema(TestHelpers.objectFromJsonString(schemaJson)) {
+  | Error(InvalidJson(msg)) => isTruthy(String.includes(msg, "defaults.datetime.strict"))
+  | Error(_) => failWith("Expected InvalidJson naming defaults.datetime.strict")
+  | Ok(_) => failWith("Expected inert defaults.datetime.strict to be rejected")
+  }
+})
+
 test("ConfigParser.parseConfig parses defaults", () => {
   let raw = TestHelpers.objectFromJsonString(
     "{\"config\":{\"defaults\":{\"text\":{\"trim\":false},\"number\":{\"precision\":2},\"boolean\":{\"mode\":\"presence\"}}}}",

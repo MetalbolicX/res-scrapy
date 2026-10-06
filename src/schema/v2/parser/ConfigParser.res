@@ -144,6 +144,40 @@ let parseDefaults: {..} => option<schemaDefaults> = schemaJson => {
   }
 }
 
+let validateDefaultsOptions: {..} => result<unit, schemaError> = raw => {
+  switch dictGet(raw, "defaults") {
+  | Some(defaults) =>
+    switch dictGet(defaults, "number") {
+    | Some(number) if dictGet(number, "onError") != None =>
+      Error(
+        InvalidJson(
+          "config.defaults.number.onError is accepted but not implemented; this build rejects it instead of silently ignoring it",
+        ),
+      )
+    | Some(_) | None =>
+      switch dictGet(defaults, "date") {
+      | Some(date) if dictGet(date, "strict") != None =>
+        Error(
+          InvalidJson(
+            "config.defaults.date.strict is accepted but not implemented; this build rejects it instead of silently ignoring it",
+          ),
+        )
+      | Some(_) | None =>
+        switch dictGet(defaults, "datetime") {
+        | Some(datetime) if dictGet(datetime, "strict") != None =>
+          Error(
+            InvalidJson(
+              "config.defaults.datetime.strict is accepted but not implemented; this build rejects it instead of silently ignoring it",
+            ),
+          )
+        | Some(_) | None => Ok()
+        }
+      }
+    }
+  | None => Ok()
+  }
+}
+
 let parseConfigResult: {..} => result<schemaConfig, schemaError> = schemaJson => {
   switch dictGet(schemaJson, "config") {
   | None => Ok(defaultConfig)
@@ -167,12 +201,16 @@ let parseConfigResult: {..} => result<schemaConfig, schemaError> = schemaJson =>
       }
       switch limitResult {
       | Error(e) => Error(e)
-      | Ok(limit) => {
-          let rowSelector: option<string> = dictGet(raw, "rowSelector")
-          let defaults = parseDefaults(raw)
-          switch defaults {
-          | None => Ok({ignoreErrors, limit, ?rowSelector})
-          | Some(defaults) => Ok({ignoreErrors, limit, ?rowSelector, defaults})
+      | Ok(limit) =>
+        switch validateDefaultsOptions(raw) {
+        | Error(e) => Error(e)
+        | Ok() => {
+            let rowSelector: option<string> = dictGet(raw, "rowSelector")
+            let defaults = parseDefaults(raw)
+            switch defaults {
+            | None => Ok({ignoreErrors, limit, ?rowSelector})
+            | Some(defaults) => Ok({ignoreErrors, limit, ?rowSelector, defaults})
+            }
           }
         }
       }

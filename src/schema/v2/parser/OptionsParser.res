@@ -97,32 +97,42 @@ let parseErrorPolicy: string => errorPolicy = s =>
   | _ => ReturnNull
   }
 
-let parseNumberOptions: {..} => option<numberOptions> = fieldJson => {
+let parseNumberOptionsResult: {..} => result<option<numberOptions>, string> = fieldJson => {
   switch dictGet(fieldJson, "numberOptions") {
-  | None => None
-  | Some(raw) => {
-      let stripNonNumeric = dictGet(raw, "stripNonNumeric")
-      let pattern = dictGet(raw, "pattern")
-      let thousandsSeparator = dictGet(raw, "thousandsSeparator")
-      let decimalSeparator = dictGet(raw, "decimalSeparator")
-      let precision = dictGet(raw, "precision")
-      let allowNegative = dictGet(raw, "allowNegative")
-      let onError = switch dictGet(raw, "onError") {
-      | Some(s) => Some(parseErrorPolicy(s))
-      | None => None
+  | None => Ok(None)
+  | Some(raw) =>
+    switch dictGet(raw, "onError") {
+    | Some(_) =>
+      Error(
+        "number option onError is accepted but not implemented; this build rejects it instead of silently ignoring it",
+      )
+    | None => {
+        let stripNonNumeric = dictGet(raw, "stripNonNumeric")
+        let pattern = dictGet(raw, "pattern")
+        let thousandsSeparator = dictGet(raw, "thousandsSeparator")
+        let decimalSeparator = dictGet(raw, "decimalSeparator")
+        let precision = dictGet(raw, "precision")
+        let allowNegative = dictGet(raw, "allowNegative")
+        Ok(
+          Some({
+            ?stripNonNumeric,
+            ?pattern,
+            ?thousandsSeparator,
+            ?decimalSeparator,
+            ?precision,
+            ?allowNegative,
+          }),
+        )
       }
-      Some({
-        ?stripNonNumeric,
-        ?pattern,
-        ?thousandsSeparator,
-        ?decimalSeparator,
-        ?precision,
-        ?allowNegative,
-        ?onError,
-      })
     }
   }
 }
+
+let parseNumberOptions: {..} => option<numberOptions> = fieldJson =>
+  switch parseNumberOptionsResult(fieldJson) {
+  | Ok(opts) => opts
+  | Error(_) => None
+  }
 
 // ---------------------------------------------------------------------------
 // count options
@@ -154,21 +164,30 @@ let parseUrlOptions: {..} => option<urlOptions> = fieldJson => {
 // json options
 // ---------------------------------------------------------------------------
 
-let parseJsonOptions: {..} => option<jsonOptions> = fieldJson => {
+let parseJsonOptionsResult: {..} => result<option<jsonOptions>, string> = fieldJson => {
   switch dictGet(fieldJson, "jsonOptions") {
-  | None => None
-  | Some(raw) => {
-      let source = dictGet(raw, "source")
-      let attribute = dictGet(raw, "attribute")
-      let path = dictGet(raw, "path")
-      let onError = switch dictGet(raw, "onError") {
-      | Some(s) => Some(parseErrorPolicy(s))
-      | None => None
+  | None => Ok(None)
+  | Some(raw) =>
+    switch dictGet(raw, "onError") {
+    | Some(_) =>
+      Error(
+        "json option onError is accepted but not implemented; this build rejects it instead of silently ignoring it",
+      )
+    | None => {
+        let source = dictGet(raw, "source")
+        let attribute = dictGet(raw, "attribute")
+        let path = dictGet(raw, "path")
+        Ok(Some({?source, ?attribute, ?path}))
       }
-      Some({?source, ?attribute, ?path, ?onError})
     }
   }
 }
+
+let parseJsonOptions: {..} => option<jsonOptions> = fieldJson =>
+  switch parseJsonOptionsResult(fieldJson) {
+  | Ok(opts) => opts
+  | Error(_) => None
+  }
 
 // ---------------------------------------------------------------------------
 // datetime options
@@ -192,20 +211,32 @@ let parseDateOutput: ({..}, option<string>) => option<dateOutput> = (raw, maybeK
   }
 }
 
-let parseDateOptions: {..} => option<dateOptions> = fieldJson => {
+let parseDateOptionsResult: {..} => result<option<dateOptions>, string> = fieldJson => {
   switch dictGet(fieldJson, "dateOptions") {
-  | None => None
-  | Some(raw) => {
-      let formats = dictGet(raw, "formats")
-      let timezone = dictGet(raw, "timezone")
-      let output = parseDateOutput(raw, Some("output"))
-      let strict = dictGet(raw, "strict")
-      let source = dictGet(raw, "source")
-      let attribute = dictGet(raw, "attribute")
-      Some({?formats, ?timezone, ?output, ?strict, ?source, ?attribute})
+  | None => Ok(None)
+  | Some(raw) =>
+    switch dictGet(raw, "strict") {
+    | Some(_) =>
+      Error(
+        "date option strict is accepted but not implemented; this build rejects it instead of silently ignoring it",
+      )
+    | None => {
+        let formats = dictGet(raw, "formats")
+        let timezone = dictGet(raw, "timezone")
+        let output = parseDateOutput(raw, Some("output"))
+        let source = dictGet(raw, "source")
+        let attribute = dictGet(raw, "attribute")
+        Ok(Some({?formats, ?timezone, ?output, ?source, ?attribute}))
+      }
     }
   }
 }
+
+let parseDateOptions: {..} => option<dateOptions> = fieldJson =>
+  switch parseDateOptionsResult(fieldJson) {
+  | Ok(opts) => opts
+  | Error(_) => None
+  }
 
 // ---------------------------------------------------------------------------
 // list options
@@ -294,11 +325,23 @@ type parseColumnFieldTypeVisitor<'a> = {
 let parseColumnFieldTypeVisitor: parseColumnFieldTypeVisitor<{..}> = {
   text: columnJson => Ok(ColumnText(parseTextOptions(columnJson))),
   html: columnJson => Ok(ColumnHtml(parseHtmlOptions(columnJson))),
-  number: columnJson => Ok(ColumnNumber(parseNumberOptions(columnJson))),
+  number: columnJson =>
+    switch parseNumberOptionsResult(columnJson) {
+    | Ok(opts) => Ok(ColumnNumber(opts))
+    | Error(msg) => Error(msg)
+    },
   boolean: columnJson => Ok(ColumnBoolean(parseBooleanOptions(columnJson))),
   url: columnJson => Ok(ColumnUrl(parseUrlOptions(columnJson))),
-  json: columnJson => Ok(ColumnJson(parseJsonOptions(columnJson))),
-  datetime: columnJson => Ok(ColumnDateTime(parseDateOptions(columnJson))),
+  json: columnJson =>
+    switch parseJsonOptionsResult(columnJson) {
+    | Ok(opts) => Ok(ColumnJson(opts))
+    | Error(msg) => Error(msg)
+    },
+  datetime: columnJson =>
+    switch parseDateOptionsResult(columnJson) {
+    | Ok(opts) => Ok(ColumnDateTime(opts))
+    | Error(msg) => Error(msg)
+    },
   list: columnJson => Ok(ColumnList(parseListOptions(columnJson))),
   attribute: columnJson =>
     switch dictGet(columnJson, "attributes") {

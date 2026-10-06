@@ -383,7 +383,6 @@ Key options:
 - `thousandsSeparator`.
 - `decimalSeparator`.
 - `precision`.
-- `onError` (`null` default).
 
 Example:
 
@@ -437,7 +436,6 @@ Key options:
 - `timezone`.
 - `output` (`iso8601` default).
 - `outputFormat`.
-- `strict`.
 - `source` (`text`/`attribute`).
 
 Example:
@@ -518,7 +516,6 @@ Key options:
 - `source` (`text`/`attribute`).
 - `attribute`.
 - `path` (dot notation, e.g. `offers.price`).
-- `onError`.
 
 Example:
 
@@ -566,6 +563,8 @@ Example:
 
 ## Global config and defaults
 
+Removed keys: `numberOptions.onError`, `dateOptions.strict`, `jsonOptions.onError`, `config.defaults.number.onError`, and `config.defaults.datetime.strict` are not implemented and now fail schema validation instead of being silently ignored.
+
 Top-level `config` keys you will use:
 
 - `rowSelector` (string): root selector for row-based extraction
@@ -576,7 +575,7 @@ Top-level `config` keys you will use:
 Default values (summary):
 
 - Text: `trim: true`
-- Number: `stripNonNumeric: true`, `onError: null`
+- Number: `stripNonNumeric: true`
 - Boolean: `mode: mapping`, `trueValues: ["true","yes","1"]`, `onUnknown: false`
 - DateTime: `output: iso8601`, `timezone: UTC`
 - URL: `resolve: true`, `validate: true`
@@ -590,7 +589,7 @@ Field-level failures follow these rules:
 1. Required field missing:
    - If `config.ignoreErrors` is false: extraction aborts with error
    - If `config.ignoreErrors` is true: use `default` value or `null` and continue
-2. Parse error (number/date/url/json): follow the field's `onError` policy (`null`, `text`, `default`)
+2. Unsupported inert options are rejected during schema validation: `numberOptions.onError`, `dateOptions.strict`, and `jsonOptions.onError` (including corresponding number and datetime defaults).
 3. Validation errors (e.g., URL invalid): treated per field policy
 
 Schema-level validation errors include: invalid JSON, missing `fields`, invalid field type, invalid selector, invalid options.

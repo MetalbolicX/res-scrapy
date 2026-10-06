@@ -75,17 +75,40 @@ test("OptionsParser.parseNumberOptions and parseErrorPolicy", () => {
   isTruthy(OptionsParser.parseErrorPolicy("unknown") == ReturnNull)
 
   let field = TestHelpers.objectFromJsonString(
-    "{\"numberOptions\":{\"stripNonNumeric\":false,\"precision\":2,\"allowNegative\":false,\"onError\":\"returnText\"}}",
+    "{\"numberOptions\":{\"stripNonNumeric\":false,\"precision\":2,\"allowNegative\":false}}",
   )
   switch OptionsParser.parseNumberOptions(field) {
   | Some(opts) => {
       isOptionEqualTo(Some(false), opts.stripNonNumeric, ~eq=(a, b) => a == b)
       isOptionEqualTo(Some(2), opts.precision, ~eq=(a, b) => a == b)
       isOptionEqualTo(Some(false), opts.allowNegative, ~eq=(a, b) => a == b)
-      isTruthy(opts.onError == Some(ReturnText))
     }
   | None => failWith("Expected number options")
   }
+})
+
+test("SchemaParser rejects inert field-level schema options", () => {
+  let rejectedSchemas = [
+    (
+      "{\"fields\":{\"item\":{\"type\":\"number\",\"selector\":\".x\",\"numberOptions\":{\"onError\":\"returnDefault\"}}}}",
+      "number option onError",
+    ),
+    (
+      "{\"fields\":{\"item\":{\"type\":\"datetime\",\"selector\":\".x\",\"dateOptions\":{\"strict\":true}}}}",
+      "date option strict",
+    ),
+    (
+      "{\"fields\":{\"item\":{\"type\":\"json\",\"selector\":\".x\",\"jsonOptions\":{\"onError\":\"returnDefault\"}}}}",
+      "json option onError",
+    ),
+  ]
+  rejectedSchemas->Array.forEach(((schemaJson, expectedMessage)) =>
+    switch SchemaParser.parseSchema(TestHelpers.objectFromJsonString(schemaJson)) {
+    | Error(InvalidFieldType({got, _})) => isTruthy(String.includes(got, expectedMessage))
+    | Error(_) => failWith(`Expected InvalidFieldType naming ${expectedMessage}`)
+    | Ok(_) => failWith(`Expected ${expectedMessage} to be rejected`)
+    }
+  )
 })
 
 test("OptionsParser.parseHtmlOptions parses mode and strip flags", () => {
@@ -130,27 +153,25 @@ test("OptionsParser.parseUrlOptions parses all keys", () => {
 
 test("OptionsParser.parseJsonOptions parses source path and onError", () => {
   let field = TestHelpers.objectFromJsonString(
-    "{\"jsonOptions\":{\"source\":\"attribute\",\"attribute\":\"data-json\",\"path\":\"item.price\",\"onError\":\"returnText\"}}",
+    "{\"jsonOptions\":{\"source\":\"attribute\",\"attribute\":\"data-json\",\"path\":\"item.price\"}}",
   )
   switch OptionsParser.parseJsonOptions(field) {
   | Some(opts) => {
       isOptionEqualTo(Some("attribute"), opts.source, ~eq=(a, b) => a == b)
       isOptionEqualTo(Some("data-json"), opts.attribute, ~eq=(a, b) => a == b)
       isOptionEqualTo(Some("item.price"), opts.path, ~eq=(a, b) => a == b)
-      isTruthy(opts.onError == Some(ReturnText))
     }
   | None => failWith("Expected json options")
   }
 })
 
-test("OptionsParser.parseDateOptions parses output strict source and attribute", () => {
+test("OptionsParser.parseDateOptions parses output source and attribute", () => {
   let field = TestHelpers.objectFromJsonString(
-    "{\"dateOptions\":{\"formats\":[\"yyyy-MM-dd\",\"ISO\"],\"timezone\":\"UTC\",\"output\":\"custom\",\"outputFormat\":\"MM/dd/yyyy\",\"strict\":true,\"source\":\"attribute\",\"attribute\":\"datetime\"}}",
+    "{\"dateOptions\":{\"formats\":[\"yyyy-MM-dd\",\"ISO\"],\"timezone\":\"UTC\",\"output\":\"custom\",\"outputFormat\":\"MM/dd/yyyy\",\"source\":\"attribute\",\"attribute\":\"datetime\"}}",
   )
   switch OptionsParser.parseDateOptions(field) {
   | Some(opts) => {
       isOptionEqualTo(Some("UTC"), opts.timezone, ~eq=(a, b) => a == b)
-      isOptionEqualTo(Some(true), opts.strict, ~eq=(a, b) => a == b)
       isOptionEqualTo(Some("attribute"), opts.source, ~eq=(a, b) => a == b)
       isOptionEqualTo(Some("datetime"), opts.attribute, ~eq=(a, b) => a == b)
       switch opts.output {
@@ -218,6 +239,29 @@ test("OptionsParser.parseTableOptions rejects malformed column shapes", () => {
   | Ok(_) => ()
   | Error(_) => failWith("Expected valid columns to be accepted")
   }
+})
+
+test("OptionsParser.parseTableOptions rejects inert column options", () => {
+  let rejectedColumns = [
+    (
+      "{\"tableOptions\":{\"columns\":[{\"name\":\"price\",\"selector\":\"td\",\"type\":\"number\",\"numberOptions\":{\"onError\":\"returnText\"}}]}}",
+      "number option onError",
+    ),
+    (
+      "{\"tableOptions\":{\"columns\":[{\"name\":\"payload\",\"selector\":\"td\",\"type\":\"json\",\"jsonOptions\":{\"onError\":\"returnText\"}}]}}",
+      "json option onError",
+    ),
+    (
+      "{\"tableOptions\":{\"columns\":[{\"name\":\"date\",\"selector\":\"td\",\"type\":\"datetime\",\"dateOptions\":{\"strict\":true}}]}}",
+      "date option strict",
+    ),
+  ]
+  rejectedColumns->Array.forEach(((columnConfig, expectedMessage)) =>
+    switch OptionsParser.parseTableOptions(TestHelpers.objectFromJsonString(columnConfig)) {
+    | Ok(_) => failWith(`Expected column option to be rejected: ${expectedMessage}`)
+    | Error(msg) => stringContains(msg, expectedMessage)->isTruthy
+    }
+  )
 })
 
 test("OptionsParser.parseTableOptions returns Error when tableOptions is missing", () => {
