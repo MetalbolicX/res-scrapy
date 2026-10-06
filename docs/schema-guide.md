@@ -568,7 +568,7 @@ Removed keys: `numberOptions.onError`, `dateOptions.strict`, `jsonOptions.onErro
 Top-level `config` keys you will use:
 
 - `rowSelector` (string): root selector for row-based extraction
-- `ignoreErrors` (boolean): when true, extraction will skip failing fields and continue (defaults: false)
+- `ignoreErrors` (boolean): controls required-field-missing and table-column extraction errors (default: false; see [Error handling](#error-handling))
 - `limit` (number): max rows to return (0 = unlimited). Explicit `null` is accepted and means unlimited (same as `0`).
 - `defaults`: object to set per-type default options (text, number, boolean, datetime, url)
 
@@ -584,13 +584,12 @@ Default values (summary):
 
 ## Error handling
 
-Field-level failures follow these rules:
+`ignoreErrors` (default `false`) governs two situations. (1) Required fields: when a required field matches nothing, extraction fails unless `ignoreErrors` is true; when true, the field is assigned its configured `default` value or `null` and the row continues. (2) Table field columns: with `ignoreErrors` true, a cell whose extraction fails is replaced with that column's configured default or `null` instead of failing the row. This does not suppress other extraction errors elsewhere. If no rows match at all, extraction returns an empty result regardless of the flag; required-missing errors require an existing row.
 
-1. Required field missing:
-   - If `config.ignoreErrors` is false: extraction aborts with error
-   - If `config.ignoreErrors` is true: use `default` value or `null` and continue
-2. Unsupported inert options are rejected during schema validation: `numberOptions.onError`, `dateOptions.strict`, and `jsonOptions.onError` (including corresponding number and datetime defaults).
-3. Validation errors (e.g., URL invalid): treated per field policy
+Other field-level failures follow these rules:
+
+1. Unsupported inert options are rejected during schema validation: `numberOptions.onError`, `dateOptions.strict`, and `jsonOptions.onError` (including corresponding number and datetime defaults).
+2. Validation errors (e.g., URL invalid): treated per field policy
 
 Schema-level validation errors include: invalid JSON, missing `fields`, invalid field type, invalid selector, invalid options.
 

@@ -16,6 +16,147 @@ test("ZipExtractor - Strategy metadata is correct", () => {
   isTruthy(ZipExtractor.Strategy.canHandle(schema) == true)
 })
 
+test("ZipExtractor pins required-missing errors when ignoreErrors is false", () => {
+  let doc = HtmlFixture.parse("<h2>A</h2><h2>B</h2><span class='p'>1</span>")
+  let schema: schema = {
+    fields: [
+      (
+        "title",
+        {
+          selector: "h2",
+          fieldType: Text(None),
+          required: false,
+        },
+      ),
+      (
+        "price",
+        {
+          selector: ".p",
+          fieldType: Number(None),
+          required: true,
+        },
+      ),
+    ],
+    config: {
+      limit: 0,
+      ignoreErrors: false,
+    },
+  }
+
+  switch ZipExtractor.run(doc, schema) {
+  | Error(RequiredFieldMissing({fieldName, selector})) => {
+      isTextEqualTo("price", fieldName)
+      isTextEqualTo(".p", selector)
+    }
+  | _ => failWith("Expected RequiredFieldMissing for the second row's missing price")
+  }
+})
+
+test("ZipExtractor pins required-missing default fallback when ignoreErrors is true", () => {
+  let doc = HtmlFixture.parse("<h2>A</h2><h2>B</h2><span class='p'>1</span>")
+  let schema: schema = {
+    fields: [
+      (
+        "title",
+        {
+          selector: "h2",
+          fieldType: Text(None),
+          required: false,
+        },
+      ),
+      (
+        "price",
+        {
+          selector: ".p",
+          fieldType: Number(None),
+          required: true,
+          default: JSON.Encode.int(0),
+        },
+      ),
+    ],
+    config: {
+      limit: 0,
+      ignoreErrors: true,
+    },
+  }
+
+  switch ZipExtractor.run(doc, schema) {
+  | Ok(json) =>
+    isTextEqualTo(
+      "[{\"title\":\"A\",\"price\":1},{\"title\":\"B\",\"price\":0}]",
+      NodeUtil.jsonStringify(json),
+    )
+  | Error(_) => failWith("Expected required field default fallback when errors are ignored")
+  }
+})
+
+test("ZipExtractor returns empty rows when no rows match and ignoreErrors is false", () => {
+  let doc = HtmlFixture.parse("<p>No matching rows</p>")
+  let schema: schema = {
+    fields: [
+      (
+        "title",
+        {
+          selector: "h2",
+          fieldType: Text(None),
+          required: false,
+        },
+      ),
+      (
+        "price",
+        {
+          selector: ".p",
+          fieldType: Number(None),
+          required: true,
+        },
+      ),
+    ],
+    config: {
+      limit: 0,
+      ignoreErrors: false,
+    },
+  }
+
+  switch ZipExtractor.run(doc, schema) {
+  | Ok(json) => isTextEqualTo("[]", NodeUtil.jsonStringify(json))
+  | Error(_) => failWith("Expected no rows to produce an empty result")
+  }
+})
+
+test("ZipExtractor returns empty rows when no rows match and ignoreErrors is true", () => {
+  let doc = HtmlFixture.parse("<p>No matching rows</p>")
+  let schema: schema = {
+    fields: [
+      (
+        "title",
+        {
+          selector: "h2",
+          fieldType: Text(None),
+          required: false,
+        },
+      ),
+      (
+        "price",
+        {
+          selector: ".p",
+          fieldType: Number(None),
+          required: true,
+          default: JSON.Encode.int(0),
+        },
+      ),
+    ],
+    config: {
+      limit: 0,
+      ignoreErrors: true,
+    },
+  }
+
+  switch ZipExtractor.run(doc, schema) {
+  | Ok(json) => isTextEqualTo("[]", NodeUtil.jsonStringify(json))
+  | Error(_) => failWith("Expected no rows to produce an empty result")
+  }
+})
+
 test("ZipExtractor - run with empty fields returns zero rows", () => {
   let doc = HtmlFixture.parse("<div>A</div>")
   let schema: schema = {
