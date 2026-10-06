@@ -19,7 +19,7 @@ let fakeResponse = (status, location, body): NodeFetch.response => {
       if name == "location" {
         location
       } else {
-        None
+        jsNull
       },
   }
   let response: fakeResponseObject = {

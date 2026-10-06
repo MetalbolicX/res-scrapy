@@ -18,7 +18,26 @@ module AbortSignal = {
 /** Headers returned by an HTTP response. */
 type responseHeaders
 
-@send external getHeader: (responseHeaders, string) => option<string> = "get"
+/** Raw Headers.get: real implementations return JS null (not undefined) when
+  * the header is absent. ReScript maps undefined to None, so only the null
+  * case reaches the wrapper below. */
+@send external getHeaderRaw: (responseHeaders, string) => option<string> = "get"
+
+/** JS null as an option-typed value — exported for test fakes that must
+  * reproduce real absent-header semantics (Headers.get returns null). */
+let jsNull: option<string> = %raw("null")
+
+let isNullValue: 'a => bool = %raw("(x) => x === null")
+
+/** Typed wrapper: strips the JS-null case that ReScript's option mapping does
+  * not cover. A 3xx response without a Location header must surface as None
+  * (terminal status), never as Some(null) that the URL constructor would
+  * resolve into a bogus path. */
+let getHeader = (headers: responseHeaders, name: string): option<string> =>
+  switch getHeaderRaw(headers, name) {
+  | None => None
+  | Some(v) => isNullValue(v) ? None : Some(v)
+  }
 
 /** Represents an HTTP response from `fetch`. */
 type response = {
