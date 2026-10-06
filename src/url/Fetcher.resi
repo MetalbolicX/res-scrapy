@@ -52,6 +52,15 @@ let classifyError: (
   */
 let backoffDelay: int => int
 
+/** @internal Exported for redirect-policy tests. */
+let fetchOnceWithRawFetch: (
+  (string, option<NodeFetch.options>) => promise<NodeFetch.response>,
+  string,
+  string,
+  int,
+  array<(string, string)>,
+) => promise<result<string, fetchError>>
+
 /**
   * Fetches all URLs with concurrency control.
   */

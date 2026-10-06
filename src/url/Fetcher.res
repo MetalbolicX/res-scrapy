@@ -18,6 +18,8 @@ type fetchOptions = {
   headers: array<(string, string)>,
 }
 
+// User-supplied headers go to the requested URL and same-origin redirects only; cross-origin redirects receive User-Agent only.
+
 /** Base delay for exponential backoff (1 second). */
 let baseDelayMs = 1000
 
@@ -96,45 +98,90 @@ let getEnvProxyDispatcher = (): promise<option<NodeUndiciBinding.dispatcher>> =>
     }
   }
 
-/**
-  * Fetches a single URL with timeout and error handling.
-  */
-let fetchOnce: (
+/** Follows redirects while restricting user headers to the requested origin. */
+let rec fetchWithRedirects = async (
+  ~rawFetch: (string, option<NodeFetch.options>) => promise<NodeFetch.response>,
+  ~url: string,
+  ~headerPairs: array<(string, string)>,
+  ~userAgent: string,
+  ~controller: NodeFetch.AbortSignal.controller,
+  ~requests: int,
+): result<string, fetchError> => {
+  if requests >= 20 {
+    Error(NetworkError("Too many redirects (20)"))
+  } else {
+    let options: NodeFetch.options = {
+      method: "GET",
+      headers: Dict.fromArray(headerPairs),
+      signal: NodeFetch.AbortSignal.signal(controller),
+      redirect: "manual",
+    }
+    let response = await rawFetch(url, Some(options))
+    let isRedirect =
+      response.status == 301 ||
+      response.status == 302 ||
+      response.status == 303 ||
+      response.status == 307 ||
+      response.status == 308
+    switch (isRedirect, NodeFetch.getHeader(response.headers, "location")) {
+    | (true, Some(location)) => {
+        let current = NodeUrl.make(url, None)
+        let next = NodeUrl.make(location, Some(url))
+        let nextHeaders = if current.origin == next.origin {
+          headerPairs
+        } else {
+          [("User-Agent", userAgent)]
+        }
+        await fetchWithRedirects(
+          ~rawFetch,
+          ~url=next.href,
+          ~headerPairs=nextHeaders,
+          ~userAgent,
+          ~controller,
+          ~requests=requests + 1,
+        )
+      }
+    | _ =>
+      if response.ok {
+        let html = await NodeFetch.text(response)
+        Ok(html)
+      } else {
+        Error(HttpError(response.status, response.statusText))
+      }
+    }
+  }
+}
+
+/** Fetches a URL with an injectable raw fetch function for redirect-policy tests. */
+let fetchOnceWithRawFetch: (
+  (string, option<NodeFetch.options>) => promise<NodeFetch.response>,
   string,
   string,
   int,
   array<(string, string)>,
-) => promise<result<string, fetchError>> = async (url, userAgent, timeoutSeconds, headers) => {
+) => promise<result<string, fetchError>> = async (
+  rawFetch,
+  url,
+  userAgent,
+  timeoutSeconds,
+  headers,
+) => {
   let timeoutMs = timeoutSeconds * 1000
-  // Set up controller and timeout OUTSIDE try so timeoutId is accessible in catch.
   let controller = NodeFetch.AbortSignal.makeController()
-  let timeoutId = setTimeout(() => {
-    NodeFetch.AbortSignal.abort(controller)
-  }, timeoutMs)
-
+  let timeoutId = setTimeout(() => NodeFetch.AbortSignal.abort(controller), timeoutMs)
   let headerPairs = Array.concat([("User-Agent", userAgent)], headers)
-  let dispatcher = await getEnvProxyDispatcher()
-  let baseOptions: NodeFetch.options = {
-    method: "GET",
-    headers: Dict.fromArray(headerPairs),
-    signal: NodeFetch.AbortSignal.signal(controller),
-  }
-  let options: NodeFetch.options = switch dispatcher {
-  | Some(d) => {...baseOptions, dispatcher: Obj.magic(d)}
-  | None => baseOptions
-  }
 
   try {
-    let response = await NodeFetch.fetch(url, Some(options))
-
-    if response.ok {
-      let html = await NodeFetch.text(response)
-      clearTimeout(timeoutId)
-      Ok(html)
-    } else {
-      clearTimeout(timeoutId)
-      Error(HttpError(response.status, response.statusText))
-    }
+    let result = await fetchWithRedirects(
+      ~rawFetch,
+      ~url,
+      ~headerPairs,
+      ~userAgent,
+      ~controller,
+      ~requests=0,
+    )
+    clearTimeout(timeoutId)
+    result
   } catch {
   | exn => {
       clearTimeout(timeoutId)
@@ -142,12 +189,33 @@ let fetchOnce: (
       | Some(jsExn) => jsExn->JsExn.message->Option.getOr("Unknown error")
       | None => "Unknown error"
       }
-
-      // Classify via the signal state, not the exception message text.
       let isAborted = NodeFetch.AbortSignal.aborted(NodeFetch.AbortSignal.signal(controller))
       classifyError(~message, ~isAborted, ~timeoutSeconds)
     }
   }
+}
+
+/** Fetches a single URL with proxy routing and one timeout across all hops. */
+let fetchOnce: (
+  string,
+  string,
+  int,
+  array<(string, string)>,
+) => promise<result<string, fetchError>> = (url, userAgent, timeoutSeconds, headers) => {
+  let rawFetch = async (requestUrl, options) => {
+    let dispatcher = await getEnvProxyDispatcher()
+    let optionsWithDispatcher: option<NodeFetch.options> = switch (dispatcher, options) {
+    | (Some(d), Some(baseOptions)) => Some({...baseOptions, dispatcher: Obj.magic(d)})
+    | (Some(d), None) => {
+        let dispatcherOptions: NodeFetch.options = {dispatcher: Obj.magic(d)}
+        Some(dispatcherOptions)
+      }
+    | (None, Some(baseOptions)) => Some(baseOptions)
+    | (None, None) => None
+    }
+    await NodeFetch.fetch(requestUrl, optionsWithDispatcher)
+  }
+  fetchOnceWithRawFetch(rawFetch, url, userAgent, timeoutSeconds, headers)
 }
 
 /**

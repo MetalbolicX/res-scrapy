@@ -7,6 +7,7 @@ type urlObj = {
   pathname: string,
   search: string,
   hash: string,
+  origin: string,
 }
 
 /** Parse and resolve a URL against an optional base URL.

@@ -15,11 +15,17 @@ module AbortSignal = {
   @get external aborted: t => bool = "aborted"
 }
 
+/** Headers returned by an HTTP response. */
+type responseHeaders
+
+@send external getHeader: (responseHeaders, string) => option<string> = "get"
+
 /** Represents an HTTP response from `fetch`. */
 type response = {
   ok: bool,
   status: int,
   statusText: string,
+  headers: responseHeaders,
 }
 
 /** Extracts the response body as text. */
@@ -31,6 +37,7 @@ type options = {
   headers?: dict<string>,
   signal?: AbortSignal.t,
   dispatcher?: dispatcher,
+  redirect?: string,
 }
 
 /** Performs an HTTP request using the global `fetch` API. */

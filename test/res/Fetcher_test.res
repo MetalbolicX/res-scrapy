@@ -3,6 +3,204 @@ open Assertions
 open TestHelpers
 open NodeFetch
 
+type recordedCall = {url: string, headers: dict<string>}
+type fakeHeaders = {get: string => option<string>}
+type fakeResponseObject = {
+  ok: bool,
+  status: int,
+  statusText: string,
+  headers: fakeHeaders,
+  text: unit => promise<string>,
+}
+
+let fakeResponse = (status, location, body): NodeFetch.response => {
+  let headers: fakeHeaders = {
+    get: name =>
+      if name == "location" {
+        location
+      } else {
+        None
+      },
+  }
+  let response: fakeResponseObject = {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: if status >= 200 && status < 300 {
+      "OK"
+    } else {
+      "Found"
+    },
+    headers,
+    text: () => Promise.resolve(body),
+  }
+  Obj.magic(response)
+}
+
+let recordingFetch = (calls: ref<array<recordedCall>>, responseAt) =>
+  async (url: string, options: option<NodeFetch.options>) => {
+    let requestHeaders = switch options {
+    | Some(options) => Option.getOr(options.headers, Dict.make())
+    | None => Dict.make()
+    }
+    calls := Array.concat(calls.contents, [{url, headers: requestHeaders}])
+    responseAt(url, Array.length(calls.contents))
+  }
+
+let secondCall = calls => Option.getOr(calls.contents[1], {url: "", headers: Dict.make()})
+
+let hasHeader = (call: option<recordedCall>, name: string) => {
+  let value = Option.getOr(call, {url: "", headers: Dict.make()})
+  switch Dict.get(value.headers, name) {
+  | Some(_) => true
+  | None => false
+  }
+}
+
+testAsync("redirect policy drops custom headers across origins", planned => {
+  let calls = ref([])
+  let rawFetch = recordingFetch(calls, (_url, count) =>
+    if count == 1 {
+      fakeResponse(302, Some("http://127.0.0.1:8001/next"), "")
+    } else {
+      fakeResponse(200, None, "done")
+    }
+  )
+  Fetcher.fetchOnceWithRawFetch(
+    rawFetch,
+    "http://127.0.0.1:8000/start",
+    "test-agent",
+    5,
+    [("x-api-key", "secret"), ("cookie", "session=secret")],
+  )
+  ->Promise.then(result => {
+    isIntEqualTo(2, Array.length(calls.contents))
+    isTruthy(hasHeader(calls.contents[1], "User-Agent"))
+    isTruthy(hasHeader(calls.contents[1], "x-api-key") == false)
+    isTruthy(hasHeader(calls.contents[1], "cookie") == false)
+    switch result {
+    | Ok(body) => stringContains(body, "done")->isTruthy
+    | Error(_) => failWith("Expected redirected fetch to succeed")
+    }
+    planned(~planned=5, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("redirect policy retains custom headers for same-origin redirects", planned => {
+  let calls = ref([])
+  let rawFetch = recordingFetch(calls, (_url, count) =>
+    if count == 1 {
+      fakeResponse(302, Some("http://127.0.0.1:8000/next"), "")
+    } else {
+      fakeResponse(200, None, "done")
+    }
+  )
+  Fetcher.fetchOnceWithRawFetch(
+    rawFetch,
+    "http://127.0.0.1:8000/start",
+    "test-agent",
+    5,
+    [("x-api-key", "secret")],
+  )
+  ->Promise.then(result => {
+    isIntEqualTo(2, Array.length(calls.contents))
+    isTruthy(hasHeader(calls.contents[1], "x-api-key"))
+    isTruthy(secondCall(calls).url == "http://127.0.0.1:8000/next")
+    switch result {
+    | Ok(body) => stringContains(body, "done")->isTruthy
+    | Error(_) => failWith("Expected same-origin redirect to succeed")
+    }
+    planned(~planned=4, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("relative Location resolves against the current URL", planned => {
+  let calls = ref([])
+  let rawFetch = recordingFetch(calls, (_url, count) =>
+    if count == 1 {
+      fakeResponse(302, Some("/next"), "")
+    } else {
+      fakeResponse(200, None, "done")
+    }
+  )
+  Fetcher.fetchOnceWithRawFetch(
+    rawFetch,
+    "http://127.0.0.1:8000/start",
+    "test-agent",
+    5,
+    [("x-api-key", "secret")],
+  )
+  ->Promise.then(_result => {
+    isIntEqualTo(2, Array.length(calls.contents))
+    isTruthy(secondCall(calls).url == "http://127.0.0.1:8000/next")
+    isTruthy(hasHeader(calls.contents[1], "x-api-key"))
+    planned(~planned=3, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("redirect limit stops after twenty requests", planned => {
+  let calls = ref([])
+  let rawFetch = recordingFetch(calls, (_url, _count) => fakeResponse(302, Some("/next"), ""))
+  Fetcher.fetchOnceWithRawFetch(rawFetch, "http://127.0.0.1:8000/start", "test-agent", 5, [])
+  ->Promise.then(result => {
+    isIntEqualTo(20, Array.length(calls.contents))
+    switch result {
+    | Error(NetworkError(message)) => stringContains(message, "Too many redirects")->isTruthy
+    | _ => failWith("Expected redirect-limit NetworkError")
+    }
+    planned(~planned=2, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("redirect without Location is returned as an HTTP error", planned => {
+  let calls = ref([])
+  let rawFetch = recordingFetch(calls, (_url, _count) => fakeResponse(302, None, ""))
+  Fetcher.fetchOnceWithRawFetch(rawFetch, "http://127.0.0.1:8000/start", "test-agent", 5, [])
+  ->Promise.then(result => {
+    isIntEqualTo(1, Array.length(calls.contents))
+    switch result {
+    | Error(HttpError(302, _)) => passWith("302 without Location is terminal")
+    | _ => failWith("Expected terminal HTTP 302")
+    }
+    planned(~planned=2, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("cross-protocol redirect drops custom headers", planned => {
+  let calls = ref([])
+  let rawFetch = recordingFetch(calls, (_url, count) =>
+    if count == 1 {
+      fakeResponse(302, Some("https://example.test/next"), "")
+    } else {
+      fakeResponse(200, None, "done")
+    }
+  )
+  Fetcher.fetchOnceWithRawFetch(
+    rawFetch,
+    "http://example.test/start",
+    "test-agent",
+    5,
+    [("x-api-key", "secret")],
+  )
+  ->Promise.then(_result => {
+    isIntEqualTo(2, Array.length(calls.contents))
+    isTruthy(hasHeader(calls.contents[1], "User-Agent"))
+    isTruthy(hasHeader(calls.contents[1], "x-api-key") == false)
+    planned(~planned=3, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
 test("isRetryable returns true for NetworkError", () => {
   isTruthy(Fetcher.isRetryable(NetworkError("connection refused")))
 })
