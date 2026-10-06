@@ -9,7 +9,7 @@ let applyPrecision: (float, int) => float = (num, exponent) => {
   Math.round(num *. factor) /. factor
 }
 
-/** Full pipeline: pattern | strip | separator normalise | parseFloat | precision */
+/** Full pipeline: pattern | separator normalise | strip | parseFloat | precision */
 let parseWithOptions: (string, option<numberOptions>) => option<float> = (raw, opts) => {
   let s = ref(String.trim(raw))
 
@@ -27,7 +27,29 @@ let parseWithOptions: (string, option<numberOptions>) => option<float> = (raw, o
   | None => ()
   }
 
-  // 2. Strip non-numeric characters (default: true)
+  // 2. Remove thousands separator
+  switch opts {
+  | Some(o) =>
+    switch o.thousandsSeparator {
+    | Some(sep) if sep !== "" => s := String.replaceAll(s.contents, sep, "")
+    | _ => ()
+    }
+  | None => ()
+  }
+
+  // 3. Normalise decimal separator to "."
+  // Without a thousands separator, "1.234,56" stays ambiguous: normalising the comma
+  // yields "1.234.56"; parseFloat may consume only its numeric prefix, not the intended value.
+  switch opts {
+  | Some(o) =>
+    switch o.decimalSeparator {
+    | Some(dec) if dec !== "" && dec !== "." => s := String.replaceAll(s.contents, dec, ".")
+    | _ => ()
+    }
+  | None => ()
+  }
+
+  // 4. Strip non-numeric characters (default: true)
   let shouldStrip = switch opts {
   | Some(o) =>
     switch o.stripNonNumeric {
@@ -38,26 +60,6 @@ let parseWithOptions: (string, option<numberOptions>) => option<float> = (raw, o
   }
   if shouldStrip {
     s := StringUtils.stripNonNumeric(s.contents)
-  }
-
-  // 3. Remove thousands separator
-  switch opts {
-  | Some(o) =>
-    switch o.thousandsSeparator {
-    | Some(sep) if sep !== "" => s := String.replaceAll(s.contents, sep, "")
-    | _ => ()
-    }
-  | None => ()
-  }
-
-  // 4. Normalise decimal separator to "."
-  switch opts {
-  | Some(o) =>
-    switch o.decimalSeparator {
-    | Some(dec) if dec !== "" && dec !== "." => s := String.replaceAll(s.contents, dec, ".")
-    | _ => ()
-    }
-  | None => ()
   }
 
   // 5. Parse

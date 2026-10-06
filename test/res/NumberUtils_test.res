@@ -21,6 +21,25 @@ test("NumberUtils.parseWithOptions supports separators", () => {
   isOptionEqualTo(Some(3.14), NumberUtils.parseWithOptions("3,14", opts2), ~eq=eqFloat)
 })
 
+test("NumberUtils.parseWithOptions normalizes locale separators before default stripping", () => {
+  let opts = Some({thousandsSeparator: ".", decimalSeparator: ","})
+  isOptionEqualTo(Some(1234.56), NumberUtils.parseWithOptions("1.234,56", opts), ~eq=eqFloat)
+})
+
+test("NumberUtils.parseWithOptions strips currency before parsing locale separators", () => {
+  let opts = Some({thousandsSeparator: ".", decimalSeparator: ","})
+  isOptionEqualTo(Some(1234.56), NumberUtils.parseWithOptions("€ 1.234,56", opts), ~eq=eqFloat)
+})
+
+test("NumberUtils.parseWithOptions supports decimal separator with default stripping", () => {
+  let opts = Some({decimalSeparator: ","})
+  isOptionEqualTo(Some(1234.56), NumberUtils.parseWithOptions("1234,56", opts), ~eq=eqFloat)
+})
+
+test("NumberUtils.parseWithOptions preserves standard US number parsing", () => {
+  isOptionEqualTo(Some(1234.56), NumberUtils.parseWithOptions("$1,234.56", None), ~eq=eqFloat)
+})
+
 test("NumberUtils.parseWithOptions applies precision", () => {
   let opts: option<numberOptions> = Some({precision: 2})
   isOptionEqualTo(Some(3.14), NumberUtils.parseWithOptions("3.14159", opts), ~eq=eqFloat)
