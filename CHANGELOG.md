@@ -6,11 +6,23 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
-### Security
-- Fixed dev-only advisories for `brace-expansion` (GHSA-3jxr-9vmj-r5cp, GHSA-mh99-v99m-4gvg, GHSA-rgw5-rvv9-x895, GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p, GHSA-q2hr-2g5m-vwhr), `undici` (GHSA-4cwx-7wf7-3272, GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3), and `source-map-js` (GHSA-68fv-2mgg-jv7q) using minimal pnpm overrides at their patched versions; the remaining low-severity dev-only `esbuild` advisory GHSA-g7r4-m6w7-qqqr is accepted (Windows development-server arbitrary file read; production audit remains clean).
+## [1.2.0] - 2026-10-06
 
 ### Changed
-- Schema configs using `number.onError`, `date.strict`, or `json.onError` (including `config.defaults.number.onError` and `config.defaults.datetime.strict`) now fail validation with an error naming the unsupported option; these keys were previously silently ignored.
+- **Breaking:** Schema validation now rejects shapes it cannot build — an empty `fields` object or wrong-typed field/option values fail validation instead of producing silently broken extractions.
+- **Breaking:** User headers are sent only to same-origin redirect hops (`User-Agent` is always sent). Previously every header went to every hop.
+- **Breaking:** CLI scalar options are validated with explicit ranges: `--timeout` accepts 1–600 seconds and `--retry` accepts 1–10 attempts; out-of-range values are rejected with messages naming the accepted range.
+- **Breaking:** Inert schema options — `numberOptions.onError`, `jsonOptions.onError`, `dateOptions.strict`, and their `config.defaults.*` counterparts — now fail validation naming the unsupported option; they were previously parsed and silently ignored.
+
+### Fixed
+- Number parsing normalizes thousands/decimal separators before stripping non-numeric characters, so mixed-separator numbers parse as configured.
+- JSON/NDJSON streaming no longer emits corrupt framing when an output write fails mid-stream; the run fails fast instead.
+- A 3xx response without a `Location` header is now treated as a terminal status instead of following a bogus redirect path.
+- Explicit `config.limit: null` is accepted as unlimited again (regression introduced by stricter shape validation).
+- The build compiles ReScript sources before bundling and fails fast on a missing `dist/`, so stale bundles cannot ship.
+
+### Security
+- Fixed dev-only advisories for `brace-expansion` (GHSA-3jxr-9vmj-r5cp, GHSA-mh99-v99m-4gvg, GHSA-rgw5-rvv9-x895, GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p, GHSA-q2hr-2g5m-vwhr), `undici` (GHSA-4cwx-7wf7-3272, GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3), and `source-map-js` (GHSA-68fv-2mgg-jv7q) using minimal pnpm overrides at their patched versions; the remaining low-severity dev-only `esbuild` advisory GHSA-g7r4-m6w7-qqqr is accepted (Windows development-server arbitrary file read; production audit remains clean).
 
 ## [1.1.0] - 2026-08-04
 
@@ -34,5 +46,3 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ### Security
 - Hardened list-filter regex handling against unsafe patterns.
 - Rejected unsafe URL schemes (`javascript:`, `data:`) by default.
-
-## [Unreleased]
