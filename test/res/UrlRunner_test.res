@@ -448,6 +448,104 @@ testAsync("runUrlMode streams 3 successful fetches as a JSON array", done_ => {
   ->ignore
 })
 
+// Each case checks the exact write sequence, including the absence of an
+// append for an empty batch, as well as parsed rows in source order.
+[
+  (
+    "empty-middle",
+    [
+      "<div class=\"item\">A</div><div class=\"item\">B</div>",
+      "<p>none</p>",
+      "<div class=\"item\">C</div>",
+    ],
+    ["[", "\"A\",\"B\"", ",\"C\"", "]"],
+    "[\"A\",\"B\",\"C\"]",
+  ),
+  (
+    "empty-first",
+    [
+      "<p>none</p>",
+      "<div class=\"item\">A</div><div class=\"item\">B</div>",
+      "<div class=\"item\">C</div>",
+    ],
+    ["[", "\"A\",\"B\"", ",\"C\"", "]"],
+    "[\"A\",\"B\",\"C\"]",
+  ),
+  ("all-empty", ["<p>none</p>", "<p>none</p>", "<p>none</p>"], ["[", "]"], "[]"),
+]->Array.forEach(((name, pages, expectedWrites, expectedJson)) => {
+  testAsync(`runUrlMode skips ${name} JSON batches`, done_ => {
+    let (push, getEvents) = makeState()
+    let (writeFileSync, appendFileSync, appendFile, getWrites) = makeFileMock()
+    let urls = ["http://example.com/1", "http://example.com/2", "http://example.com/3"]
+    let fetchResults: array<Fetcher.fetchResult> = [
+      {url: "http://example.com/1", result: Ok(pages[0]->Option.getOr(""))},
+      {url: "http://example.com/2", result: Ok(pages[1]->Option.getOr(""))},
+      {url: "http://example.com/3", result: Ok(pages[2]->Option.getOr(""))},
+    ]
+    let deps = makeUrlRunnerDeps(
+      ~fetchResults,
+      ~parseTemplateResult=Ok(urls),
+      ~appendFile,
+      ~appendFileSync,
+      ~writeFileSync,
+    )
+    let ctx = mkUrlRunnerCtx(~deps, ~push)
+    let options: ParseCli.parseOptions = {
+      selector: ".item",
+      extract: ParseCli.Text,
+      mode: ParseCli.Multiple,
+      output: "out.json",
+      outputFormat: ParseCli.Json,
+      warnings: [],
+      concurrency: 5,
+      timeoutSeconds: 30,
+      retryCount: 3,
+      delayMs: 0,
+      requestHeaders: [],
+    }
+    UrlRunner.runUrlMode(ctx, "http://example.com/{1..3}", options)
+    ->Promise.then(
+      _ => {
+        let events = getEvents()
+        isOptionEqualTo(None, exitCodeOf(events), ~eq=(a, b) => a == b)
+        let expectedEvents = [
+          Err("---"),
+          Err("res-scrapy report"),
+          Err("  URLs attempted:  3"),
+          Err("  URLs succeeded:  3"),
+          Err("  URLs failed:     0"),
+          Err(`  Rows extracted:  ${name == "all-empty" ? "0" : "3"}`),
+          Err("  Duration:        0s"),
+          Err(""),
+        ]
+        isTextEqualTo(NodeUtil.jsonStringify(expectedEvents), NodeUtil.jsonStringify(events))
+        let writes = getWrites()
+        isTextEqualTo(
+          NodeUtil.jsonStringify(expectedWrites),
+          NodeUtil.jsonStringify(writes->Array.map(w => w.content)),
+        )
+        isIntEqualTo(0, writes->Array.filter(w => w.path != "out.json")->Array.length)
+        let reassembled = writes->Array.map(w => w.content)->Array.join("")
+        isTextEqualTo(expectedJson, reassembled)
+        switch NodeUtil.jsonParse(reassembled) {
+        | Some(JSON.Array(rows)) => isTextEqualTo(expectedJson, NodeUtil.jsonStringify(rows))
+        | _ => failWith(`reassembled output is not a JSON array: ${reassembled}`)
+        }
+        done_(~planned=6, ())
+        Promise.resolve()
+      },
+    )
+    ->Promise.catch(
+      _ => {
+        failWith("runUrlMode should not throw")
+        done_(~planned=0, ())
+        Promise.resolve()
+      },
+    )
+    ->ignore
+  })
+})
+
 testAsync("runUrlMode stops JSON writes after an append failure", done_ => {
   let (push, getEvents) = makeState()
   let fileContent: ref<string> = ref("")

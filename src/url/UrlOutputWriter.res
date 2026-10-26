@@ -108,13 +108,17 @@ let appendJsonRowAsync: (
   ~json,
 ) => {
   let rows = extractJsonArray(json)
-  let joined = rows->Array.map(stringifyJson)->Array.join(",")
-  let content = isFirstRow ? joined : "," ++ joined
-  try {
-    await appendFile(path, content)
+  if Array.length(rows) == 0 {
     Ok()
-  } catch {
-  | exn => emitWriteError(~err, ~path, ~operation="Failed to append to JSON output file", ~exn)
+  } else {
+    let joined = rows->Array.map(stringifyJson)->Array.join(",")
+    let content = isFirstRow ? joined : "," ++ joined
+    try {
+      await appendFile(path, content)
+      Ok()
+    } catch {
+    | exn => emitWriteError(~err, ~path, ~operation="Failed to append to JSON output file", ~exn)
+    }
   }
 }
 

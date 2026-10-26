@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Fixed
+- JSON file output in URL mode stays valid when pages yield no matching rows, without writing empty batches.
+
 ## [1.2.0] - 2026-10-06
 
 ### Changed
