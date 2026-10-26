@@ -66,12 +66,12 @@ let main: unit => promise<unit> = () => mainWithContext(AppContext.production)
 let isExecutedAsScript = ImportMetaBinding.isExecutedAsScript
 
 /** Register global Node.js event handlers for uncaught exceptions, unhandled
-  * rejections, and termination signals. Delegates to the typed binding in
-  * src/bindings/NodeProcess.res.
+  * rejections, and termination signals. Handlers report and then terminate
+  * the process with the given exit code via src/bindings/NodeProcess.res.
   */
 let registerGlobalRuntimeHandlers = NodeProcess.registerGlobalRuntimeHandlers
 
 if isExecutedAsScript() {
-  registerGlobalRuntimeHandlers(Console.error, NodeProcess.setExitCode)
+  registerGlobalRuntimeHandlers(Console.error, NodeProcess.exit)
   await main()
 }

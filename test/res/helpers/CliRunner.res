@@ -60,6 +60,62 @@ let runCli = (
   `)(args, input, cwd, timeoutMs)->Obj.magic
 }
 
+/** Keeps stdin open until the child closes; resolves only after all output drains. */
+let runCliAndSignal = (
+  ~args: array<string>,
+  ~signal: string,
+  ~afterMs: int,
+  ~timeoutMs: int=defaultTimeoutMs,
+): promise<cliResult> => {
+  %raw(`
+    (async (args, signal, afterMs, timeoutMs) => {
+      const { spawn } = await import('node:child_process');
+      const { join } = await import('node:path');
+      return new Promise((resolve) => {
+        const proc = spawn(process.execPath, [join(process.cwd(), 'dist', 'main.mjs'), ...args], {
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        let stdout = '';
+        let stderr = '';
+        let timedOut = false;
+        let spawnError = null;
+        let settled = false;
+        const clearTimers = () => {
+          clearTimeout(signalTimer);
+          clearTimeout(deadlineTimer);
+        };
+        const signalTimer = setTimeout(() => { proc.kill(signal); }, afterMs);
+        const deadlineTimer = setTimeout(() => {
+          timedOut = true;
+          clearTimers();
+          proc.kill('SIGKILL');
+          proc.stdin.destroy();
+        }, timeoutMs);
+        proc.stdout.on('data', chunk => { stdout += chunk.toString(); });
+        proc.stderr.on('data', chunk => { stderr += chunk.toString(); });
+        proc.stdin.on('error', () => {});
+        proc.on('error', err => {
+          spawnError = err;
+          clearTimers();
+          proc.kill('SIGKILL');
+          proc.stdin.destroy();
+        });
+        proc.on('close', code => {
+          if (settled) return;
+          settled = true;
+          clearTimers();
+          proc.stdin.destroy();
+          proc.stdout.destroy();
+          proc.stderr.destroy();
+          if (timedOut) stderr += '\\nTimed out after ' + timeoutMs + 'ms';
+          if (spawnError) stderr += '\\n' + spawnError.message;
+          resolve({ stdout, stderr, exitCode: timedOut ? 124 : spawnError ? 1 : code ?? -1 });
+        });
+      });
+    })
+  `)(args, signal, afterMs, timeoutMs)->Obj.magic
+}
+
 let runCliWithSchemaFile = (
   ~schemaContent: string,
   ~cliArgs: array<string>=[],

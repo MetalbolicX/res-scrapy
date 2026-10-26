@@ -7,6 +7,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ## [Unreleased]
 
 ### Fixed
+- The CLI now terminates after reporting SIGINT, SIGTERM, or a fatal runtime error instead of leaving pending work running.
 - JSON file output in URL mode stays valid when pages yield no matching rows, without writing empty batches.
 
 ## [1.2.0] - 2026-10-06

@@ -3,6 +3,41 @@ open Assertions
 open TestHelpers
 open CliRunner
 
+[
+  ("SIGINT", 130, "Interrupted (SIGINT)"),
+  ("SIGTERM", 143, "Terminated (SIGTERM)"),
+]->Array.forEach(((signal, expectedCode, message)) => {
+  testAsync(`runtime handler terminates on ${signal}`, ~timeout=15_000, planned => {
+    runCliAndSignal(~args=["-s", "p"], ~signal, ~afterMs=500)
+    ->Promise.then(
+      result => {
+        isIntEqualTo(expectedCode, result.exitCode)
+        isTextEqualTo("", result.stdout)
+        // The existing stdin fetch-default warning is unrelated to termination.
+        let signalOutput =
+          result.stderr
+          ->String.split("\n")
+          ->Array.filter(
+            line =>
+              line != "Warning: --timeout, --retry, --delay is ignored in stdin mode (no --url provided).",
+          )
+          ->Array.join("\n")
+        isTextEqualTo(message ++ "\n", signalOutput)
+        planned(~planned=3, ())
+        Promise.resolve()
+      },
+    )
+    ->Promise.catch(
+      _ => {
+        failWith("signal CLI execution failed")
+        planned(~planned=0, ())
+        Promise.resolve()
+      },
+    )
+    ->ignore
+  })
+})
+
 let tempOutPath: string => string = %raw(`name => {
   const suffix = Math.random().toString(36).slice(2);
   return '/tmp/res-scrapy-' + process.pid + '-' + Date.now() + '-' + suffix + '-' + name;
