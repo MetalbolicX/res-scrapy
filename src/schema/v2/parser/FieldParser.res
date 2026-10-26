@@ -27,7 +27,11 @@ let parseFieldTypeVisitor: parseFieldTypeVisitor<{..}> = {
     | Error(msg) => Error(msg)
     },
   boolean: fieldJson => Ok(Boolean(OptionsParser.parseBooleanOptions(fieldJson))),
-  count: fieldJson => Ok(Count(OptionsParser.parseCountOptions(fieldJson))),
+  count: fieldJson =>
+    switch OptionsParser.parseCountOptionsResult(fieldJson) {
+    | Ok(opts) => Ok(Count(opts))
+    | Error(msg) => Error(msg)
+    },
   url: fieldJson => Ok(Url(OptionsParser.parseUrlOptions(fieldJson))),
   json: fieldJson =>
     switch OptionsParser.parseJsonOptionsResult(fieldJson) {

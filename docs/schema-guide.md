@@ -323,6 +323,25 @@ Example:
 }
 ```
 
+`textOptions.join` joins all matches after per-element transforms, omitting empty
+transformed parts; no surviving parts yields null in an existing row. An empty
+separator is valid. Defaults (`config.defaults.text.join`) apply unless overridden.
+
+For `<div><span>A</span><span>B</span></div><div><span>C</span><span>D</span></div>`,
+field `t` selecting `span` with `textOptions: {"join":"|"}` and
+`config.rowSelector: "div"` returns `[{"t":"A|B"},{"t":"C|D"}]`: joins stay inside each row.
+
+Without rowSelector, joined text collects all document matches once and broadcasts
+the scalar. For `<i>I</i><i>J</i><span>A</span><span>B</span>`, ordinary field `i`
+selecting `i` plus the joined field returns
+`[{"i":"I","t":"A|B"},{"i":"J","t":"A|B"}]`.
+Ordinary scalar fields alone drive row count when present, even with no matches.
+With joined text but no ordinary scalars, at least one joined selector match creates
+one row: `<span>A</span><span>B</span>` returns `[{"t":"A|B"}]`; no matches returns `[]`.
+Count/List-only schemas still return `[]`. Text without join retains first-match
+row behavior and one value per zip index. Required empty match sets still error
+when an output row exists and ignoreErrors is false.
+
 ### 2. Attribute
 
 Purpose: extract attributes (href/src/data-\*).
@@ -459,10 +478,10 @@ Example:
 
 Purpose: return integer count of matched elements.
 
-Key options:
-
-- `min`.
-- `max` (validation).
+Count has no supported constraints. `countOptions.min`, `countOptions.max`,
+`config.defaults.count.min`, and `config.defaults.count.max` are rejected during
+schema validation, even when their value is null. Omitted or empty count options
+and empty count defaults remain accepted.
 
 Example:
 
@@ -483,7 +502,7 @@ Key options:
 
 - `base`.
 - `resolve` (default true).
-- `validate` (default true).
+- `validate` (default true). With false, a nonempty attribute that fails URL parsing is returned byte-for-byte (including query/hash), without normalization. Parsed URLs still require safe http/https schemes and must match any explicit protocol; resolvable relative URLs still use the base.
 - `protocol` (`http`/`https`).
 - `stripQuery`.
 - `stripHash`.
@@ -541,7 +560,7 @@ Key options:
 - `attribute` (for attribute items).
 - `unique`.
 - `filter` (regex).
-- `limit`.
+- `limit`: omitted or null means unlimited; numeric 0 means zero items.
 - `join` (return string).
 
 Example:
@@ -567,7 +586,7 @@ Removed keys: `numberOptions.onError`, `dateOptions.strict`, `jsonOptions.onErro
 
 Top-level `config` keys you will use:
 
-- `rowSelector` (string): root selector for row-based extraction
+- `rowSelector` (string): root selector for row-based extraction. Null is treated as absent and selects the default zip strategy.
 - `ignoreErrors` (boolean): controls required-field-missing and table-column extraction errors (default: false; see [Error handling](#error-handling))
 - `limit` (number): max rows to return (0 = unlimited). Explicit `null` is accepted and means unlimited (same as `0`).
 - `defaults`: object to set per-type default options (text, number, boolean, datetime, url)

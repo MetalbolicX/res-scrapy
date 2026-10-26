@@ -2,6 +2,42 @@ open Test
 open Assertions
 open FieldTypes
 
+test("zip joined text standalone and broadcast boundaries", () => {
+  let joined: (string, schemaField) = (
+    "t",
+    {selector: "span", fieldType: Text(Some({join: "|"})), required: false},
+  )
+  let scalar: (string, schemaField) = ("i", {selector: "i", fieldType: Text(None), required: false})
+  let cases = [
+    ("<span>A</span><span>B</span>", [joined], "[{\"t\":\"A|B\"}]"),
+    (
+      "<i>I</i><i>J</i><span>A</span><span>B</span>",
+      [scalar, joined],
+      "[{\"i\":\"I\",\"t\":\"A|B\"},{\"i\":\"J\",\"t\":\"A|B\"}]",
+    ),
+    ("", [joined], "[]"),
+    ("<span>A</span>", [scalar, joined], "[]"),
+    ("<i>I</i>", [scalar, joined], "[{\"i\":\"I\",\"t\":null}]"),
+    ("<span> </span>", [joined], "[{\"t\":null}]"),
+    (
+      "<span>A</span><span>B</span>",
+      [
+        ("c", {selector: "span", fieldType: Count(None), required: false}),
+        ("l", {selector: "span", fieldType: List({itemType: ListText}), required: false}),
+      ],
+      "[]",
+    ),
+    ("<i>A</i><i>B</i>", [scalar], "[{\"i\":\"A\"},{\"i\":\"B\"}]"),
+  ]
+  cases->Array.forEach(((html, fields, expected)) => {
+    let schema: schema = {fields, config: {limit: 0, ignoreErrors: false}}
+    switch ZipExtractor.run(HtmlFixture.parse(html), schema) {
+    | Ok(value) => isTextEqualTo(expected, NodeUtil.jsonStringify(value))
+    | Error(_) => failWith("Expected zip output")
+    }
+  })
+})
+
 test("ZipExtractor - Strategy metadata is correct", () => {
   isTextEqualTo("zip", ZipExtractor.Strategy.name)
 

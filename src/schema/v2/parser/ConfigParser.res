@@ -170,7 +170,26 @@ let validateDefaultsOptions: {..} => result<unit, schemaError> = raw => {
               "config.defaults.datetime.strict is accepted but not implemented; this build rejects it instead of silently ignoring it",
             ),
           )
-        | Some(_) | None => Ok()
+        | Some(_) | None =>
+          switch dictGet(defaults, "count") {
+          | Some(count) =>
+            switch (dictGet(count, "min"), dictGet(count, "max")) {
+            | (Some(_), _) =>
+              Error(
+                InvalidJson(
+                  "config.defaults.count.min is accepted but not implemented; this build rejects it instead of silently ignoring it",
+                ),
+              )
+            | (_, Some(_)) =>
+              Error(
+                InvalidJson(
+                  "config.defaults.count.max is accepted but not implemented; this build rejects it instead of silently ignoring it",
+                ),
+              )
+            | _ => Ok()
+            }
+          | None => Ok()
+          }
         }
       }
     }
@@ -205,7 +224,10 @@ let parseConfigResult: {..} => result<schemaConfig, schemaError> = schemaJson =>
         switch validateDefaultsOptions(raw) {
         | Error(e) => Error(e)
         | Ok() => {
-            let rowSelector: option<string> = dictGet(raw, "rowSelector")
+            let rowSelector: option<string> = switch (dictGet(raw, "rowSelector"): option<JSON.t>) {
+            | None | Some(JSON.Null) => None
+            | Some(value) => Some(Obj.magic(value))
+            }
             let defaults = parseDefaults(raw)
             switch defaults {
             | None => Ok({ignoreErrors, limit, ?rowSelector})

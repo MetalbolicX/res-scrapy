@@ -9,6 +9,7 @@ let parseNumberOptions: {..} => option<numberOptions>
 let parseNumberOptionsResult: {..} => result<option<numberOptions>, string>
 let parseBooleanOptions: {..} => option<booleanOptions>
 let parseCountOptions: {..} => option<countOptions>
+let parseCountOptionsResult: {..} => result<option<countOptions>, string>
 let parseUrlOptions: {..} => option<urlOptions>
 let parseJsonOptions: {..} => option<jsonOptions>
 let parseJsonOptionsResult: {..} => result<option<jsonOptions>, string>

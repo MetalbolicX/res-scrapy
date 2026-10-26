@@ -53,15 +53,23 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
     }
   })
 
-  // Row count is driven by the first non-aggregate field's element count.
-  // Aggregate fields (Count/List) produce a single value per output row regardless.
-  // Edge case: if all fields are aggregate and rowSelector is not set, rowCount
-  // is 0 and the output is an empty array. Use rowSelector to enable row-based
-  // extraction in that scenario.
+  // Ordinary scalars drive zip rows; Count/List/joined Text are broadcast.
+  // Only when ordinary scalars are absent can matched joined Text create one row.
+  // Count/List-only schemas retain their zero-row behavior.
   let rowCount = switch fieldLists
   ->Iter.values
   ->Iter.find(((_, _, resolvedFieldType, _, _)) => !isMultiElementType(resolvedFieldType)) {
-  | None => 0
+  | None =>
+    let matchedJoin =
+      fieldLists
+      ->Iter.values
+      ->Iter.find(((_, _, ft, _, els)) =>
+        switch ft {
+        | Text(Some(opts)) => opts.join->Option.isSome && Array.length(els) > 0
+        | _ => false
+        }
+      )
+    matchedJoin->Option.isSome ? 1 : 0
   | Some((_, _, _, _, els)) => Array.length(els)
   }
 

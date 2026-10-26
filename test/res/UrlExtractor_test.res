@@ -11,6 +11,48 @@ let getElement = (doc, selector) =>
     }
   }
 
+test("disabled URL validation returns raw parse failures only", () => {
+  ["not a url", "/relative?p=1#h"]->Array.forEach(raw => {
+    let el = HtmlFixture.parse(`<a href='${raw}'></a>`)->getElement("a")
+    isOptionEqualTo(
+      Some(raw),
+      UrlExtractor.extract(el, Some({validate: false, stripQuery: true, stripHash: true})),
+      ~eq=(a, b) => a == b,
+    )
+    isOptionEqualTo(None, UrlExtractor.extract(el, None), ~eq=(a, b) => a == b)
+    isOptionEqualTo(None, UrlExtractor.extract(el, Some({validate: true})), ~eq=(a, b) => a == b)
+  })
+  [
+    "<a></a>",
+    "<a href=''></a>",
+    "<a href='javascript:alert(1)'></a>",
+    "<a href='data:text/plain,x'></a>",
+  ]->Array.forEach(html => {
+    isOptionEqualTo(
+      None,
+      UrlExtractor.extract(HtmlFixture.parse(html)->getElement("a"), Some({validate: false})),
+      ~eq=(a, b) => a == b,
+    )
+  })
+  let valid = HtmlFixture.parse("<a href='https://EXAMPLE.com/a?p=1#h'></a>")->getElement("a")
+  isOptionEqualTo(
+    Some("https://example.com/a"),
+    UrlExtractor.extract(valid, Some({validate: false, stripQuery: true, stripHash: true})),
+    ~eq=(a, b) => a == b,
+  )
+  isOptionEqualTo(
+    None,
+    UrlExtractor.extract(valid, Some({validate: false, protocol: "http"})),
+    ~eq=(a, b) => a == b,
+  )
+  let relative = HtmlFixture.parse("<a href='/a?p=1#h'></a>")->getElement("a")
+  isOptionEqualTo(
+    Some("https://example.com/a?p=1#h"),
+    UrlExtractor.extract(relative, Some({validate: false, base: "https://example.com"})),
+    ~eq=(a, b) => a == b,
+  )
+})
+
 test("UrlExtractor uses default href/src attributes", () => {
   let doc = HtmlFixture.parse(
     "<a class='a' href='https://example.com/a'></a><img class='i' src='https://example.com/i.png' />",

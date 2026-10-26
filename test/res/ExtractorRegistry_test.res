@@ -19,6 +19,14 @@ let mkCtx = (
   ~selector=".",
 ): extractContext => {defaults, ignoreErrors, required, fieldName, selector}
 
+test("Registry joins all text matches", () => {
+  let els = HtmlFixture.parse("<span>A</span><span>B</span>")->HtmlFixture.selectAll("span")
+  switch ExtractorRegistry.extractValueList(els, Text(Some({join: "|"})), mkCtx(~defaults=None)) {
+  | Ok(value) => isTextEqualTo("\"A|B\"", NodeUtil.jsonStringify(value))
+  | Error(_) => failWith("Expected joined text")
+  }
+})
+
 test("ExtractorRegistry uses schema defaults for Text when field opts are absent", () => {
   let doc = HtmlFixture.parse("<div class='v'>  Hello  </div>")
   let el = getElement(doc, ".v")

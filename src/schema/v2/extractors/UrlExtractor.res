@@ -131,7 +131,7 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<urlOptions>) => option<s
             Some(final.contents)
           }
         }
-      | None => None
+      | None => Some(urlStr)
       }
     }
   }
