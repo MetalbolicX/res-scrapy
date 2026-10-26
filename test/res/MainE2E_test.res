@@ -13,16 +13,7 @@ open CliRunner
       result => {
         isIntEqualTo(expectedCode, result.exitCode)
         isTextEqualTo("", result.stdout)
-        // The existing stdin fetch-default warning is unrelated to termination.
-        let signalOutput =
-          result.stderr
-          ->String.split("\n")
-          ->Array.filter(
-            line =>
-              line != "Warning: --timeout, --retry, --delay is ignored in stdin mode (no --url provided).",
-          )
-          ->Array.join("\n")
-        isTextEqualTo(message ++ "\n", signalOutput)
+        isTextEqualTo(message ++ "\n", result.stderr)
         planned(~planned=3, ())
         Promise.resolve()
       },
@@ -30,6 +21,46 @@ open CliRunner
     ->Promise.catch(
       _ => {
         failWith("signal CLI execution failed")
+        planned(~planned=0, ())
+        Promise.resolve()
+      },
+    )
+    ->ignore
+  })
+})
+
+[
+  ("no fetch flags", ["-s", "p"], ""),
+  (
+    "explicit timeout",
+    ["-s", "p", "--timeout", "5"],
+    "Warning: --timeout is ignored in stdin mode (no --url provided).\n",
+  ),
+  (
+    "explicit default retry",
+    ["-s", "p", "--retry", "3"],
+    "Warning: --retry is ignored in stdin mode (no --url provided).\n",
+  ),
+  (
+    "explicit default delay",
+    ["-s", "p", "--delay", "0"],
+    "Warning: --delay is ignored in stdin mode (no --url provided).\n",
+  ),
+]->Array.forEach(((name, args, expectedStderr)) => {
+  testAsync(`stdin fetch warning: ${name}`, planned => {
+    runCli(~args, ~input="<p>x</p>")
+    ->Promise.then(
+      result => {
+        isIntEqualTo(0, result.exitCode)
+        isTextEqualTo("[\"<p>x</p>\"]\n", result.stdout)
+        isTextEqualTo(expectedStderr, result.stderr)
+        planned(~planned=3, ())
+        Promise.resolve()
+      },
+    )
+    ->Promise.catch(
+      _ => {
+        failWith("CLI execution failed")
         planned(~planned=0, ())
         Promise.resolve()
       },
