@@ -439,6 +439,15 @@ Example (presence):
 
 Purpose: parse dates and normalize output.
 
+Formats default to `["ISO"]` when absent or empty. Date-only ISO inputs and
+recognized offset-less ISO date-times are interpreted as UTC:
+`2024-01-02 15:04` and `2024-01-02T15:04` both yield `2024-01-02T15:04:00Z`.
+Explicit `Z` and `±hh:mm` offsets are honored (`2024-01-02T15:04:00+02:00`
+yields `2024-01-02T13:04:00Z`).
+
+`dateOptions.timezone` controls output formatting, not the timezone assigned to
+an offset-less input. To preserve a local-time instant, supply an explicit offset.
+
 Key options:
 
 - `formats` (array).

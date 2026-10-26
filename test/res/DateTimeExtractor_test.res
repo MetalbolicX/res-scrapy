@@ -11,6 +11,36 @@ let getElement = (doc, selector) =>
     }
   }
 
+[
+  ("2024-01-02 15:04", "2024-01-02T15:04:00Z"),
+  ("2024-01-02T15:04", "2024-01-02T15:04:00Z"),
+  ("2024-01-02", "2024-01-02T00:00:00Z"),
+  ("2024-01-02T15:04:00Z", "2024-01-02T15:04:00Z"),
+  ("2024-01-02T15:04:00+02:00", "2024-01-02T13:04:00Z"),
+  ("2024-01-02T15:04:00-06:00", "2024-01-02T21:04:00Z"),
+]->Array.forEach(((input, expected)) => {
+  test(`DateTimeExtractor ISO UTC: ${input}`, () => {
+    let doc = HtmlFixture.parse(`<time class='t'>${input}</time>`)
+    isOptionEqualTo(
+      Some(expected),
+      DateTimeExtractor.extract(getElement(doc, ".t"), None),
+      ~eq=(a, b) => a == b,
+    )
+  })
+})
+
+test("DateTimeExtractor offset-less attribute is UTC", () => {
+  let doc = HtmlFixture.parse("<time class='t' datetime='2024-01-02T15:04'>ignore</time>")
+  isOptionEqualTo(
+    Some("2024-01-02T15:04:00Z"),
+    DateTimeExtractor.extract(
+      getElement(doc, ".t"),
+      Some({source: "attribute", attribute: "datetime"}),
+    ),
+    ~eq=(a, b) => a == b,
+  )
+})
+
 test("DateTimeExtractor parses ISO text by default", () => {
   let doc = HtmlFixture.parse("<time class='t'>2024-06-01T12:34:56Z</time>")
   let el = getElement(doc, ".t")

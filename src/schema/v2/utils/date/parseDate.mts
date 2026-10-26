@@ -61,6 +61,8 @@ interface RegexBuildResult {
 /**
  * Parses an ISO-8601 date string into a Date object.
  *
+ * Recognized offset-less ISO date-times are interpreted as UTC. Explicit
+ * offsets identify the instant unchanged; other inputs retain native parsing.
  * Attempts to construct a Date from the provided input string. If the input
  * cannot be parsed into a valid Date (i.e., results in NaN time), the function
  * returns undefined.
@@ -76,7 +78,12 @@ interface RegexBuildResult {
  * ```
  */
 const parseISO = (input: string): Date | undefined => {
-  const parsedDate = new Date(input);
+  const offsetlessIsoDateTime =
+    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/;
+  const normalized = offsetlessIsoDateTime.test(input)
+    ? input.replace(" ", "T") + "Z"
+    : input;
+  const parsedDate = new Date(normalized);
   return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
 };
 

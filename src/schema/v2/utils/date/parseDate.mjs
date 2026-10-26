@@ -1,5 +1,9 @@
 const parseISO = (input) => {
-    const parsedDate = new Date(input);
+    const offsetlessIsoDateTime = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/;
+    const normalized = offsetlessIsoDateTime.test(input)
+        ? input.replace(" ", "T") + "Z"
+        : input;
+    const parsedDate = new Date(normalized);
     return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
 };
 const parseEpochSeconds = (secondsInput) => {

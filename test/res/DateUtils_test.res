@@ -2,6 +2,43 @@ open Test
 open Assertions
 open DateUtils
 
+[
+  ("2024-01-02 15:04", "2024-01-02T15:04:00Z"),
+  ("2024-01-02T15:04", "2024-01-02T15:04:00Z"),
+  ("2024-01-02T15:04:05", "2024-01-02T15:04:05Z"),
+  ("2024-01-02T15:04:05.123", "2024-01-02T15:04:05Z"),
+  ("2024-01-02", "2024-01-02T00:00:00Z"),
+  ("2024-01-02T15:04:00Z", "2024-01-02T15:04:00Z"),
+  ("2024-01-02T15:04:00+02:00", "2024-01-02T13:04:00Z"),
+  ("2024-01-02T15:04:00-06:00", "2024-01-02T21:04:00Z"),
+]->Array.forEach(((input, expected)) => {
+  test(`DateUtils ISO UTC: ${input}`, () => {
+    switch parseDate(input, ["ISO"]) {
+    | Some(date) => isTextEqualTo(expected, formatDate(date, FieldTypes.Iso8601, Some("UTC")))
+    | None => failWith("Expected valid ISO date")
+    }
+  })
+})
+
+test("DateUtils offset-less fallback and custom format remain UTC", () => {
+  [[], ["yyyy-MM-dd HH:mm"]]->Array.forEach(formats => {
+    switch parseDate("2024-01-02 15:04", formats) {
+    | Some(date) =>
+      isTextEqualTo("2024-01-02T15:04:00Z", formatDate(date, FieldTypes.Iso8601, Some("UTC")))
+    | None => failWith("Expected valid date")
+    }
+  })
+})
+
+test("DateUtils rejects empty and invalid ISO input", () => {
+  ["", "nope"]->Array.forEach(input => {
+    switch parseDate(input, ["ISO"]) {
+    | None => passWith("Invalid input rejected")
+    | Some(_) => failWith("Expected parse failure")
+    }
+  })
+})
+
 let _ = test("DateUtils - parseDate tries formats in order", () => {
   // 2024-01-01T12:00:00Z should parse correctly with ISO
   let parsed = parseDate("2024-01-01T12:00:00Z", ["ISO"])

@@ -7,6 +7,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ## [Unreleased]
 
 ### Changed
+- **Breaking:** Offset-less ISO date-times now mean UTC instead of host-local time. Users relying on local-time interpretation must supply explicit offsets; output timezone settings only control formatting.
 - **Breaking:** Default number cleanup now preserves scientific notation (`1e5` yields `100000`, previously `15`). Percent signs remain stripped without dividing by 100, and decimal comma still requires explicit configuration.
 
 ### Fixed
