@@ -259,10 +259,24 @@ testAsync("runUrlMode exits 0 with partial success", done_ => {
 
 testAsync("runUrlMode exits 1 on invalid URL template", done_ => {
   let (push, getEvents) = makeState()
-  let deps = makeUrlRunnerDeps(
+  let (writeFileSync, appendFileSync, appendFile, getWrites) = makeFileMock()
+  let fetchCalls = ref(0)
+  let baseDeps = makeUrlRunnerDeps(
     ~fetchResults=[],
     ~parseTemplateResult=Error(TemplateParser.InvalidSyntax("unclosed {{")),
+    ~writeFileSync,
+    ~appendFileSync,
+    ~appendFile,
   )
+  let deps: AppContext.dependencies = {
+    ...baseDeps,
+    fetch: {
+      fetchAll: (urls, options) => {
+        fetchCalls := fetchCalls.contents + 1
+        baseDeps.fetch.fetchAll(urls, options)
+      },
+    },
+  }
   let ctx = mkUrlRunnerCtx(~deps, ~push)
   let options: ParseCli.parseOptions = {
     selector: ".item",
@@ -277,11 +291,16 @@ testAsync("runUrlMode exits 1 on invalid URL template", done_ => {
     requestHeaders: [],
   }
 
+  let options = {...options, output: "rejected.json", outputFormat: ParseCli.Json}
   UrlRunner.runUrlMode(ctx, "http://example.com/{{invalid", options)
   ->Promise.then(_ => {
-    let events = getEvents()
-    isOptionEqualTo(Some(1), exitCodeOf(events), ~eq=(a, b) => a == b)
-    done_(~planned=1, ())
+    isTextEqualTo(
+      NodeUtil.jsonStringify([Err("unclosed {{"), Exit(1)]),
+      NodeUtil.jsonStringify(getEvents()),
+    )
+    isIntEqualTo(0, fetchCalls.contents)
+    isIntEqualTo(0, Array.length(getWrites()))
+    done_(~planned=3, ())
     Promise.resolve()
   })
   ->Promise.catch(_ => {
@@ -294,7 +313,24 @@ testAsync("runUrlMode exits 1 on invalid URL template", done_ => {
 
 testAsync("runUrlMode exits 1 when template produces no URLs", done_ => {
   let (push, getEvents) = makeState()
-  let deps = makeUrlRunnerDeps(~fetchResults=[], ~parseTemplateResult=Ok([]))
+  let (writeFileSync, appendFileSync, appendFile, getWrites) = makeFileMock()
+  let fetchCalls = ref(0)
+  let baseDeps = makeUrlRunnerDeps(
+    ~fetchResults=[],
+    ~parseTemplateResult=Ok([]),
+    ~writeFileSync,
+    ~appendFileSync,
+    ~appendFile,
+  )
+  let deps: AppContext.dependencies = {
+    ...baseDeps,
+    fetch: {
+      fetchAll: (urls, options) => {
+        fetchCalls := fetchCalls.contents + 1
+        baseDeps.fetch.fetchAll(urls, options)
+      },
+    },
+  }
   let ctx = mkUrlRunnerCtx(~deps, ~push)
   let options: ParseCli.parseOptions = {
     selector: ".item",
@@ -309,11 +345,16 @@ testAsync("runUrlMode exits 1 when template produces no URLs", done_ => {
     requestHeaders: [],
   }
 
+  let options = {...options, output: "rejected.json", outputFormat: ParseCli.Json}
   UrlRunner.runUrlMode(ctx, "http://example.com/{3..1}", options)
   ->Promise.then(_ => {
-    let events = getEvents()
-    isOptionEqualTo(Some(1), exitCodeOf(events), ~eq=(a, b) => a == b)
-    done_(~planned=1, ())
+    isTextEqualTo(
+      NodeUtil.jsonStringify([Err("URL template produced no URLs"), Exit(1)]),
+      NodeUtil.jsonStringify(getEvents()),
+    )
+    isIntEqualTo(0, fetchCalls.contents)
+    isIntEqualTo(0, Array.length(getWrites()))
+    done_(~planned=3, ())
     Promise.resolve()
   })
   ->Promise.catch(_ => {

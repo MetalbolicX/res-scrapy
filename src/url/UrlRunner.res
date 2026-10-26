@@ -220,22 +220,17 @@ let runUrlMode = async (
   options: ParseCli.parseOptions,
 ) => {
   // Parse URL template
-  let urls = switch ctx.deps.doc.parseTemplate(urlTemplate)->ResultX.mapError(
-    AppError.mapTemplateError,
-  ) {
+  switch ctx.deps.doc.parseTemplate(urlTemplate)->ResultX.mapError(AppError.mapTemplateError) {
   | Error(err) => {
       ctx.io.err(AppError.toMessage(err))
       ctx.io.exit(1)
-      []
     }
-  | Ok(urls) => urls
-  }
-
   // Exit early if no URLs
-  if Array.length(urls) == 0 {
-    ctx.io.err(AppError.toMessage(AppError.CliError("URL template produced no URLs")))
-    ctx.io.exit(1)
-  } else {
+  | Ok([]) => {
+      ctx.io.err(AppError.toMessage(AppError.CliError("URL template produced no URLs")))
+      ctx.io.exit(1)
+    }
+  | Ok(urls) =>
     switch resolveExtractionSetup(ctx, options) {
     | Error(err) => {
         ctx.io.err(err)
