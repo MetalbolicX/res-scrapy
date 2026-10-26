@@ -58,4 +58,9 @@ let matchesPattern: (string, string) => bool = (text, pattern) =>
   | Some(re) => regexTest(re, text)
   }
 
-let stripNonNumeric: string => string = text => text->String.replaceRegExp(/[^0-9.\-]/g, "")
+let stripNonNumeric: string => string = text =>
+  // Check exponent context before cleanup can join separated digits and letters.
+  text
+  ->String.replaceRegExp(/(?<![0-9])[eE]|[eE](?![+-]?[0-9])/g, "")
+  ->String.replaceRegExp(/(?<![eE])\+|\+(?![0-9])/g, "")
+  ->String.replaceRegExp(/[^0-9.eE+\-]/g, "")

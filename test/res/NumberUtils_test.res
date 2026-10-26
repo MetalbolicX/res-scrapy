@@ -5,6 +5,49 @@ open FieldTypes
 let absFloat = n => n < 0.0 ? -.n : n
 let eqFloat = (a, b) => absFloat(a -. b) <= 0.000001
 
+[
+  ("1e5", Some(100000.0)),
+  ("1.5E-3", Some(0.0015)),
+  ("-2e3", Some(-2000.0)),
+  ("2e+3", Some(2000.0)),
+  ("5 items each", Some(5.0)),
+  ("45%", Some(45.0)),
+  ("3,14", Some(314.0)),
+  ("", None),
+  ("-", None),
+  ("1e", Some(1.0)),
+  ("e5", Some(5.0)),
+  ("$1,234.50", Some(1234.5)),
+  ("1.2.3", Some(1.2)),
+  ("-$5", Some(-5.0)),
+  ("1 e5", Some(15.0)),
+  ("1e +3", Some(13.0)),
+  ("1e+ 3", Some(13.0)),
+  ("1+2", Some(12.0)),
+]->Array.forEach(((input, expected)) => {
+  test(`NumberUtils default cleanup: ${input}`, () => {
+    isOptionEqualTo(expected, NumberUtils.parseWithOptions(input, None), ~eq=eqFloat)
+  })
+})
+
+test("NumberUtils scientific notation respects options", () => {
+  isOptionEqualTo(
+    Some(3.14),
+    NumberUtils.parseWithOptions("3,14", Some({decimalSeparator: ","})),
+    ~eq=eqFloat,
+  )
+  isOptionEqualTo(
+    Some(2000.0),
+    NumberUtils.parseWithOptions("2e+3", Some({stripNonNumeric: false})),
+    ~eq=eqFloat,
+  )
+  isOptionEqualTo(
+    None,
+    NumberUtils.parseWithOptions("-2e3", Some({allowNegative: false})),
+    ~eq=eqFloat,
+  )
+})
+
 test("NumberUtils.parseWithOptions parses plain values", () => {
   isOptionEqualTo(Some(42.0), NumberUtils.parseWithOptions("42", None), ~eq=eqFloat)
   isOptionEqualTo(Some(3.14), NumberUtils.parseWithOptions("3.14", None), ~eq=eqFloat)

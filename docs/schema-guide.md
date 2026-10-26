@@ -374,7 +374,16 @@ Example:
 
 ### 4. Number
 
-Purpose: parse numeric values (currency, percent).
+Purpose: parse numeric values (currency, percent, scientific notation).
+
+Default cleanup preserves scientific notation: `1e5 → 100000`, `1.5E-3 → 0.0015`,
+`-2e3 → -2000`, and `2e+3 → 2000`. Letters in prose are still stripped
+(`5 items each → 5`); cleanup does not join spaced fragments into exponents.
+
+Percent signs are stripped without division by 100: `45% → 45`, not `0.45`.
+Decimal comma requires configuration: `3,14 → 314` by default, versus `3.14`
+with `numberOptions.decimalSeparator: ","`. Separator normalization runs before
+cleanup. Parsing remains permissive: `1e → 1` and `1.2.3 → 1.2`.
 
 Key options:
 

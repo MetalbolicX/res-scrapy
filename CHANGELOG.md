@@ -6,6 +6,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Changed
+- **Breaking:** Default number cleanup now preserves scientific notation (`1e5` yields `100000`, previously `15`). Percent signs remain stripped without dividing by 100, and decimal comma still requires explicit configuration.
+
 ### Fixed
 - Invalid URL templates now report their error once, without an additional misleading empty-template error.
 - Stdin mode warns about ignored fetch options only when explicitly supplied, not when using defaults.
