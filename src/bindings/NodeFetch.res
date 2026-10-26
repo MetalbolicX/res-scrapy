@@ -47,6 +47,11 @@ type response = {
   headers: responseHeaders,
 }
 
+/** Best-effort release of bodies that will not be consumed. */
+let cancelBody: response => promise<unit> = %raw(`async response => {
+  try { await response.body?.cancel(); } catch (_) { /* preserve original outcome */ }
+}`)
+
 /** Extracts the response body as text. */
 @send external text: response => promise<string> = "text"
 

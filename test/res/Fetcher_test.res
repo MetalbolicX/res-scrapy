@@ -11,9 +11,16 @@ type fakeResponseObject = {
   statusText: string,
   headers: fakeHeaders,
   text: unit => promise<string>,
+  body: {cancel: unit => promise<unit>},
 }
 
-let fakeResponse = (status, location, body): NodeFetch.response => {
+let fakeResponse = (
+  ~cancel=() => Promise.resolve(),
+  ~read=() => (),
+  status,
+  location,
+  body,
+): NodeFetch.response => {
   let headers: fakeHeaders = {
     get: name =>
       if name == "location" {
@@ -31,10 +38,110 @@ let fakeResponse = (status, location, body): NodeFetch.response => {
       "Found"
     },
     headers,
-    text: () => Promise.resolve(body),
+    text: () => {
+      read()
+      Promise.resolve(body)
+    },
+    body: {cancel: cancel},
   }
   Obj.magic(response)
 }
+
+// Exercise lifecycle through the public injectable fetch boundary.
+let lifecycleCase = (~status, ~location, ~rejectCancel, ~expectedCalls, ~expectedResult, name) =>
+  testAsync(name, planned => {
+    let events = ref([])
+    let calls = ref(0)
+    let cancels = ref(0)
+    let reads = ref(0)
+    let rawFetch = async (_url, _options) => {
+      calls := calls.contents + 1
+      events := Array.concat(events.contents, ["request"])
+      let cancel = () => {
+        cancels := cancels.contents + 1
+        events := Array.concat(events.contents, ["cancel"])
+        if rejectCancel {
+          Promise.reject(Failure("cancel failed"))
+        } else {
+          Promise.resolve()
+        }
+      }
+      fakeResponse(
+        ~cancel,
+        ~read=() => reads := reads.contents + 1,
+        calls.contents == 1 ? status : 200,
+        calls.contents == 1 ? location : None,
+        "done",
+      )
+    }
+    Fetcher.fetchOnceWithRawFetch(rawFetch, "http://example.test/start", "agent", 5, [])
+    ->Promise.then(result => {
+      isIntEqualTo(expectedCalls, calls.contents)
+      isIntEqualTo(status == 200 ? 0 : 1, cancels.contents)
+      isIntEqualTo(expectedResult == Ok("done") ? 1 : 0, reads.contents)
+      isTruthy(result == expectedResult)
+      isTextEqualTo(
+        expectedCalls == 2
+          ? "request,cancel,request"
+          : status == 200
+          ? "request"
+          : "request,cancel",
+        events.contents->Array.joinWith(","),
+      )
+      planned(~planned=5, ())
+      Promise.resolve()
+    })
+    ->ignore
+  })
+
+lifecycleCase(
+  ~status=302,
+  ~location=Some("/next"),
+  ~rejectCancel=false,
+  ~expectedCalls=2,
+  ~expectedResult=Ok("done"),
+  "redirect cancellation precedes next request",
+)
+lifecycleCase(
+  ~status=302,
+  ~location=Some("/next"),
+  ~rejectCancel=true,
+  ~expectedCalls=2,
+  ~expectedResult=Ok("done"),
+  "rejected redirect cancellation preserves success",
+)
+lifecycleCase(
+  ~status=404,
+  ~location=None,
+  ~rejectCancel=false,
+  ~expectedCalls=1,
+  ~expectedResult=Error(Fetcher.HttpError(404, "Found")),
+  "404 cancels discarded body",
+)
+lifecycleCase(
+  ~status=302,
+  ~location=None,
+  ~rejectCancel=false,
+  ~expectedCalls=1,
+  ~expectedResult=Error(Fetcher.HttpError(302, "Found")),
+  "missing Location cancels discarded body",
+)
+lifecycleCase(
+  ~status=404,
+  ~location=None,
+  ~rejectCancel=true,
+  ~expectedCalls=1,
+  ~expectedResult=Error(Fetcher.HttpError(404, "Found")),
+  "rejected cancellation preserves HTTP error",
+)
+lifecycleCase(
+  ~status=200,
+  ~location=None,
+  ~rejectCancel=false,
+  ~expectedCalls=1,
+  ~expectedResult=Ok("done"),
+  "successful body is read not canceled",
+)
 
 let recordingFetch = (calls: ref<array<recordedCall>>, responseAt) =>
   async (url: string, options: option<NodeFetch.options>) => {

@@ -125,6 +125,7 @@ let rec fetchWithRedirects = async (
       response.status == 308
     switch (isRedirect, NodeFetch.getHeader(response.headers, "location")) {
     | (true, Some(location)) => {
+        await NodeFetch.cancelBody(response)
         let current = NodeUrl.make(url, None)
         let next = NodeUrl.make(location, Some(url))
         let nextHeaders = if current.origin == next.origin {
@@ -146,6 +147,7 @@ let rec fetchWithRedirects = async (
         let html = await NodeFetch.text(response)
         Ok(html)
       } else {
+        await NodeFetch.cancelBody(response)
         Error(HttpError(response.status, response.statusText))
       }
     }
