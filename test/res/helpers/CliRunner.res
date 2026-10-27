@@ -143,6 +143,78 @@ let runCliAndSignal = (
   `)(args, signal, afterMs, timeoutMs)->Obj.magic
 }
 
+/** Spawns the CLI with stdout paused so writes buffer in the pipe, polls until
+  * some output exists (never a fixed sleep), kills the child with `signal`,
+  * then resumes and drains the remaining bytes. Exercises the production
+  * `exitAfterFlush` wiring: stdout buffered while the reader is paused must
+  * still be delivered before the process terminates. */
+let runCliPausedStdoutAndSignal = (
+  ~args: array<string>,
+  ~signal: string,
+  ~input: string="",
+  ~timeoutMs: int=defaultTimeoutMs,
+): promise<cliResult> => {
+  %raw(`
+    (async (args, signal, input, timeoutMs) => {
+      const { spawn } = await import('node:child_process');
+      const { join } = await import('node:path');
+      const cliPath = join(process.cwd(), 'dist', 'main.mjs');
+      return new Promise((resolve) => {
+        const proc = spawn(process.execPath, [cliPath, ...args], {
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        let stdout = '';
+        let stderr = '';
+        let settled = false;
+        let pollTimer = null;
+        const timer = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          if (pollTimer) clearInterval(pollTimer);
+          proc.kill('SIGKILL');
+          proc.stdout.resume();
+          resolve({
+            stdout,
+            stderr: (stderr + '\\nTimed out after ' + timeoutMs + 'ms').trim(),
+            exitCode: 124,
+          });
+        }, timeoutMs);
+        proc.stdout.pause();
+        proc.stdout.on('data', chunk => { stdout += chunk.toString(); });
+        proc.stderr.on('data', chunk => { stderr += chunk.toString(); });
+        // Signal only once the child has produced output: handlers are then
+        // long installed, so no raw-signal race retries are needed here.
+        pollTimer = setInterval(() => {
+          if (proc.stdout.readableLength > 0) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+            proc.kill(signal);
+            proc.stdout.resume();
+          }
+        }, 100);
+        proc.stdin.on('error', () => {});
+        proc.on('error', err => {
+          if (settled) return;
+          settled = true;
+          if (pollTimer) clearInterval(pollTimer);
+          clearTimeout(timer);
+          resolve({ stdout: '', stderr: err.message, exitCode: 1 });
+        });
+        proc.on('close', code => {
+          if (settled) return;
+          settled = true;
+          if (pollTimer) clearInterval(pollTimer);
+          clearTimeout(timer);
+          proc.stdout.resume();
+          resolve({ stdout, stderr, exitCode: code ?? -1 });
+        });
+        if (input) { proc.stdin.write(input); }
+        proc.stdin.end();
+      });
+    })
+  `)(args, signal, input, timeoutMs)->Obj.magic
+}
+
 let runCliWithSchemaFile = (
   ~schemaContent: string,
   ~cliArgs: array<string>=[],

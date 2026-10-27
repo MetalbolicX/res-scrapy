@@ -149,13 +149,58 @@ testAsync("table CLI: null tableOptions.rowSelector matches omitted rowSelector"
     planned(~planned=6, ())
   }
   runAssertions()
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("table CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
   ->ignore
 })
+
+/** Builds `<ul>` with `count` × `<li class="item">item number i</li>` so the
+    buffered-stdout E2E writes a large known-length payload (> 64 KB, more
+    than the kernel pipe absorbs while the reader is paused). */
+let itemHtml = (count: int): string => {
+  let items =
+    Belt.Array.mapWithIndex(
+      Belt.Array.make(count, 0),
+      (i, _) => `<li class="item">item number ${i->Int.toString}</li>`,
+    )
+  ["<ul>"]->Array.concat(items)->Array.concat(["</ul>"])->Array.join("")
+}
+
+// Production passes NodeProcess.exitAfterFlush to the runtime handlers: on
+// SIGTERM with stdout paused and unread (188,892 buffered bytes for 10k rows)
+// the pre-exitAfterFlush build delivered 0 bytes and still ran its exit; the
+// current build must deliver every byte before terminating.
+testAsync(
+  "SIGTERM with paused stdout flushes buffered output before exit",
+  ~timeout=20_000,
+  planned => {
+    runCliPausedStdoutAndSignal(
+      ~args=["--selector", ".item", "--mode", "--extract", "text"],
+      ~signal="SIGTERM",
+      ~input=itemHtml(10_000),
+      ~timeoutMs=15_000,
+    )
+    ->Promise.then(result => {
+      isIntEqualTo(143, result.exitCode)
+      isTextEqualTo("Terminated (SIGTERM)\n", result.stderr)
+      // 10k rows: 10000×(14 + digits) + 9999 commas + 2 brackets + 1 newline
+      // does not escape, and the input is pure ASCII, chars = bytes.
+      isIntEqualTo(188892, String.length(result.stdout))
+      isTextEqualTo("item number 9999", Array.last(result.stdout->TestHelpers.stringArrayFromJsonString)->Option.getOr(""))
+      planned(~planned=4, ())
+      Promise.resolve()
+    })
+    ->Promise.catch(exn => {
+      failWithExn("SIGTERM paused-stdout CLI execution failed", exn)
+      planned(~planned=0, ())
+      Promise.resolve()
+    })
+    ->ignore
+  },
+)
 
 ["$.offers.price", "offers.price"]->Array.forEach(path => {
   testAsync(`guide JSON CLI path: ${path}`, planned => {
@@ -934,15 +979,15 @@ testAsync(
         }
       }
       run()->Promise.catch(
-        _ => {
-          failWith("ALL_PROXY warning E2E assertions failed")
+        exn => {
+          failWithExn("ALL_PROXY warning E2E assertions failed", exn)
           planned(~planned=0, ())
           Promise.resolve()
         },
       )
     })
-    ->Promise.catch(_ => {
-      failWith("Could not start HTTP test server for ALL_PROXY warning E2E")
+    ->Promise.catch(exn => {
+      failWithExn("Could not start HTTP test server for ALL_PROXY warning E2E", exn)
       planned(~planned=0, ())
       Promise.resolve()
     })
