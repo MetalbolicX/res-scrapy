@@ -305,6 +305,58 @@ sizeCase(~contentLength=Some("1"), "size understated length checks actual bytes"
 sizeCase(~body="éé", ~cap=3, "size counts bytes not UTF16")
 sizeCase(~body="éé", ~cap=4, ~accepted=true, "size multibyte boundary accepted")
 
+/** NodeFetch.readBodyWithin returns an empty buffer when response.body is
+    null/undefined (204, HEAD); drive both statuses through a fake whose body
+    is JS null so that branch is pinned. */
+let nullBodyCase = (~status, name) =>
+  testAsync(name, planned => {
+    let reads = ref(0)
+    let cancels = ref(0)
+    let nullBody: NodeFetch.body = Obj.magic(jsNull)
+    let rawFetch = async (_, _) => {
+      let response: fakeResponseObject = {
+        ok: true,
+        status,
+        statusText: "OK",
+        headers: {
+          get: name =>
+            if name == "content-length" || name == "retry-after" || name == "location" {
+              jsNull
+            } else {
+              jsNull
+            },
+        },
+        body: nullBody,
+      }
+      Obj.magic(response)
+    }
+    Fetcher.fetchOnceWithBodyLimit(
+      ~maxBodyBytes=5,
+      rawFetch,
+      "http://example.test/",
+      "agent",
+      5,
+      [],
+    )
+    ->Promise.then(result => {
+      // Nothing to read, nothing to cancel, empty decoded output.
+      isTruthy(result == Ok(""))
+      isIntEqualTo(0, reads.contents)
+      isIntEqualTo(0, cancels.contents)
+      planned(~planned=3, ())
+      Promise.resolve()
+    })
+    ->Promise.catch(exn => {
+      failWithExn("absent body fetch assertions failed", exn)
+      planned(~planned=0, ())
+      Promise.resolve()
+    })
+    ->ignore
+  })
+
+nullBodyCase(~status=204, "absent body (204) reads an empty result")
+nullBodyCase(~status=200, "absent body (200 without a stream) reads an empty result")
+
 let defaultCapCase = (~contentLength, ~accepted, ~expectedReads, name) =>
   testAsync(name, planned => {
     let reads = ref(0)
