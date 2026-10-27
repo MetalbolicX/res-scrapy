@@ -167,8 +167,8 @@ let rec fetchWithRedirects = async (
         } else {
           let bytes = await NodeFetch.readBodyWithin(response, Float.fromInt(maxBodyBytes))
           switch bytes {
-          | None => outcome(sizeError())
-          | Some(bytes) =>
+          | OverLimit => outcome(sizeError())
+          | Within(bytes) =>
             outcome(
               Ok(
                 NodeFetch.decodeHtml(bytes, NodeFetch.getHeader(response.headers, "content-type")),

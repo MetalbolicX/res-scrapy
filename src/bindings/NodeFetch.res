@@ -66,37 +66,39 @@ type byteView
 /** Response body as a web byte stream (fetch's `response.body`). */
 type body
 
+type overCapResult = Within(arrayBuffer) | OverLimit
+
 /** Reads the body chunk by chunk and stops at the cap: the first chunk that
-  * pushes the running total past `limit` cancels the stream and returns None
-  * instead of buffering the rest. A body that is absent (204, HEAD) yields an
-  * empty buffer, and an in-range body is joined into one ArrayBuffer. */
-let readBodyWithin: (
-  response,
-  float,
-) => promise<option<arrayBuffer>> = %raw(`async (response, limit) => {
-  const body = response.body;
-  if (body === null || body === undefined) return new ArrayBuffer(0);
-  const reader = body.getReader();
-  const chunks = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > limit) {
-      try { await reader.cancel(); } catch (_) { /* the size outcome wins */ }
-      return undefined;
+  * pushes the running total past `limit` cancels the stream and returns
+  * `OverLimit` instead of buffering the rest. A body that is absent (204, HEAD)
+  * yields `Within` with an empty buffer, and an in-range body is joined into
+  * one buffer. The variant keeps a future `None`-shaped failure from being
+  * silently misreported as a size error in the caller. */
+let readBodyWithin: (response, float) => promise<overCapResult> = %raw(`async (response, limit) => {
+    const body = response.body;
+    if (body === null || body === undefined)
+      return { TAG: "Within", _0: new ArrayBuffer(0) }
+    const reader = body.getReader();
+    const chunks = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > limit) {
+        try { await reader.cancel(); } catch (_) { /* the size outcome wins */ }
+        return "OverLimit"
+      }
+      chunks.push(value);
     }
-    chunks.push(value);
-  }
-  const joined = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    joined.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return joined.buffer;
-}`)
+    const joined = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      joined.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return { TAG: "Within", _0: joined.buffer }
+  }`)
 
 /** Test-only byte-chunk bodies so fetch fakes drive the real streaming reader.
     Raw interop stays in this binding island. */
