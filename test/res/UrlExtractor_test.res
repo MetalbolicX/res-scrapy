@@ -53,6 +53,28 @@ test("disabled URL validation returns raw parse failures only", () => {
   )
 })
 
+test("disabled URL validation rejects unsafe schemes and keeps unparsed raw values", () => {
+  let extract = (href, opts) =>
+    HtmlFixture.parse(`<a href='${href}'></a>`)->getElement("a")->UrlExtractor.extract(opts)
+  // Parsed unsafe schemes are rejected even with validate: false.
+  isOptionEqualTo(None, extract("ftp://example.com/x", Some({validate: false})), ~eq=(a, b) =>
+    a == b
+  )
+  // A protocol-relative URL has no base to resolve against, so parsing fails
+  // and the raw attribute is returned byte-for-byte.
+  isOptionEqualTo(
+    Some("//cdn.example.com/a.js"),
+    extract("//cdn.example.com/a.js", Some({validate: false})),
+    ~eq=(a, b) => a == b,
+  )
+  // With a base it parses and resolves like any relative URL.
+  isOptionEqualTo(
+    Some("https://cdn.example.com/a.js"),
+    extract("//cdn.example.com/a.js", Some({validate: false, base: "https://example.com"})),
+    ~eq=(a, b) => a == b,
+  )
+})
+
 test("UrlExtractor uses default href/src attributes", () => {
   let doc = HtmlFixture.parse(
     "<a class='a' href='https://example.com/a'></a><img class='i' src='https://example.com/i.png' />",

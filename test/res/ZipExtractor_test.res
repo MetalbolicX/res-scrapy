@@ -170,6 +170,23 @@ test("zip joined text standalone and broadcast boundaries", () => {
   })
 })
 
+test("zip join miss inside rows keeps the joined field null in every row", () => {
+  let i: (string, schemaField) = ("i", {selector: "i", fieldType: Text(None), required: false})
+  let joined: (string, schemaField) = (
+    "t",
+    {selector: "span", fieldType: Text(Some({join: "|"})), required: false},
+  )
+  let schema: schema = {fields: [i, joined], config: {limit: 0, ignoreErrors: false}}
+  switch ZipExtractor.run(HtmlFixture.parse("<i>I</i><i>J</i>"), schema) {
+  | Ok(value) =>
+    isTextEqualTo(
+      "[{\"i\":\"I\",\"t\":null},{\"i\":\"J\",\"t\":null}]",
+      NodeUtil.jsonStringify(value),
+    )
+  | Error(_) => failWith("Expected zip rows with a null joined field")
+  }
+})
+
 test("ZipExtractor - Strategy metadata is correct", () => {
   isTextEqualTo("zip", ZipExtractor.Strategy.name)
 

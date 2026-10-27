@@ -38,6 +38,21 @@ test("schema tbody header omission respects explicit row selector", () => {
   })
 })
 
+test("schema table field returns no rows for a header-only tbody", () => {
+  let raw = `{"fields":{"t":{"selector":"table","type":"table","tableOptions":{"columns":[{"name":"A","selector":"td:nth-child(1)","type":"text"},{"name":"B","selector":"td:nth-child(2)","type":"text"}]}}}}`
+  switch SchemaV2.loadSchema(~isInline=true, raw) {
+  | Ok(schema) =>
+    switch SchemaV2.applySchema(
+      HtmlFixture.parse("<table><tbody><tr><th>A</th><th>B</th></tr></tbody></table>"),
+      schema,
+    ) {
+    | Ok(value) => isTextEqualTo("[{\"t\":[]}]", NodeUtil.jsonStringify(value))
+    | Error(_) => failWith("Expected schema table output")
+    }
+  | Error(_) => failWith("Expected schema")
+  }
+})
+
 test("URL validation false is inherited from parsed defaults", () => {
   let raw = `{"config":{"defaults":{"url":{"validate":false}}},"fields":{"u":{"selector":"a","type":"url"}}}`
   switch SchemaV2.loadSchema(~isInline=true, raw) {

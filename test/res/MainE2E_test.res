@@ -125,6 +125,38 @@ testAsync("count constraint CLI rejects before extraction", planned => {
   })
 })
 
+testAsync("table CLI: null tableOptions.rowSelector matches omitted rowSelector", planned => {
+  let columns = `"columns":[{"name":"A","selector":"td:nth-child(1)","type":"text"},{"name":"B","selector":"td:nth-child(2)","type":"text"}]`
+  // `tbody` starts with a pure header row so both variants must skip it.
+  let input = "<table><tbody><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></tbody></table>"
+  let run = async rowSelectorOption =>
+    await runCli(
+      ~args=[
+        "--schema",
+        `{"fields":{"t":{"selector":"table","type":"table","tableOptions":{${rowSelectorOption}${columns}}}}}`,
+      ],
+      ~input,
+    )
+  let runAssertions = async () => {
+    let nullResult = await run(`"rowSelector":null,`)
+    let omittedResult = await run("")
+    isIntEqualTo(0, nullResult.exitCode)
+    isIntEqualTo(0, omittedResult.exitCode)
+    isTextEqualTo("[{\"t\":[{\"A\":\"1\",\"B\":\"2\"}]}]\n", nullResult.stdout)
+    isTextEqualTo(omittedResult.stdout, nullResult.stdout)
+    isTextEqualTo("", nullResult.stderr)
+    isTextEqualTo("", omittedResult.stderr)
+    planned(~planned=6, ())
+  }
+  runAssertions()
+  ->Promise.catch(_ => {
+    failWith("CLI execution failed")
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
 ["$.offers.price", "offers.price"]->Array.forEach(path => {
   testAsync(`guide JSON CLI path: ${path}`, planned => {
     let schema = `{"fields":{"ld":{"selector":"script[type='application/ld+json']","type":"json","jsonOptions":{"path":"${path}"}}}}`
