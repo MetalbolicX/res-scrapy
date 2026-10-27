@@ -71,11 +71,12 @@ let runCli = (
 let runCliAndSignal = (
   ~args: array<string>,
   ~signal: string,
+  ~input: string="",
   ~afterMs: int,
   ~timeoutMs: int=defaultTimeoutMs,
 ): promise<cliResult> => {
   %raw(`
-    (async (args, signal, afterMs, timeoutMs) => {
+    (async (args, signal, input, afterMs, timeoutMs) => {
       const { spawn } = await import('node:child_process');
       const { join } = await import('node:path');
       const cliPath = join(process.cwd(), 'dist', 'main.mjs');
@@ -108,6 +109,7 @@ let runCliAndSignal = (
           proc.stdout.on('data', chunk => { stdout += chunk.toString(); });
           proc.stderr.on('data', chunk => { stderr += chunk.toString(); });
           proc.stdin.on('error', () => {});
+          if (input) { proc.stdin.write(input); proc.stdin.end(); }
           proc.on('error', err => {
             spawnError = err;
             clearTimers();
@@ -140,7 +142,7 @@ let runCliAndSignal = (
       }
       return result;
     })
-  `)(args, signal, afterMs, timeoutMs)->Obj.magic
+  `)(args, signal, input, afterMs, timeoutMs)->Obj.magic
 }
 
 /** Spawns the CLI with stdout paused so writes buffer in the pipe, polls until

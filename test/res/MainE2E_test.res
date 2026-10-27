@@ -178,17 +178,19 @@ testAsync(
     runCliPausedStdoutAndSignal(
       ~args=["--selector", ".item", "--mode", "--extract", "text"],
       ~signal="SIGTERM",
-      ~input=itemHtml(10_000),
-      ~timeoutMs=15_000,
+      ~input=itemHtml(100_000),
+      ~timeoutMs=20_000,
     )
     ->Promise.then(result => {
       isIntEqualTo(143, result.exitCode)
       isTextEqualTo("Terminated (SIGTERM)\n", result.stderr)
-      // 10k rows: 10000×(14 + digits) + 9999 commas + 2 brackets + 1 newline
-      // does not escape, and the input is pure ASCII, chars = bytes.
-      isIntEqualTo(188892, String.length(result.stdout))
+      // 100k rows: 100000×(14 + digits) + 99999 commas + 2 brackets + 1
+      // newline; text does not escape and the input is pure ASCII, chars =
+      // bytes. 100k (not 10k) because the paused reader keeps the child
+      // alive: 10k sometimes exits naturally before the signal lands.
+      isIntEqualTo(1988892, String.length(result.stdout))
       isTextEqualTo(
-        "item number 9999",
+        "item number 99999",
         Array.last(result.stdout->TestHelpers.stringArrayFromJsonString)->Option.getOr(""),
       )
       planned(~planned=4, ())
@@ -196,6 +198,43 @@ testAsync(
     })
     ->Promise.catch(exn => {
       failWithExn("SIGTERM paused-stdout CLI execution failed", exn)
+      planned(~planned=0, ())
+      Promise.resolve()
+    })
+    ->ignore
+  },
+)
+
+// Signals must take effect DURING extraction, not only after it finishes:
+// JS signal handlers cannot run while the main thread is busy, so Multiple
+// mode yields to the event loop between batches. The parser itself stays
+// synchronous (library code), so a SIGTERM at 1 s is delivered as soon as
+// parsing ends and the first batch boundary arrives. The pre-yield build
+// let the extraction run to completion, wrote the full 300k-row result, and
+// only THEN handled the signal; the yielding build aborts before any output
+// is written. Pin exactly that: exit 143, the exact stderr line, and no
+// partial output (a signal mid-extraction emits nothing rather than a
+// truncated result).
+testAsync(
+  "SIGTERM during extraction aborts without emitting partial output",
+  ~timeout=30_000,
+  planned => {
+    runCliAndSignal(
+      ~args=["--selector", ".item", "--mode", "--extract", "text"],
+      ~signal="SIGTERM",
+      ~input=itemHtml(300_000),
+      ~afterMs=1000,
+      ~timeoutMs=25_000,
+    )
+    ->Promise.then(result => {
+      isIntEqualTo(143, result.exitCode)
+      isTextEqualTo("Terminated (SIGTERM)\n", result.stderr)
+      isTextEqualTo("", result.stdout)
+      planned(~planned=3, ())
+      Promise.resolve()
+    })
+    ->Promise.catch(exn => {
+      failWithExn("SIGTERM batch-interrupt CLI execution failed", exn)
       planned(~planned=0, ())
       Promise.resolve()
     })

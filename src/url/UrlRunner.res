@@ -47,11 +47,11 @@ let formatSchemaFailureReason = (err: FieldTypes.schemaError): string =>
 /** Runs the extraction for one document and returns the structured JSON.
     Each branch produces a JSON.t value at the source; no intermediate
     string is materialised for routing purposes. */
-let extractFromDocument = (
+let extractFromDocument = async (
   ~setup: extractionSetup,
   ~document: NodeHtmlParserBinding.htmlElement,
   ~ctx: AppContext.appContext,
-): result<JSON.t, string> => {
+) => {
   switch setup {
   | TableSetup(selector) =>
     ctx.deps.doc.extractTable(document, selector)->Result.map(rows =>
@@ -66,7 +66,7 @@ let extractFromDocument = (
   | SchemaSetup(schema) =>
     ctx.deps.schema.applySchema(document, schema)->Result.mapError(formatSchemaFailureReason)
   | SelectorSetup({selector, extract: extractMode, mode}) =>
-    switch SelectorExtractor.extractElements(ctx, document, selector, extractMode, mode) {
+    switch await SelectorExtractor.extractElements(ctx, document, selector, extractMode, mode) {
     | Error(msg) => Error(msg)
     | Ok(contents) => Ok(JSON.Encode.array(contents->Array.map(JSON.Encode.string)))
     }
@@ -197,7 +197,8 @@ let processOne = async (
     | Error(parseErr) =>
       FetchStatsManager.recordFailure(mgr, ~url, ~reason=formatParseFailureReason(parseErr))
     | Ok(document) =>
-      switch extractFromDocument(~setup, ~document, ~ctx) {
+      let extracted = await extractFromDocument(~setup, ~document, ~ctx)
+      switch extracted {
       | Error(extractErr) =>
         FetchStatsManager.recordFailure(
           mgr,

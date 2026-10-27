@@ -144,6 +144,13 @@ let exitWhenFlushed = (stream: writable, exitFn: int => unit, graceMs: int, code
   }
 }
 
+/** Resolves on a fresh macrotask turn (`setImmediate`), not a microtask:
+  * only macrotasks let pending OS-signal handlers run while the main thread
+  * would otherwise stay busy in synchronous work. */
+let yieldToEventLoop: unit => promise<
+  unit,
+> = %raw(`() => new Promise((resolve) => setImmediate(resolve))`)
+
 /** Production exit path: flush `process.stdout` (bounded to 2 s), then exit. */
 let exitAfterFlush = (code: int): unit => exitWhenFlushed(stdout, code => exit(code), 2000, code)
 

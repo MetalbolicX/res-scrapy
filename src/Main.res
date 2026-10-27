@@ -40,7 +40,7 @@ let mainWithContext: AppContext.appContext => promise<unit> = async ctx => {
                 | TableMode(selector) => TableRunner.runTableMode(ctx, document, selector, options)
                 | SchemaMode(source) => SchemaRunner.runSchemaMode(ctx, document, source, options)
                 | SelectorMode({selector, extract, mode}) =>
-                  SelectorExtractor.runSelectorMode(
+                  let _ = await SelectorExtractor.runSelectorMode(
                     ctx,
                     document,
                     ~selector,
