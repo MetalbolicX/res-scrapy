@@ -119,24 +119,19 @@ test("ColumnDateTime parses ISO date text from table cell", () => {
   }
 })
 
-test("ColumnDefaults passes through DefaultsMerger.resolveDefaults without crash", () => {
+test("ColumnDefaults resolve each column type to its schema default options", () => {
   let defaults: option<schemaDefaults> = Some({
     text: {},
     html: {},
     url: {},
     datetime: {},
   })
-  let holes: array<columnFieldType> = [
-    ColumnText(None),
-    ColumnHtml(None),
-    ColumnUrl(None),
-    ColumnJson(None),
-    ColumnDateTime(None),
-  ]
-  holes->Array.forEach(col => {
-    let ft = TableFieldExtractor.columnTypeToFieldType(col)
-    switch DefaultsMerger.resolveDefaults(defaults, ft) {
-    | _ => passWith("resolveDefaults succeeded")
-    }
-  })
+  let resolve = col =>
+    DefaultsMerger.resolveDefaults(defaults, TableFieldExtractor.columnTypeToFieldType(col))
+  isTruthy(resolve(ColumnText(None)) == Text(Some({})), ~message="ColumnText")
+  isTruthy(resolve(ColumnHtml(None)) == Html(Some({})), ~message="ColumnHtml")
+  isTruthy(resolve(ColumnUrl(None)) == Url(Some({})), ~message="ColumnUrl")
+  // The fixture has no json default, so JSON options stay absent.
+  isTruthy(resolve(ColumnJson(None)) == Json(None), ~message="ColumnJson")
+  isTruthy(resolve(ColumnDateTime(None)) == DateTime(Some({})), ~message="ColumnDateTime")
 })

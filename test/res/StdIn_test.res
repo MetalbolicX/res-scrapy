@@ -143,13 +143,16 @@ streamCase(
   )
 )
 
-test("hasStdinData reflects actual stdin TTY state", () => {
-  let isTTY: option<bool> = %raw("process.stdin.isTTY")
-  let expected = switch isTTY {
-  | Some(true) => false
-  | _ => true
-  }
-  isTruthy(hasStdinData() == expected)
+test("hasStdinDataFrom treats a TTY as no piped input", () => {
+  isTruthy(hasStdinDataFrom(Some(true)) == false)
+})
+
+test("hasStdinDataFrom treats a non-TTY stream as piped input", () => {
+  isTruthy(hasStdinDataFrom(Some(false)) == true)
+})
+
+test("hasStdinDataFrom treats an unknown TTY state as piped input", () => {
+  isTruthy(hasStdinDataFrom(None) == true)
 })
 
 test("NoInput error message is descriptive", () => {

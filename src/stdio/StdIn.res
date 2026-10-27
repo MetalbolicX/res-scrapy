@@ -16,7 +16,13 @@ let maxStdinBytes =
 let maxStdinMs =
   30 * 1000
 
-let hasStdinData: unit => bool = () => NodeProcess.stdin.isTTY != Some(true)
+let hasStdinDataFrom = (isTTY: option<bool>): bool =>
+  switch isTTY {
+  | Some(true) => false
+  | _ => true
+  }
+
+let hasStdinData: unit => bool = () => hasStdinDataFrom(NodeProcess.stdin.isTTY)
 
 /** The caller owns the stream. Remove only this reader's callbacks on every
     terminal path; pause aborted reads without destroying shared stdin. */

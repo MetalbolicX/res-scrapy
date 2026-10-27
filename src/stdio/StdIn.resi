@@ -4,6 +4,7 @@ type stdInError =
   | ReadError(string)
 
 let maxStdinBytes: int
+let hasStdinDataFrom: option<bool> => bool
 let hasStdinData: unit => bool
 let readFromStream: (
   ~stream: NodeProcess.stdInput,
