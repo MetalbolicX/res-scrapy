@@ -31,6 +31,9 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - The CLI now terminates after reporting SIGINT, SIGTERM, or a fatal runtime error instead of leaving pending work running.
 - JSON file output in URL mode stays valid when pages yield no matching rows, without writing empty batches.
 
+### Security
+- Fixed the dev-only `undici` advisory GHSA-xjj6-f33q-929c (reached through `rescript-test` > `jsdom`) by raising the existing pnpm override to the patched 7.30.1.
+
 ## [1.2.0] - 2026-10-06
 
 ### Changed
