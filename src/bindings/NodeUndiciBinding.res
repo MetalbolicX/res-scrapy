@@ -8,6 +8,9 @@
   */
 type dispatcher
 
+/** Nonempty env values alone activate the gate; routing belongs to undici. */
+let isNonempty = value => value->Option.getOr("") != ""
+
 /** Only activation is decided here; routing and bypass belong to undici. */
 type proxyEnv = {
   @as("HTTP_PROXY") httpProxy?: string,
@@ -22,14 +25,31 @@ type proxyEnv = {
 
 /** Pure predicate: callers/tests supply records, never mutate global env. */
 let hasProxyEnv = (env: proxyEnv) => {
-  let nonempty = value => value->Option.getOr("") != ""
-  nonempty(env.httpProxy) ||
-  nonempty(env.http_proxy) ||
-  nonempty(env.httpsProxy) ||
-  nonempty(env.https_proxy) ||
-  nonempty(env.allProxy) ||
-  nonempty(env.all_proxy)
+  isNonempty(env.httpProxy) ||
+  isNonempty(env.http_proxy) ||
+  isNonempty(env.httpsProxy) ||
+  isNonempty(env.https_proxy) ||
+  isNonempty(env.allProxy) ||
+  isNonempty(env.all_proxy)
 }
+
+/**
+  * Pure predicate: ALL_PROXY/all_proxy is set but no proxy variable that
+  * undici's EnvHttpProxyAgent actually routes is. Such a run keeps the agent
+  * loaded yet sends every request direct, so the caller must warn.
+  */
+let allProxyOnly = (env: proxyEnv) => {
+  let hasAllProxy = isNonempty(env.allProxy) || isNonempty(env.all_proxy)
+  let hasRoutedProxy =
+    isNonempty(env.httpProxy) ||
+    isNonempty(env.http_proxy) ||
+    isNonempty(env.httpsProxy) ||
+    isNonempty(env.https_proxy)
+  hasAllProxy && !hasRoutedProxy
+}
+
+/** Exact stderr line for the silently-unrouted ALL_PROXY case. */
+let allProxyOnlyWarning = "Warning: ALL_PROXY/all_proxy is set but undici's EnvHttpProxyAgent does not route it — requests will connect directly. Set HTTP_PROXY/HTTPS_PROXY instead."
 
 @val @scope("process") external environment: proxyEnv = "env"
 
@@ -45,5 +65,15 @@ let createWhenEnabled: bool => promise<option<dispatcher>> = %raw(`async functio
   }
 }`)
 
-/** Environment is inspected at fetch time; Fetcher retains dispatcher caching. */
-let createEnvProxyDispatcher = () => createWhenEnabled(hasProxyEnv(environment))
+/**
+  * Environment is inspected at fetch time. The warning prints at most once per
+  * process because Fetcher caches this dispatcher in `proxyDispatcherPromise`.
+  */
+let createEnvProxyDispatcher = () => {
+  let env = environment
+  let enabled = hasProxyEnv(env)
+  if enabled && allProxyOnly(env) {
+    Console.error(allProxyOnlyWarning)
+  }
+  createWhenEnabled(enabled)
+}

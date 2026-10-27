@@ -11,14 +11,20 @@ let runCli = (
   ~input: string="",
   ~cwd: string="",
   ~timeoutMs: int=defaultTimeoutMs,
+  ~setEnv: array<(string, string)>=[],
+  ~unsetEnv: array<string>=[],
 ): promise<cliResult> => {
   %raw(`
-    (async (args, input, cwd, timeoutMs) => {
+    (async (args, input, cwd, timeoutMs, setEnv, unsetEnv) => {
       const { spawn } = await import('node:child_process');
       const fs = await import('node:fs');
       const { join } = await import('node:path');
       const workDir = cwd && cwd.length > 0 ? cwd : process.cwd();
       const cliPath = join(workDir, 'dist', 'main.mjs');
+      const hasEnvOverrides = setEnv.length > 0 || unsetEnv.length > 0;
+      const env = { ...process.env };
+      for (const [key, value] of setEnv) { env[key] = value; }
+      for (const key of unsetEnv) { delete env[key]; }
       if (!fs.existsSync(cliPath)) {
         return {
           stdout: '',
@@ -30,6 +36,7 @@ let runCli = (
         const proc = spawn('node', [cliPath, ...args], {
           stdio: ['pipe', 'pipe', 'pipe'],
           cwd: workDir,
+          ...(hasEnvOverrides ? { env } : {}),
         });
         let stdout = '';
         let stderr = '';
@@ -57,7 +64,7 @@ let runCli = (
         proc.stdin.end();
       });
     })
-  `)(args, input, cwd, timeoutMs)->Obj.magic
+  `)(args, input, cwd, timeoutMs, setEnv, unsetEnv)->Obj.magic
 }
 
 /** Keeps stdin open until the child closes; resolves only after all output drains. */

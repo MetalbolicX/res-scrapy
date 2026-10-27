@@ -831,3 +831,64 @@ testAsync("output file: invalid format returns CLI error", planned => {
   })
   ->ignore
 })
+
+let allProxyWarningText = "Warning: ALL_PROXY/all_proxy is set but undici's EnvHttpProxyAgent does not route it — requests will connect directly. Set HTTP_PROXY/HTTPS_PROXY instead."
+
+testAsync("ALL_PROXY-only environment warns once on stderr", ~timeout=15_000, planned => {
+  HttpTestServer.start([
+    ({path: "/", status: 200, location: None, body: "<h1>ok</h1>"}: HttpTestServer.route),
+  ])
+  ->Promise.then(server => {
+    let run = async () => {
+      let outcome = try {
+        Ok(
+          await runCli(
+            ~args=[
+              "--url",
+              `http://127.0.0.1:${server->HttpTestServer.port->Int.toString}/`,
+              "--schema",
+              `{"fields":{"title":{"selector":"h1","type":"text"}}}`,
+            ],
+            ~setEnv=[("ALL_PROXY", "http://proxy.invalid:8080")],
+            ~unsetEnv=[
+              "HTTP_PROXY",
+              "http_proxy",
+              "HTTPS_PROXY",
+              "https_proxy",
+              "NO_PROXY",
+              "no_proxy",
+            ],
+          ),
+        )
+      } catch {
+      | _exn => Error()
+      }
+      await HttpTestServer.close(server)
+      switch outcome {
+      | Ok(result) =>
+        let lines = result.stderr->String.trim->String.split("\n")
+        isIntEqualTo(0, result.exitCode)
+        isTextEqualTo(`{"title":"ok"}\n`, result.stdout)
+        isTextEqualTo(allProxyWarningText, lines->Array.get(0)->Option.getOr("<missing>"))
+        isIntEqualTo(2, result.stderr->String.split(allProxyWarningText)->Array.length)
+        planned(~planned=4, ())
+      | Error(_) =>
+        failWith("ALL_PROXY warning E2E spawn failed")
+        planned(~planned=0, ())
+      }
+    }
+    run()->Promise.catch(
+      _ => {
+        failWith("ALL_PROXY warning E2E assertions failed")
+        planned(~planned=0, ())
+        Promise.resolve()
+      },
+    )
+  })
+  ->Promise.catch(_ => {
+    failWith("Could not start HTTP test server for ALL_PROXY warning E2E")
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})

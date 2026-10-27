@@ -439,7 +439,7 @@ Transport parameters have sensible defaults:
 ### Proxy Support
 
 - **Activation:** A pure record predicate detects nonempty `HTTP_PROXY`/`http_proxy`, `HTTPS_PROXY`/`https_proxy`, and `ALL_PROXY`/`all_proxy` at fetch time. `NO_PROXY`/`no_proxy` alone never activate it.
-- **Implementation:** Uses `undici`'s `EnvHttpProxyAgent`, imported lazily and cached process-wide (`proxyDispatcherPromise`). Falls back gracefully when `undici` is not installed. The agent owns precedence, supported routing and `NO_PROXY`/`no_proxy` bypass behavior; the gate does not implement routing. `ALL_PROXY`/`all_proxy` detection provides gate symmetry only, not routing support beyond the installed agent's capabilities.
+- **Implementation:** Uses `undici`'s `EnvHttpProxyAgent`, imported lazily and cached process-wide (`proxyDispatcherPromise`). Falls back gracefully when `undici` is not installed. The agent owns precedence, supported routing and `NO_PROXY`/`no_proxy` bypass behavior; the gate does not implement routing. `ALL_PROXY`/`all_proxy` keep activating the agent, but `EnvHttpProxyAgent` never routes them: when they are the only proxy variables set, the CLI prints one stderr warning (at most once per process, before the cached dispatcher is reused) stating that requests connect directly and to set `HTTP_PROXY`/`HTTPS_PROXY` instead.
 - **Design choice:** Env-var only for now (follows standard Node.js tooling convention). An explicit `--proxy` flag is deferred for a future change.
 
 ### Reporter (`Reporter.res`)

@@ -17,6 +17,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - **Breaking:** Zip extraction retains the longest ordinary scalar selector's rows, padding missing cells with their default or null instead of truncating to the first selector.
 
 ### Fixed
+- Setting only `ALL_PROXY`/`all_proxy` now prints one stderr warning (once per process) that undici's `EnvHttpProxyAgent` does not route it, so requests connect directly; the message points users to `HTTP_PROXY`/`HTTPS_PROXY`.
 - Explicit null list limits now mean unlimited (numeric zero still means zero items), and null `config.rowSelector` selects zip mode like an omitted selector.
 - JSON dot paths now accept an optional leading `$.` or standalone `$` for the whole value; this is not full JSONPath support.
 - URL `validate:false` now preserves nonempty raw attributes on parse failure only; successfully parsed unsafe schemes remain rejected.

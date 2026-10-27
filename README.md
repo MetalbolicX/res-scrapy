@@ -104,8 +104,10 @@ Proxy configuration is environment-only: nonempty `HTTP_PROXY`/`http_proxy`,
 `HTTPS_PROXY`/`https_proxy`, or `ALL_PROXY`/`all_proxy` activate the optional
 `undici` EnvHttpProxyAgent. The agent owns variable precedence and routing;
 `NO_PROXY`/`no_proxy` are its bypass settings, not activation settings.
-`ALL_PROXY`/`all_proxy` detection is gate symmetry, not a guarantee that the
-installed agent routes them. There is no `--proxy` flag.
+`EnvHttpProxyAgent` does not read `ALL_PROXY`/`all_proxy`, so when they are the
+only proxy variables set the CLI prints a one-line stderr warning that requests
+will connect directly and recommends setting `HTTP_PROXY`/`HTTPS_PROXY`
+instead. There is no `--proxy` flag.
 
 ## Key Features
 
