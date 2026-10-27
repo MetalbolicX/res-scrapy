@@ -91,7 +91,16 @@ echo '<html>...</html>' | res-scrapy -s '.product-card' -m -e text -o results.nd
 
 When present, the extractor treats each element matching `rowSelector` as an output row and evaluates each field selector relative to that row. This is the recommended and most robust model for repeated items (product cards, list items, search results).
 
-Without `rowSelector` the extractor uses the legacy zip-by-index behavior: each field selector runs against the whole document and rows are created by zipping field results by index (fragile and often surprising).
+Without `rowSelector`, each selector runs against the whole document and results
+are zipped by index. Row count is the maximum match count across ordinary scalar
+fields, independent of field order; `config.limit` caps that maximum afterwards.
+Missing scalar cells use their explicit default or null. Required missing cells
+fail with `RequiredFieldMissing` unless `ignoreErrors` is true. Count/List and joined
+text are cached aggregates broadcast to each row, not row-count drivers. Count/List-only
+schemas return `[]`; joined-only schemas retain the one-row-if-matched exception.
+
+For `<i>I</i><s>A</s><s>B</s>`, text fields `i` then `s` selecting their tags return
+`[{"i":"I","s":"A"},{"i":null,"s":"B"}]`.
 
 Example (row-based):
 
@@ -432,6 +441,12 @@ Purpose: interpret truthy/falsey values.
 Key options:
 
 - `mode` (`mapping` default, `presence`, `attributeCheck`).
+
+In zip mode, an absent Presence cell becomes `false` unless an explicit default
+(including `null`) is supplied. Required checks still run before this fallback;
+`ignoreErrors: true` permits it. In row mode, absent Presence remains `false`
+even with an explicit default. Mapping and attributeCheck missing cells remain
+`null` unless a default is supplied.
 - `trueValues`.
 - `falseValues`.
 - `attribute`.

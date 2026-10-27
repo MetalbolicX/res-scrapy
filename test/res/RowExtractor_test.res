@@ -2,6 +2,27 @@ open Test
 open Assertions
 open FieldTypes
 
+test("row absent Presence still ignores explicit true default", () => {
+  let schema: schema = {
+    fields: [
+      (
+        "badge",
+        {
+          selector: ".badge",
+          fieldType: Boolean(Some({mode: Presence})),
+          required: false,
+          default: JSON.Encode.bool(true),
+        },
+      ),
+    ],
+    config: {rowSelector: "div", limit: 0, ignoreErrors: false},
+  }
+  switch RowExtractor.run(HtmlFixture.parse("<div></div>"), schema) {
+  | Ok(value) => isTextEqualTo("[{\"badge\":false}]", NodeUtil.jsonStringify(value))
+  | Error(_) => failWith("Expected row Presence exception")
+  }
+})
+
 test("row text joins are row-local and no-join still selects first", () => {
   let doc = HtmlFixture.parse(
     "<div><span>A</span><span>B</span></div><div><span>C</span><span>D</span></div>",

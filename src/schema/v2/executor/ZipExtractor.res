@@ -56,9 +56,16 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
   // Ordinary scalars drive zip rows; Count/List/joined Text are broadcast.
   // Only when ordinary scalars are absent can matched joined Text create one row.
   // Count/List-only schemas retain their zero-row behavior.
-  let rowCount = switch fieldLists
-  ->Iter.values
-  ->Iter.find(((_, _, resolvedFieldType, _, _)) => !isMultiElementType(resolvedFieldType)) {
+  let scalarCount = fieldLists->Iter.values->Iter.reduce((maximum, (_, _, ft, _, els)) => {
+      if isMultiElementType(ft) {
+        maximum
+      } else {
+        let count = Array.length(els)
+        let previous = maximum->Option.getOr(0)
+        Some(count > previous ? count : previous)
+      }
+    }, None)
+  let rowCount = switch scalarCount {
   | None =>
     let matchedJoin =
       fieldLists
@@ -70,7 +77,7 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
         }
       )
     matchedJoin->Option.isSome ? 1 : 0
-  | Some((_, _, _, _, els)) => Array.length(els)
+  | Some(count) => count
   }
 
   let limitedCount = switch schema.config.limit {
@@ -124,7 +131,11 @@ let run: (NodeHtmlParserBinding.htmlElement, schema) => result<JSON.t, schemaErr
                     Ok(
                       switch field.default {
                       | Some(d) => d
-                      | None => JSON.Encode.null
+                      | None =>
+                        switch resolvedFieldType {
+                        | Boolean(Some({mode: Presence})) => JSON.Encode.bool(false)
+                        | _ => JSON.Encode.null
+                        }
                       },
                     )
                   }

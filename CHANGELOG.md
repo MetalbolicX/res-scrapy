@@ -6,6 +6,10 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Changed
+- **Breaking:** Missing zip Boolean Presence cells now produce `false` instead of `null` when no explicit default is supplied; required checks and row-mode behavior are unchanged.
+- **Breaking:** Zip extraction retains the longest ordinary scalar selector's rows, padding missing cells with their default or null instead of truncating to the first selector.
+
 ### Fixed
 - Invalid URL templates now report their error once, without an additional misleading empty-template error.
 - Stdin mode warns about ignored fetch options only when explicitly supplied, not when using defaults.

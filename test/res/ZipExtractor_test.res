@@ -2,6 +2,138 @@ open Test
 open Assertions
 open FieldTypes
 
+test("zip absent Presence preserves defaults, modes and required gates", () => {
+  [
+    (
+      "<i>A</i><i>B</i><b class='badge'></b>",
+      "presence",
+      "",
+      false,
+      false,
+      "[{\"i\":\"A\",\"badge\":true},{\"i\":\"B\",\"badge\":false}]",
+    ),
+    (
+      "<i>A</i><i>B</i>",
+      "presence",
+      "",
+      false,
+      false,
+      "[{\"i\":\"A\",\"badge\":false},{\"i\":\"B\",\"badge\":false}]",
+    ),
+    (
+      "<i>A</i><i>B</i>",
+      "presence",
+      ",\"default\":true",
+      false,
+      false,
+      "[{\"i\":\"A\",\"badge\":true},{\"i\":\"B\",\"badge\":true}]",
+    ),
+    (
+      "<i>A</i><i>B</i>",
+      "presence",
+      ",\"default\":null",
+      false,
+      false,
+      "[{\"i\":\"A\",\"badge\":null},{\"i\":\"B\",\"badge\":null}]",
+    ),
+    (
+      "<i>A</i><i>B</i>",
+      "mapping",
+      "",
+      false,
+      false,
+      "[{\"i\":\"A\",\"badge\":null},{\"i\":\"B\",\"badge\":null}]",
+    ),
+    (
+      "<i>A</i><i>B</i>",
+      "attributeCheck",
+      "",
+      false,
+      false,
+      "[{\"i\":\"A\",\"badge\":null},{\"i\":\"B\",\"badge\":null}]",
+    ),
+    (
+      "<i>A</i><i>B</i>",
+      "presence",
+      "",
+      true,
+      true,
+      "[{\"i\":\"A\",\"badge\":false},{\"i\":\"B\",\"badge\":false}]",
+    ),
+    (
+      "<i>A</i><i>B</i>",
+      "presence",
+      ",\"default\":true",
+      true,
+      true,
+      "[{\"i\":\"A\",\"badge\":true},{\"i\":\"B\",\"badge\":true}]",
+    ),
+    ("<p>none</p>", "presence", "", true, false, "[]"),
+  ]->Array.forEach(((html, mode, fallback, required, ignoreErrors, expected)) => {
+    let raw = `{"config":{"ignoreErrors":${Bool.toString(
+        ignoreErrors,
+      )},"defaults":{"boolean":{"mode":"${mode}"}}},"fields":{"i":{"selector":"i"},"badge":{"selector":".badge","type":"boolean","required":${Bool.toString(
+        required,
+      )}${fallback}}}}`
+    switch SchemaParser.parseSchema(TestHelpers.objectFromJsonString(raw)) {
+    | Ok(schema) =>
+      switch ZipExtractor.run(HtmlFixture.parse(html), schema) {
+      | Ok(value) => isTextEqualTo(expected, NodeUtil.jsonStringify(value))
+      | Error(_) => failWith("Expected Presence output")
+      }
+    | Error(_) => failWith("Expected Presence schema")
+    }
+  })
+  let schema: schema = {
+    fields: [
+      ("i", {selector: "i", fieldType: Text(None), required: false}),
+      (
+        "badge",
+        {
+          selector: ".badge",
+          fieldType: Boolean(Some({mode: Presence})),
+          required: true,
+          default: JSON.Encode.bool(true),
+        },
+      ),
+    ],
+    config: {limit: 0, ignoreErrors: false},
+  }
+  switch ZipExtractor.run(HtmlFixture.parse("<i>A</i>"), schema) {
+  | Error(RequiredFieldMissing({fieldName, selector})) => {
+      isTextEqualTo("badge", fieldName)
+      isTextEqualTo(".badge", selector)
+    }
+  | _ => failWith("Expected required Presence error before default")
+  }
+})
+
+test("zip maximum preserves unequal selectors, order, defaults and limits", () => {
+  let i: (string, schemaField) = ("i", {selector: "i", fieldType: Text(None), required: false})
+  let s: (string, schemaField) = ("s", {selector: "s", fieldType: Text(None), required: false})
+  let missing: (string, schemaField) = (
+    "i",
+    {selector: "u", fieldType: Text(None), required: false},
+  )
+  let fallback: (string, schemaField) = (
+    "i",
+    {selector: "u", fieldType: Text(None), required: false, default: JSON.Encode.string("D")},
+  )
+  [
+    ([i, s], 0, "[{\"i\":\"I\",\"s\":\"A\"},{\"i\":null,\"s\":\"B\"}]"),
+    ([s, i], 0, "[{\"s\":\"A\",\"i\":\"I\"},{\"s\":\"B\",\"i\":null}]"),
+    ([missing, s], 0, "[{\"i\":null,\"s\":\"A\"},{\"i\":null,\"s\":\"B\"}]"),
+    ([fallback, s], 0, "[{\"i\":\"D\",\"s\":\"A\"},{\"i\":\"D\",\"s\":\"B\"}]"),
+    ([i, s], 1, "[{\"i\":\"I\",\"s\":\"A\"}]"),
+  ]->Array.forEach(((fields, limit, expected)) => {
+    let schema: schema = {fields, config: {limit, ignoreErrors: false}}
+    switch ZipExtractor.run(HtmlFixture.parse("<i>I</i><s>A</s><s>B</s>"), schema) {
+    | Ok(value) => isTextEqualTo(expected, NodeUtil.jsonStringify(value))
+    | Error(_) => failWith("Expected maximum zip output")
+    }
+  })
+})
+
 test("zip joined text standalone and broadcast boundaries", () => {
   let joined: (string, schemaField) = (
     "t",

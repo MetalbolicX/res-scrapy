@@ -3,6 +3,32 @@ open Assertions
 open TestHelpers
 open CliRunner
 
+[
+  ("maximum", "<i>I</i><s>A</s><s>B</s>", "[{\"i\":\"I\",\"s\":\"A\"},{\"i\":null,\"s\":\"B\"}]\n"),
+  ("equal-length control", "<i>I</i><s>A</s>", "[{\"i\":\"I\",\"s\":\"A\"}]\n"),
+]->Array.forEach(((name, input, expected)) => {
+  testAsync(`zip CLI ${name}`, planned => {
+    runCli(~args=["--schema", `{"fields":{"i":{"selector":"i"},"s":{"selector":"s"}}}`], ~input)
+    ->Promise.then(
+      result => {
+        isIntEqualTo(0, result.exitCode)
+        isTextEqualTo(expected, result.stdout)
+        isTextEqualTo("", result.stderr)
+        planned(~planned=3, ())
+        Promise.resolve()
+      },
+    )
+    ->Promise.catch(
+      _ => {
+        failWith("CLI execution failed")
+        planned(~planned=0, ())
+        Promise.resolve()
+      },
+    )
+    ->ignore
+  })
+})
+
 ["$.offers.price", "offers.price"]->Array.forEach(path => {
   testAsync(`guide JSON CLI path: ${path}`, planned => {
     let schema = `{"fields":{"ld":{"selector":"script[type='application/ld+json']","type":"json","jsonOptions":{"path":"${path}"}}}}`
