@@ -478,6 +478,12 @@ same `exitAfterFlush` path: when `process.stdout` still has buffered bytes it
 waits for a zero-length write callback to drain them (bounded by a 2-second
 grace period) and then exits once, so piped output is never truncated.
 
+Exit codes: signals exit `130` (SIGINT) / `143` (SIGTERM); uncaught errors exit
+`1`. An `EPIPE` on `stdout` — a reader that closed early, e.g.
+`res-scrapy ... | head -c N` — exits `141` (the Unix SIGPIPE status) quietly,
+with no error report and no partial output from an interrupted extraction, so
+scripts can tell truncation apart from success.
+
 ## 11. Build Pipeline
 
 ```mermaid

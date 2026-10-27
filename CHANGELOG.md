@@ -7,6 +7,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ## [Unreleased]
 
 ### Changed
+- **Breaking:** When the stdout reader closes early (e.g. `res-scrapy ... | head -c N`), the CLI now exits `141` (the Unix SIGPIPE status) instead of `0`, so scripts can distinguish truncation from success; it prints no error and no partial output.
 - **Breaking:** Offset-less ISO date-times now mean UTC instead of host-local time. Users relying on local-time interpretation must supply explicit offsets; output timezone settings only control formatting.
 - **Breaking:** Default number cleanup now preserves scientific notation (`1e5` yields `100000`, previously `15`). Percent signs remain stripped without dividing by 100, and decimal comma still requires explicit configuration.
 - **Breaking:** Count `min`/`max` constraints, including `config.defaults.count` counterparts and present-null values, now fail schema validation instead of being silently ignored.

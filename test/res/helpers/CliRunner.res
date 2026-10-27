@@ -217,6 +217,57 @@ let runCliPausedStdoutAndSignal = (
   `)(args, signal, input, timeoutMs)->Obj.magic
 }
 
+/** Spawns the CLI reading stdout normally, then DESTROYS the stdout pipe once
+  * `destroyAfterBytes` have been received (like `res-scrapy ... | head -c N`).
+  * Reports the exit code, stderr, and the bytes delivered before the close. */
+let runCliWithEarlyReaderClose = (
+  ~args: array<string>,
+  ~input: string="",
+  ~destroyAfterBytes: int,
+  ~timeoutMs: int=defaultTimeoutMs,
+): promise<(cliResult, int)> => {
+  %raw(`
+    (async (args, input, destroyAfterBytes, timeoutMs) => {
+      const { spawn } = await import('node:child_process');
+      const { join } = await import('node:path');
+      const cliPath = join(process.cwd(), 'dist', 'main.mjs');
+      return new Promise((resolve) => {
+        const proc = spawn(process.execPath, [cliPath, ...args], {
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+        let stdout = '';
+        let stderr = '';
+        let delivered = 0;
+        let destroyed = false;
+        const timer = setTimeout(() => {
+          proc.kill('SIGKILL');
+          resolve([{ stdout, stderr: (stderr + '\\nTimed out after ' + timeoutMs + 'ms').trim(), exitCode: 124 }, delivered]);
+        }, timeoutMs);
+        proc.stdout.on('data', chunk => {
+          if (destroyed) return;
+          delivered += chunk.length;
+          stdout += chunk.toString();
+          if (delivered >= destroyAfterBytes) {
+            destroyed = true;
+            proc.stdout.destroy();
+          }
+        });
+        proc.stderr.on('data', chunk => { stderr += chunk.toString(); });
+        proc.stdin.on('error', () => {});
+        proc.on('error', err => {
+          clearTimeout(timer);
+          resolve([{ stdout: '', stderr: err.message, exitCode: 1 }, delivered]);
+        });
+        proc.on('close', code => {
+          clearTimeout(timer);
+          resolve([{ stdout, stderr, exitCode: code ?? -1 }, delivered]);
+        });
+        if (input) { proc.stdin.write(input); proc.stdin.end(); }
+      });
+    })
+  `)(args, input, destroyAfterBytes, timeoutMs)->Obj.magic
+}
+
 let runCliWithSchemaFile = (
   ~schemaContent: string,
   ~cliArgs: array<string>=[],

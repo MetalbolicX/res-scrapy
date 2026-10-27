@@ -184,7 +184,23 @@ let registerGlobalRuntimeHandlers: (
     return String(value);
   };
 
+  // A reader that closed early (res-scrapy ... | head -c N) makes
+  // stdout writes fail with EPIPE. Unix convention is death by SIGPIPE
+  // (status 141): exit quietly instead of reporting a runtime error, so
+  // scripts can tell truncation apart from success.
+  var isEpipe = function(err) {
+    return err && (err.code === "EPIPE");
+  };
+
+  process.stdout.on("error", function(err) {
+    if (isEpipe(err)) exitFn(141);
+  });
+
   process.on("uncaughtException", function(err) {
+    if (isEpipe(err)) {
+      exitFn(141);
+      return;
+    }
     report("Unexpected runtime error:");
     report(formatError(err));
     exitFn(1);

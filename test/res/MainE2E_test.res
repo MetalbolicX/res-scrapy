@@ -205,6 +205,34 @@ testAsync(
   },
 )
 
+// A reader that closes early (`res-scrapy ... | head -c N`) must not pass
+// silently: Unix convention is death by SIGPIPE (status 141). The old build
+// exited 0 with empty stderr even though most rows were never delivered.
+testAsync(
+  "early reader close on stdout exits 141 without a stack trace",
+  ~timeout=20_000,
+  planned => {
+    runCliWithEarlyReaderClose(
+      ~args=["--selector", ".item", "--mode", "--extract", "text"],
+      ~input=itemHtml(10_000),
+      ~destroyAfterBytes=65_536,
+      ~timeoutMs=15_000,
+    )
+    ->Promise.then(((result, _delivered)) => {
+      isIntEqualTo(141, result.exitCode)
+      isTextEqualTo("", result.stderr)
+      planned(~planned=2, ())
+      Promise.resolve()
+    })
+    ->Promise.catch(exn => {
+      failWithExn("early-reader-close CLI execution failed", exn)
+      planned(~planned=0, ())
+      Promise.resolve()
+    })
+    ->ignore
+  },
+)
+
 // Signals must take effect DURING extraction, not only after it finishes:
 // JS signal handlers cannot run while the main thread is busy, so Multiple
 // mode yields to the event loop between batches. The parser itself stays
