@@ -144,8 +144,8 @@ let rec fetchWithRedirects = async (
       }
     | _ =>
       if response.ok {
-        let html = await NodeFetch.text(response)
-        Ok(html)
+        let bytes = await NodeFetch.arrayBuffer(response)
+        Ok(NodeFetch.decodeHtml(bytes, NodeFetch.getHeader(response.headers, "content-type")))
       } else {
         await NodeFetch.cancelBody(response)
         Error(HttpError(response.status, response.statusText))

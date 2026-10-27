@@ -22,12 +22,120 @@ let cliArgs = (url, outputPath) => [
   outputPath,
 ]
 
-let route = (~path, ~status, ~location: option<string>=None, ~body=""): HttpTestServer.route => {
+let route = (
+  ~path,
+  ~status,
+  ~location: option<string>=None,
+  ~body="",
+  ~contentType=?,
+  ~rawBody=?,
+): HttpTestServer.route => {
   path,
   status,
   location,
   body,
+  ?contentType,
+  ?rawBody,
 }
+
+let asciiBytes = text =>
+  text->String.split("")->Array.map(char => char->String.charCodeAt(0)->Option.getOr(0))
+let charsetCase = (~contentType="text/html", ~prefix="", ~bytes, ~expected, name) =>
+  testAsync(name, planned => {
+    let rawBody = Array.concat(
+      Array.concat(asciiBytes(`${prefix}<h1>`), bytes),
+      asciiBytes("</h1>"),
+    )
+    let run = async () => {
+      let server = await HttpTestServer.start([
+        route(~path="/", ~status=200, ~contentType, ~rawBody),
+      ])
+      let outcome = try {
+        Ok(
+          await runCliWithSchemaFile(
+            ~schemaContent,
+            ~cliArgs=["--url", `http://127.0.0.1:${server->HttpTestServer.port->Int.toString}/`],
+          ),
+        )
+      } catch {
+      | exn => Error(exn)
+      }
+      await HttpTestServer.close(server)
+      switch outcome {
+      | Ok(result) =>
+        isIntEqualTo(0, result.exitCode)
+        isTruthy(TestHelpers.stringContains(result.stderr, "URLs succeeded:  1"))
+        isTruthy(TestHelpers.stringContains(result.stderr, "URLs failed:     0"))
+        ["warning", "error", "decoding", "exception"]->Array.forEach(word =>
+          isTruthy(!TestHelpers.stringContains(result.stderr->String.toLowerCase, word))
+        )
+        isTextEqualTo(`{"title":"${expected}"}`, result.stdout->String.trim)
+      | Error(_) => failWith("Charset E2E rejected")
+      }
+      planned(~planned=8, ())
+    }
+    run()->ignore
+  })
+
+let latinCafe = [99, 97, 102, 233]
+let utf8Cafe = [99, 97, 102, 195, 169]
+charsetCase(
+  ~contentType="text/html; charset=ISO-8859-1",
+  ~bytes=latinCafe,
+  ~expected="café",
+  "charset ISO-8859-1",
+)
+charsetCase(
+  ~contentType="text/html; charset=WINDOWS-1252",
+  ~bytes=[128],
+  ~expected="€",
+  "charset windows euro",
+)
+charsetCase(
+  ~contentType="text/html; charset=Shift_JIS",
+  ~bytes=[130, 160],
+  ~expected="あ",
+  "charset Shift_JIS",
+)
+charsetCase(
+  ~prefix="<meta charset=\"windows-1252\">",
+  ~bytes=latinCafe,
+  ~expected="café",
+  "charset meta",
+)
+charsetCase(
+  ~prefix="<META HTTP-EQUIV=\"Content-Type\" CONTENT=\"text/html; charset=windows-1252\">",
+  ~bytes=latinCafe,
+  ~expected="café",
+  "charset http-equiv",
+)
+charsetCase(
+  ~prefix="<META CONTENT=\"text/html; charset=windows-1252\" HTTP-EQUIV=\"Content-Type\">",
+  ~bytes=latinCafe,
+  ~expected="café",
+  "charset reversed http-equiv",
+)
+charsetCase(
+  ~contentType="text/html; ChArSeT='UtF-8'",
+  ~prefix="<meta charset=windows-1252>",
+  ~bytes=utf8Cafe,
+  ~expected="café",
+  "charset header wins quoted mixed case",
+)
+charsetCase(
+  ~contentType="text/html; charset=unsupported-label",
+  ~prefix="<meta charset=windows-1252>",
+  ~bytes=utf8Cafe,
+  ~expected="café",
+  "charset unsupported falls to UTF8",
+)
+charsetCase(~bytes=utf8Cafe, ~expected="café", "charset default UTF8")
+charsetCase(
+  ~prefix=String.repeat(" ", 1024) ++ "<meta charset=windows-1252>",
+  ~bytes=utf8Cafe,
+  ~expected="café",
+  "charset late meta ignored",
+)
 
 let assertHeader = (server, path, name, expected) =>
   isTextEqualTo(

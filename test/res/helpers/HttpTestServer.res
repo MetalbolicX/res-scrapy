@@ -3,6 +3,8 @@ type route = {
   status: int,
   location: option<string>,
   body: string,
+  contentType?: string,
+  rawBody?: array<int>,
 }
 
 type t
@@ -23,8 +25,8 @@ let start: array<route> => promise<
     if (route.location !== undefined) {
       res.setHeader('Location', route.location.replaceAll('%PORT%', String(server.address().port)));
     }
-    res.setHeader('Content-Type', 'text/html');
-    res.end(route.body);
+    res.setHeader('Content-Type', route.contentType ?? 'text/html');
+    res.end(route.rawBody === undefined ? route.body : Buffer.from(route.rawBody));
   });
   server.once('error', reject);
   server.listen(0, '127.0.0.1', () => {

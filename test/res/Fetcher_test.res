@@ -11,6 +11,7 @@ type fakeResponseObject = {
   statusText: string,
   headers: fakeHeaders,
   text: unit => promise<string>,
+  arrayBuffer: unit => promise<NodeFetch.arrayBuffer>,
   body: {cancel: unit => promise<unit>},
 }
 
@@ -41,6 +42,10 @@ let fakeResponse = (
     text: () => {
       read()
       Promise.resolve(body)
+    },
+    arrayBuffer: () => {
+      read()
+      Promise.resolve(NodeFetch.bytesFromString(body))
     },
     body: {cancel: cancel},
   }

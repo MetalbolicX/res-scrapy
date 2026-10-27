@@ -409,7 +409,12 @@ sequenceDiagram
 
 ### Fetcher (`Fetcher.res`)
 
-All transport parameters are configurable via CLI flags, with sensible defaults:
+Fetched HTML uses the Content-Type header charset first, otherwise the first applicable
+meta charset or http-equiv content-type declaration within the first 1024 raw bytes,
+otherwise UTF-8. Unsupported selected labels fall directly back to UTF-8. This is a
+bounded declaration sniff, not full browser encoding/BOM detection.
+
+Transport parameters have sensible defaults:
 
 - **Timeout:** Configurable via `--timeout` (default: 30s, min: 1s). Implemented via `AbortController`.
 - **Retry:** Configurable via `--retry` (default: 3, min: 1). The value is the total fetch attempts per URL on retryable failures. It waits ~2s before the 2nd attempt, then ~4s, 8s, ... (doubling, ±0.5s jitter).
