@@ -3,6 +3,67 @@ open Assertions
 open TestHelpers
 open CliRunner
 
+["$.offers.price", "offers.price"]->Array.forEach(path => {
+  testAsync(`guide JSON CLI path: ${path}`, planned => {
+    let schema = `{"fields":{"ld":{"selector":"script[type='application/ld+json']","type":"json","jsonOptions":{"path":"${path}"}}}}`
+    runCli(
+      ~args=["--schema", schema],
+      ~input=`<script type="application/ld+json">{"offers":{"price":42}}</script>`,
+    )
+    ->Promise.then(
+      result => {
+        isIntEqualTo(0, result.exitCode)
+        isTextEqualTo("[{\"ld\":42}]\n", result.stdout)
+        isTextEqualTo("", result.stderr)
+        planned(~planned=3, ())
+        Promise.resolve()
+      },
+    )
+    ->Promise.catch(
+      _ => {
+        failWith("CLI execution failed")
+        planned(~planned=0, ())
+        Promise.resolve()
+      },
+    )
+    ->ignore
+  })
+})
+
+[
+  (
+    "pure tbody header",
+    "<table><tbody><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></tbody></table>",
+    "[{\"A\":\"1\",\"B\":\"2\"}]\n",
+  ),
+  (
+    "thead preservation",
+    "<table><thead><tr><th>A</th></tr></thead><tbody><tr><td>1</td></tr></tbody></table>",
+    "[{\"A\":\"1\"}]\n",
+  ),
+]->Array.forEach(((name, input, expected)) => {
+  testAsync(`table CLI: ${name}`, planned => {
+    runCli(~args=["-t"], ~input)
+    ->Promise.then(
+      result => {
+        isIntEqualTo(0, result.exitCode)
+        isTextEqualTo(expected, result.stdout)
+        isTextEqualTo("", result.stderr)
+        planned(~planned=3, ())
+        Promise.resolve()
+      },
+    )
+    ->Promise.catch(
+      _ => {
+        failWith("CLI execution failed")
+        planned(~planned=0, ())
+        Promise.resolve()
+      },
+    )
+    ->ignore
+  })
+})
+
 [
   ("SIGINT", 130, "Interrupted (SIGINT)"),
   ("SIGTERM", 143, "Terminated (SIGTERM)"),

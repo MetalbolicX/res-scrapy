@@ -273,6 +273,12 @@ Output:
 ]
 ```
 
+Table mode and schema table fields skip exactly the first matched `tbody tr`
+when it contains `th` but no `td`. Header-only tbody therefore returns `[]`.
+Mixed th/td rows and later header-like rows remain data; multiple tbody sections
+are combined. An explicit schema `tableOptions.rowSelector` remains authoritative,
+even when it selects a header. The no-tbody fallback is unchanged.
+
 When to use table vs schema mode:
 
 <!-- tabs:start -->
@@ -534,7 +540,10 @@ Key options:
 
 - `source` (`text`/`attribute`).
 - `attribute`.
-- `path` (dot notation, e.g. `offers.price`).
+- `path`: dot notation (`offers.price`) with an optional leading `$.`
+  (`$.offers.price`). Standalone `$` or an empty path returns the whole object.
+  Only the leading root notation is removed; nested `$` keys remain literal.
+  This is not full JSONPath: bracket syntax and recursive selection are unsupported.
 
 Example:
 
@@ -548,6 +557,18 @@ Example:
     }
   }
 }
+```
+
+For the JSON field above, sample HTML:
+
+```html
+<script type="application/ld+json">{"offers":{"price":42}}</script>
+```
+
+Wrapped in `{"fields": {...}}` and run with `--schema`, the example returns:
+
+```json
+[{"ld":42}]
 ```
 
 ### 10. List

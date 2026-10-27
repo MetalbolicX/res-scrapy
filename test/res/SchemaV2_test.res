@@ -1,6 +1,43 @@
 open Test
 open Assertions
 
+test("guide JSON root-prefixed price extracts 42", () => {
+  let raw = `{"fields":{"ld":{"selector":"script[type='application/ld+json']","type":"json","jsonOptions":{"path":"$.offers.price"}}}}`
+  switch SchemaV2.loadSchema(~isInline=true, raw) {
+  | Ok(schema) =>
+    switch SchemaV2.applySchema(
+      HtmlFixture.parse(`<script type="application/ld+json">{"offers":{"price":42}}</script>`),
+      schema,
+    ) {
+    | Ok(value) => isTextEqualTo("[{\"ld\":42}]", NodeUtil.jsonStringify(value))
+    | Error(_) => failWith("Expected guide output")
+    }
+  | Error(_) => failWith("Expected guide schema")
+  }
+})
+
+test("schema tbody header omission respects explicit row selector", () => {
+  [
+    ("", "[{\"t\":[{\"A\":\"1\",\"B\":\"2\"}]}]"),
+    ("\"rowSelector\":\"tr\",", "[{\"t\":[{\"A\":null,\"B\":null},{\"A\":\"1\",\"B\":\"2\"}]}]"),
+  ]->Array.forEach(((selector, expected)) => {
+    let raw = `{"fields":{"t":{"selector":"table","type":"table","tableOptions":{${selector}"columns":[{"name":"A","selector":"td:nth-child(1)","type":"text"},{"name":"B","selector":"td:nth-child(2)","type":"text"}]}}}}`
+    switch SchemaV2.loadSchema(~isInline=true, raw) {
+    | Ok(schema) =>
+      switch SchemaV2.applySchema(
+        HtmlFixture.parse(
+          "<table><tbody><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></tbody></table>",
+        ),
+        schema,
+      ) {
+      | Ok(value) => isTextEqualTo(expected, NodeUtil.jsonStringify(value))
+      | Error(_) => failWith("Expected schema table output")
+      }
+    | Error(_) => failWith("Expected schema")
+    }
+  })
+})
+
 test("URL validation false is inherited from parsed defaults", () => {
   let raw = `{"config":{"defaults":{"url":{"validate":false}}},"fields":{"u":{"selector":"a","type":"url"}}}`
   switch SchemaV2.loadSchema(~isInline=true, raw) {
