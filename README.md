@@ -107,7 +107,8 @@ Proxy configuration is environment-only: nonempty `HTTP_PROXY`/`http_proxy`,
 `EnvHttpProxyAgent` does not read `ALL_PROXY`/`all_proxy`, so when they are the
 only proxy variables set the CLI prints a one-line stderr warning that requests
 will connect directly and recommends setting `HTTP_PROXY`/`HTTPS_PROXY`
-instead. There is no `--proxy` flag.
+instead. If `undici` is not installed, the CLI instead prints only a warning
+that the proxy is ignored. There is no `--proxy` flag.
 
 ## Key Features
 

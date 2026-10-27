@@ -53,27 +53,44 @@ let allProxyOnlyWarning = "Warning: ALL_PROXY/all_proxy is set but undici's EnvH
 
 @val @scope("process") external environment: proxyEnv = "env"
 
-/** Optional import is confined to this FFI island and runs only after the gate. */
-let createWhenEnabled: bool => promise<option<dispatcher>> = %raw(`async function(hasProxy) {
-  if (!hasProxy) return undefined;
+/** Exact stderr line when a proxy variable is set but undici cannot be imported. */
+let undiciUnavailableWarning = "Warning: HTTP_PROXY/http_proxy/HTTPS_PROXY/https_proxy/ALL_PROXY/all_proxy is set but undici is unavailable — proxy will be ignored. Install undici with: npm install undici"
+
+/** Optional import is confined to this FFI island; undefined means unavailable. */
+let loadEnvHttpProxyAgent: unit => promise<option<dispatcher>> = %raw(`async function() {
   try {
     var undici = await import('undici');
     return new undici.EnvHttpProxyAgent();
   } catch (e) {
-    console.error("Warning: HTTP_PROXY/http_proxy/HTTPS_PROXY/https_proxy/ALL_PROXY/all_proxy is set but undici is unavailable — proxy will be ignored. Install undici with: npm install undici");
     return undefined;
   }
 }`)
 
 /**
+  * Loads the agent only after the gate, then reports at most one warning: the
+  * ALL_PROXY-only note is irrelevant when undici itself is unavailable.
+  */
+let createEnvProxyDispatcherWith = async (~env, ~loadAgent, ~report) =>
+  if !hasProxyEnv(env) {
+    None
+  } else {
+    switch await loadAgent() {
+    | Some(agent) =>
+      if allProxyOnly(env) {
+        report(allProxyOnlyWarning)
+      }
+      Some(agent)
+    | None =>
+      report(undiciUnavailableWarning)
+      None
+    }
+  }
+
+/**
   * Environment is inspected at fetch time. The warning prints at most once per
   * process because Fetcher caches this dispatcher in `proxyDispatcherPromise`.
   */
-let createEnvProxyDispatcher = () => {
-  let env = environment
-  let enabled = hasProxyEnv(env)
-  if enabled && allProxyOnly(env) {
-    Console.error(allProxyOnlyWarning)
-  }
-  createWhenEnabled(enabled)
-}
+let createEnvProxyDispatcher = () =>
+  createEnvProxyDispatcherWith(~env=environment, ~loadAgent=loadEnvHttpProxyAgent, ~report=line =>
+    Console.error(line)
+  )

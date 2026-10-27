@@ -60,3 +60,75 @@ test("all-proxy-only warning text is exact", () =>
     allProxyOnlyWarning,
   )
 )
+
+// One warning per run: which one depends on whether the agent actually loaded.
+let fakeAgent: dispatcher = Obj.magic("agent")
+let dispatcherCase = (~env, ~loads, ~expectedReports, ~expectedLoads, ~expectsAgent, name) =>
+  testAsync(`proxy dispatcher warnings: ${name}`, planned => {
+    let reports = []
+    let loadCalls = ref(0)
+    createEnvProxyDispatcherWith(
+      ~env,
+      ~loadAgent=async () => {
+        loadCalls := loadCalls.contents + 1
+        loads ? Some(fakeAgent) : None
+      },
+      ~report=line => reports->Array.push(line),
+    )
+    ->Promise.then(result => {
+      isTruthy(reports == expectedReports)
+      isIntEqualTo(expectedLoads, loadCalls.contents)
+      isTruthy(Option.isSome(result) == expectsAgent)
+      planned(~planned=3, ())
+      Promise.resolve()
+    })
+    ->ignore
+  })
+
+dispatcherCase(
+  ~env={allProxy: proxy},
+  ~loads=false,
+  ~expectedReports=[undiciUnavailableWarning],
+  ~expectedLoads=1,
+  ~expectsAgent=false,
+  "ALL_PROXY only without undici prints only the unavailable warning",
+)
+dispatcherCase(
+  ~env={allProxy: proxy},
+  ~loads=true,
+  ~expectedReports=[allProxyOnlyWarning],
+  ~expectedLoads=1,
+  ~expectsAgent=true,
+  "ALL_PROXY only with undici prints only the ALL_PROXY warning",
+)
+dispatcherCase(
+  ~env={httpProxy: proxy},
+  ~loads=false,
+  ~expectedReports=[undiciUnavailableWarning],
+  ~expectedLoads=1,
+  ~expectsAgent=false,
+  "HTTP_PROXY without undici prints the unavailable warning",
+)
+dispatcherCase(
+  ~env={httpProxy: proxy},
+  ~loads=true,
+  ~expectedReports=[],
+  ~expectedLoads=1,
+  ~expectsAgent=true,
+  "HTTP_PROXY with undici is silent",
+)
+dispatcherCase(
+  ~env={},
+  ~loads=true,
+  ~expectedReports=[],
+  ~expectedLoads=0,
+  ~expectsAgent=false,
+  "no proxy env never loads undici",
+)
+
+test("undici unavailable warning text is exact", () =>
+  isTextEqualTo(
+    "Warning: HTTP_PROXY/http_proxy/HTTPS_PROXY/https_proxy/ALL_PROXY/all_proxy is set but undici is unavailable — proxy will be ignored. Install undici with: npm install undici",
+    undiciUnavailableWarning,
+  )
+)

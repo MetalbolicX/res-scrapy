@@ -18,6 +18,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Fixed
 - Setting only `ALL_PROXY`/`all_proxy` now prints one stderr warning (once per process) that undici's `EnvHttpProxyAgent` does not route it, so requests connect directly; the message points users to `HTTP_PROXY`/`HTTPS_PROXY`.
+- Proxy runs print at most one warning: when `undici` is unavailable only the "proxy will be ignored" line appears, never the `ALL_PROXY` note on top of it.
 - Explicit null list limits now mean unlimited (numeric zero still means zero items), and null `config.rowSelector` selects zip mode like an omitted selector. A null `tableOptions.rowSelector` is likewise treated as absent instead of crashing extraction.
 - JSON dot paths now accept an optional leading `$.` or standalone `$` for the whole value; this is not full JSONPath support.
 - URL `validate:false` now preserves nonempty raw attributes on parse failure only; successfully parsed unsafe schemes remain rejected.
