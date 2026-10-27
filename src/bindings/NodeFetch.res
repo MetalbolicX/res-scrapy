@@ -47,8 +47,80 @@ type response = {
   headers: responseHeaders,
 }
 
+/** Best-effort release of bodies that will not be consumed. */
+let cancelBody: response => promise<unit> = %raw(`async response => {
+  try { await response.body?.cancel(); } catch (_) { /* preserve original outcome */ }
+}`)
+
 /** Extracts the response body as text. */
 @send external text: response => promise<string> = "text"
+
+/** Decimal HTTP length stays a JS number, never a wrapping ReScript int. */
+let decimalLength: string => option<
+  float,
+> = %raw(`value => /^[0-9]+$/.test(value.trim()) ? Number(value.trim()) : undefined`)
+
+type arrayBuffer
+type byteView
+@send external arrayBuffer: response => promise<arrayBuffer> = "arrayBuffer"
+@get external byteLength: arrayBuffer => float = "byteLength"
+let bytesFromString: string => arrayBuffer = %raw(`text => new TextEncoder().encode(text).buffer`)
+let bytePrefix: (
+  arrayBuffer,
+  int,
+) => byteView = %raw(`(buffer, limit) => new Uint8Array(buffer, 0, Math.min(buffer.byteLength, limit))`)
+let asciiView: byteView => string = %raw(`bytes => String.fromCharCode(...bytes)`)
+
+/** Bounded declaration sniff, not browser encoding detection. Attribute parsing
+    stays in this binding island alongside byte views and TextDecoder. */
+let declaredCharset: (option<string>, string) => string = %raw(`(header, prefix) => {
+  const charset = value => /(?:^|;)\s*charset\s*=\s*("[^"]*"|'[^']*'|[^;\s]+)/i.exec(value)?.[1];
+  const normalize = label => {
+    label = label.trim();
+    if ((label.startsWith('"') && label.endsWith('"')) || (label.startsWith("'") && label.endsWith("'"))) label = label.slice(1, -1);
+    return label.trim();
+  };
+  const fromHeader = charset(header ?? '');
+  if (fromHeader !== undefined) return normalize(fromHeader);
+  for (const tag of prefix.matchAll(/<meta\b[^>]*>/gi)) {
+    const attrs = Object.create(null);
+    for (const attr of tag[0].slice(5, -1).matchAll(/([^\s=/>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g)) {
+      const key = attr[1].toLowerCase();
+      if (!(key in attrs)) attrs[key] = attr[2] ?? attr[3] ?? attr[4] ?? '';
+    }
+    if ('charset' in attrs) return normalize(attrs.charset);
+    if ((attrs['http-equiv'] ?? '').toLowerCase() === 'content-type') {
+      const label = charset(attrs.content ?? '');
+      if (label !== undefined) return normalize(label);
+    }
+  }
+  return 'utf-8';
+}`)
+
+/** Unsupported labels fall directly back to UTF-8, never to a conflicting meta. */
+let decodeBytes: (arrayBuffer, string) => string = %raw(`(buffer, label) => {
+  let decoder;
+  try { decoder = new TextDecoder(label); } catch (_) { decoder = new TextDecoder('utf-8'); }
+  return decoder.decode(buffer);
+}`)
+let decodeHtml = (buffer, contentType) =>
+  decodeBytes(buffer, declaredCharset(contentType, asciiView(bytePrefix(buffer, 1024))))
+
+/** Retry-After numeric/date parsing stays at the JS runtime boundary.
+    Date.parse accepts bare numbers and malformed numeric strings as dates, so
+    require an HTTP-date shape before asking the runtime to parse it. */
+let retryAfterMilliseconds: (string, float) => option<float> = %raw(`(value, nowMs) => {
+  value = value.trim();
+  let ms;
+  if (/^[0-9]+$/.test(value)) ms = Number(value) * 1000;
+  else {
+    const httpDate = /^(?:[A-Za-z]{3}, [0-9]{2} [A-Za-z]{3} [0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2} GMT|[A-Za-z]+, [0-9]{2}-[A-Za-z]{3}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} GMT|[A-Za-z]{3} [A-Za-z]{3} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4})$/;
+    if (!httpDate.test(value)) return undefined;
+    ms = Date.parse(value) - nowMs;
+  }
+  return Number.isFinite(ms) ? ms : undefined;
+}`)
+@val @scope("Date") external nowMs: unit => float = "now"
 
 /** Configuration object for fetch requests. */
 type options = {

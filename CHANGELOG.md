@@ -20,6 +20,12 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - JSON dot paths now accept an optional leading `$.` or standalone `$` for the whole value; this is not full JSONPath support.
 - URL `validate:false` now preserves nonempty raw attributes on parse failure only; successfully parsed unsafe schemes remain rejected.
 - The schema guide now documents attribute mode `first` as the default and `attributeOptions.joinSep`; `all` and `join` both return the same joined string.
+- Discarded redirect and HTTP error response bodies are released without replacing the original fetch outcome when cancellation fails.
+- Lowercase proxy environment variables now activate the optional proxy agent; routing and bypass support remain agent-owned.
+- Stdin limits count UTF-8 bytes; aborted reads pause input, detach owned listeners and release timers/chunks without destroying shared stdin.
+- HTTP 429/503 retries honor valid Retry-After seconds/date hints with a 60-second cap and unchanged attempt budgets.
+- Fetched responses above 50 MiB are rejected without retries; unknown-length bodies are checked after buffering, not streamed under a strict memory bound.
+- Fetched HTML now respects declared response charsets with a bounded meta sniff and UTF-8 fallback.
 - Invalid URL templates now report their error once, without an additional misleading empty-template error.
 - Stdin mode warns about ignored fetch options only when explicitly supplied, not when using defaults.
 - The CLI now terminates after reporting SIGINT, SIGTERM, or a fatal runtime error instead of leaving pending work running.

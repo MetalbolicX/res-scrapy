@@ -409,10 +409,27 @@ sequenceDiagram
 
 ### Fetcher (`Fetcher.res`)
 
-All transport parameters are configurable via CLI flags, with sensible defaults:
+Fetched HTML uses the Content-Type header charset first, otherwise the first applicable
+meta charset or http-equiv content-type declaration within the first 1024 raw bytes,
+otherwise UTF-8. Unsupported selected labels fall directly back to UTF-8. This is a
+bounded declaration sniff, not full browser encoding/BOM detection.
+
+Fetched responses have a 50 MiB (52,428,800-byte) acceptance cap, shared with
+`StdIn.maxStdinBytes`. A valid nonnegative decimal Content-Length above the cap is
+rejected before reading; actual bytes delivered by fetch (after content decoding)
+are also checked before charset decoding. Oversize responses return a non-retryable
+`Parse error: Response exceeds maximum size of 50 MB`.
+
+**Maintenance limitation:** Unknown-length or understated bodies are checked only
+after `arrayBuffer()` buffers them. This is not a strict peak-memory bound and does
+not prevent allocation of an unlimited chunked body. Strict download-time memory
+protection needs a separate incremental byte-limited reader; HTML parsing remains
+buffered.
+
+Transport parameters have sensible defaults:
 
 - **Timeout:** Configurable via `--timeout` (default: 30s, min: 1s). Implemented via `AbortController`.
-- **Retry:** Configurable via `--retry` (default: 3, min: 1). The value is the total fetch attempts per URL on retryable failures. It waits ~2s before the 2nd attempt, then ~4s, 8s, ... (doubling, ±0.5s jitter).
+- **Retry:** Configurable via `--retry` (default: 3, min: 1). The value is the total fetch attempts per URL on retryable failures. It waits ~2s before the 2nd attempt, then ~4s, 8s, ... (doubling, ±0.5s jitter). For terminal HTTP 429/503 responses only, a valid `Retry-After` integer-seconds value or HTTP-date replaces backoff, clamped to 0–60 seconds (past dates mean zero). Missing/invalid hints use backoff. Private per-attempt metadata reaches the shared retry loop without changing public results or error messages; redirect/prior-attempt hints never carry forward. Exhausted budgets never sleep.
 - **Retryable errors:** Network errors, timeouts, HTTP 429 (rate limit), HTTP 5xx (server errors).
 - **Concurrency:** Hand-rolled semaphore (no external dependency). Hard cap at 20 concurrent requests.
 - **User-Agent:** Configurable via `--user-agent`. Defaults to `res-scrapy/{version}`.
@@ -421,8 +438,8 @@ All transport parameters are configurable via CLI flags, with sensible defaults:
 
 ### Proxy Support
 
-- **Env vars:** `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` are detected automatically at fetch time.
-- **Implementation:** Uses `undici`'s `EnvHttpProxyAgent`, imported lazily and cached process-wide (`proxyDispatcherPromise`). Falls back gracefully when `undici` is not installed.
+- **Activation:** A pure record predicate detects nonempty `HTTP_PROXY`/`http_proxy`, `HTTPS_PROXY`/`https_proxy`, and `ALL_PROXY`/`all_proxy` at fetch time. `NO_PROXY`/`no_proxy` alone never activate it.
+- **Implementation:** Uses `undici`'s `EnvHttpProxyAgent`, imported lazily and cached process-wide (`proxyDispatcherPromise`). Falls back gracefully when `undici` is not installed. The agent owns precedence, supported routing and `NO_PROXY`/`no_proxy` bypass behavior; the gate does not implement routing. `ALL_PROXY`/`all_proxy` detection provides gate symmetry only, not routing support beyond the installed agent's capabilities.
 - **Design choice:** Env-var only for now (follows standard Node.js tooling convention). An explicit `--proxy` flag is deferred for a future change.
 
 ### Reporter (`Reporter.res`)
@@ -438,6 +455,16 @@ All transport parameters are configurable via CLI flags, with sensible defaults:
 - **File + JSON:** Buffers all results, then writes a single JSON array at the end.
 
 ---
+
+### Stdin lifecycle (`StdIn.res`)
+
+Stdin reads enforce a 50 MiB UTF-8 byte limit and a 30-second deadline. The
+injectable `readFromStream` reader keeps the zero-argument production wrapper
+unchanged. Every terminal path clears the timer and removes only the reader's
+own data/end/error callbacks before resolving once. Overflow, timeout, stream
+errors and setup failures pause input and release retained chunks without
+destroying shared stdin or removing unrelated listeners. Setup failures resolve
+the existing `ReadError` result rather than rejecting the promise.
 
 ## 11. Build Pipeline
 

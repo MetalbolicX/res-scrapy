@@ -61,6 +61,33 @@ let fetchOnceWithRawFetch: (
   array<(string, string)>,
 ) => promise<result<string, fetchError>>
 
+/** @internal Small-cap reader seam; production uses the shared stdin limit. */
+let fetchOnceWithBodyLimit: (
+  ~maxBodyBytes: int=?,
+  (string, option<NodeFetch.options>) => promise<NodeFetch.response>,
+  string,
+  string,
+  int,
+  array<(string, string)>,
+) => promise<result<string, fetchError>>
+
+/** @internal Shared production retry loop with deterministic sleep injection. */
+let retryWithAttempt: (
+  ~attempt: unit => promise<result<string, fetchError>>,
+  ~sleep: int => promise<unit>,
+  ~retryCount: int,
+) => promise<result<string, fetchError>>
+
+/** @internal Deterministic Retry-After selection and raw-transport retry seam. */
+let retryAfterDelay: (~retryAfter: option<string>, ~nowMs: float, ~backoffMs: int) => int
+let retryWithRawFetch: (
+  ~rawFetch: (string, option<NodeFetch.options>) => promise<NodeFetch.response>,
+  ~sleep: int => promise<unit>,
+  ~nowMs: unit => float,
+  ~backoff: int => int,
+  ~retryCount: int,
+) => promise<result<string, fetchError>>
+
 /**
   * Fetches all URLs with concurrency control.
   */

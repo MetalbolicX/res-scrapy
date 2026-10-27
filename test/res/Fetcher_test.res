@@ -11,13 +11,27 @@ type fakeResponseObject = {
   statusText: string,
   headers: fakeHeaders,
   text: unit => promise<string>,
+  arrayBuffer: unit => promise<NodeFetch.arrayBuffer>,
+  body: {cancel: unit => promise<unit>},
 }
 
-let fakeResponse = (status, location, body): NodeFetch.response => {
+let fakeResponse = (
+  ~cancel=() => Promise.resolve(),
+  ~read=() => (),
+  ~contentLength: option<string>=None,
+  ~retryAfter: option<string>=None,
+  status,
+  location,
+  body,
+): NodeFetch.response => {
   let headers: fakeHeaders = {
     get: name =>
       if name == "location" {
         location
+      } else if name == "retry-after" {
+        retryAfter
+      } else if name == "content-length" {
+        contentLength
       } else {
         jsNull
       },
@@ -31,10 +45,426 @@ let fakeResponse = (status, location, body): NodeFetch.response => {
       "Found"
     },
     headers,
-    text: () => Promise.resolve(body),
+    text: () => {
+      read()
+      Promise.resolve(body)
+    },
+    arrayBuffer: () => {
+      read()
+      Promise.resolve(NodeFetch.bytesFromString(body))
+    },
+    body: {cancel: cancel},
   }
   Obj.magic(response)
 }
+
+let retryNow = 1735689600000.0 // 2025-01-01T00:00:00Z
+let delayCases = [
+  (Some("2"), 2000),
+  (Some("0"), 0),
+  (Some(" 2 "), 2000),
+  (Some("Wed, 01 Jan 2025 00:00:05 GMT"), 5000),
+  (Some("Tue, 31 Dec 2024 23:59:59 GMT"), 0),
+  (Some("60"), 60000),
+  (Some("61"), 60000),
+  (Some("Wed, 01 Jan 2025 00:01:01 GMT"), 60000),
+  (None, 777),
+  (Some(""), 777),
+  (Some("  "), 777),
+  (Some("-1"), 777),
+  (Some("1.5"), 777),
+  (Some("garbage"), 777),
+  (Some("Infinity"), 777),
+  (Some("1e3"), 777),
+]
+delayCases->Array.forEachWithIndex((item, index) => {
+  let (retryAfter, expected) = item
+  test(`Retry-After delay case ${Int.toString(index)}`, () => {
+    isIntEqualTo(expected, Fetcher.retryAfterDelay(~retryAfter, ~nowMs=retryNow, ~backoffMs=777))
+  })
+})
+
+type retryResponse = {status: int, hint: option<string>, location: option<string>}
+let retryResponse = (~hint=None, ~location=None, status) => {status, hint, location}
+let retryCase = (
+  ~responses: array<retryResponse>,
+  ~budget=3,
+  ~expectedCalls,
+  ~waits,
+  ~expected,
+  name,
+) =>
+  testAsync(name, planned => {
+    let calls = ref(0)
+    let delays = ref([])
+    let cancels = ref(0)
+    let reads = ref(0)
+    let rawFetch = async (_, _) => {
+      let response = responses[min(calls.contents, Array.length(responses) - 1)]->Option.getOrThrow
+      calls := calls.contents + 1
+      fakeResponse(
+        ~retryAfter=response.hint,
+        ~cancel=() => {
+          cancels := cancels.contents + 1
+          Promise.resolve()
+        },
+        ~read=() => reads := reads.contents + 1,
+        response.status,
+        response.location,
+        "done",
+      )
+    }
+    Fetcher.retryWithRawFetch(
+      ~rawFetch,
+      ~sleep=ms => {
+        delays := Array.concat(delays.contents, [ms])
+        Promise.resolve()
+      },
+      ~nowMs=() => retryNow,
+      ~backoff=attempt => attempt * 777,
+      ~retryCount=budget,
+    )
+    ->Promise.then(result => {
+      isIntEqualTo(expectedCalls, calls.contents)
+      isTruthy(delays.contents == waits)
+      isTruthy(result == expected)
+      let success = expected == Ok("done")
+      isIntEqualTo(success ? 1 : 0, reads.contents)
+      isIntEqualTo(expectedCalls - (success ? 1 : 0), cancels.contents)
+      isTextEqualTo("HTTP 429: Found", Fetcher.fetchErrorToMessage(HttpError(429, "Found")))
+      planned(~planned=6, ())
+      Promise.resolve()
+    })
+    ->ignore
+  })
+
+retryCase(
+  ~responses=[retryResponse(~hint=Some("2"), 429), retryResponse(200)],
+  ~expectedCalls=2,
+  ~waits=[2000],
+  ~expected=Ok("done"),
+  "Retry-After 429 survives detailed transport",
+)
+retryCase(
+  ~responses=[retryResponse(~hint=Some("Wed, 01 Jan 2025 00:00:05 GMT"), 503), retryResponse(200)],
+  ~expectedCalls=2,
+  ~waits=[5000],
+  ~expected=Ok("done"),
+  "Retry-After 503 date survives detailed transport",
+)
+retryCase(
+  ~responses=[retryResponse(~hint=Some("2"), 500), retryResponse(200)],
+  ~expectedCalls=2,
+  ~waits=[777],
+  ~expected=Ok("done"),
+  "Retry-After ignored on 500",
+)
+retryCase(
+  ~responses=[retryResponse(~hint=Some("2"), 404)],
+  ~expectedCalls=1,
+  ~waits=[],
+  ~expected=Error(HttpError(404, "Found")),
+  "Retry-After 404 never retries",
+)
+retryCase(
+  ~responses=[retryResponse(~hint=Some("2"), 429)],
+  ~budget=1,
+  ~expectedCalls=1,
+  ~waits=[],
+  ~expected=Error(HttpError(429, "Found")),
+  "Retry-After exhausted budget never sleeps",
+)
+retryCase(
+  ~responses=[retryResponse(429), retryResponse(200)],
+  ~expectedCalls=2,
+  ~waits=[777],
+  ~expected=Ok("done"),
+  "Retry-After absent uses backoff",
+)
+retryCase(
+  ~responses=[retryResponse(~hint=Some("2"), 429), retryResponse(429), retryResponse(200)],
+  ~expectedCalls=3,
+  ~waits=[2000, 1554],
+  ~expected=Ok("done"),
+  "Retry-After does not leak across attempts",
+)
+retryCase(
+  ~responses=[
+    retryResponse(~hint=Some("2"), ~location=Some("/next"), 302),
+    retryResponse(429),
+    retryResponse(200),
+  ],
+  ~expectedCalls=3,
+  ~waits=[777],
+  ~expected=Ok("done"),
+  "Retry-After redirect hint does not leak",
+)
+
+testAsync("Retry-After network failure clears prior attempt hint", planned => {
+  let calls = ref(0)
+  let waits = ref([])
+  let rawFetch = async (_, _) => {
+    calls := calls.contents + 1
+    if calls.contents == 2 {
+      await Promise.reject(Failure("network failure"))
+    } else {
+      fakeResponse(~retryAfter=Some("2"), calls.contents == 1 ? 429 : 200, None, "done")
+    }
+  }
+  Fetcher.retryWithRawFetch(
+    ~rawFetch,
+    ~sleep=ms => {
+      waits := Array.concat(waits.contents, [ms])
+      Promise.resolve()
+    },
+    ~nowMs=() => retryNow,
+    ~backoff=n => n * 777,
+    ~retryCount=3,
+  )
+  ->Promise.then(result => {
+    isTruthy(result == Ok("done"))
+    isTruthy(waits.contents == [2000, 1554])
+    isIntEqualTo(3, calls.contents)
+    planned(~planned=3, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+let sizeCase = (
+  ~contentLength=None,
+  ~body="abcde",
+  ~cap=4,
+  ~accepted=false,
+  ~expectedReads=1,
+  name,
+) =>
+  testAsync(name, planned => {
+    let calls = ref(0)
+    let reads = ref(0)
+    let cancels = ref(0)
+    let rawFetch = async (_, _) => {
+      calls := calls.contents + 1
+      fakeResponse(
+        ~contentLength,
+        ~read=() => reads := reads.contents + 1,
+        ~cancel=() => {
+          cancels := cancels.contents + 1
+          Promise.resolve()
+        },
+        200,
+        None,
+        body,
+      )
+    }
+    Fetcher.fetchOnceWithBodyLimit(
+      ~maxBodyBytes=cap,
+      rawFetch,
+      "http://example.test/",
+      "agent",
+      5,
+      [],
+    )
+    ->Promise.then(result => {
+      isIntEqualTo(1, calls.contents)
+      isIntEqualTo(expectedReads, reads.contents)
+      isIntEqualTo(accepted ? 0 : 1, cancels.contents)
+      isTruthy(
+        result == (
+            accepted
+              ? Ok(body)
+              : Error(
+                  Fetcher.ParseError(
+                    `Response exceeds maximum size of ${Int.toString(cap / (1024 * 1024))} MB`,
+                  ),
+                )
+          ),
+      )
+      switch result {
+      | Error(err) => isTruthy(!Fetcher.isRetryable(err))
+      | Ok(_) => isTruthy(accepted)
+      }
+      planned(~planned=5, ())
+      Promise.resolve()
+    })
+    ->ignore
+  })
+
+sizeCase(~contentLength=Some("5"), ~expectedReads=0, "size header rejects before read")
+sizeCase(~contentLength=Some("4294967296"), ~expectedReads=0, "size header does not overflow int32")
+sizeCase(~contentLength=Some("4"), ~body="abcd", ~accepted=true, "size exact boundary accepted")
+sizeCase("size missing length checks actual bytes")
+sizeCase(~contentLength=Some("invalid"), "size invalid length checks actual bytes")
+sizeCase(~contentLength=Some("-1"), "size negative length checks actual bytes")
+sizeCase(~contentLength=Some("1"), "size understated length checks actual bytes")
+sizeCase(~body="éé", ~cap=3, "size counts bytes not UTF16")
+sizeCase(~body="éé", ~cap=4, ~accepted=true, "size multibyte boundary accepted")
+
+testAsync("size rejection never retries in production retry loop", planned => {
+  let calls = ref(0)
+  let sleeps = ref(0)
+  let reads = ref(0)
+  let cancels = ref(0)
+  let rawFetch = async (_, _) => {
+    calls := calls.contents + 1
+    fakeResponse(
+      ~read=() => reads := reads.contents + 1,
+      ~cancel=() => {
+        cancels := cancels.contents + 1
+        Promise.resolve()
+      },
+      200,
+      None,
+      "abcde",
+    )
+  }
+  Fetcher.retryWithAttempt(
+    ~attempt=() =>
+      Fetcher.fetchOnceWithBodyLimit(
+        ~maxBodyBytes=4,
+        rawFetch,
+        "http://example.test/",
+        "agent",
+        5,
+        [],
+      ),
+    ~sleep=_ => {
+      sleeps := sleeps.contents + 1
+      Promise.resolve()
+    },
+    ~retryCount=3,
+  )
+  ->Promise.then(result => {
+    isTruthy(result == Error(Fetcher.ParseError("Response exceeds maximum size of 0 MB")))
+    isIntEqualTo(1, calls.contents)
+    isIntEqualTo(1, reads.contents)
+    isIntEqualTo(1, cancels.contents)
+    isIntEqualTo(0, sleeps.contents)
+    planned(~planned=5, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+testAsync("retry loop preserves total attempt budget for transient failures", planned => {
+  let calls = ref(0)
+  let sleeps = ref(0)
+  Fetcher.retryWithAttempt(
+    ~attempt=() => {
+      calls := calls.contents + 1
+      Promise.resolve(Error(Fetcher.HttpError(500, "Server Error")))
+    },
+    ~sleep=_ => {
+      sleeps := sleeps.contents + 1
+      Promise.resolve()
+    },
+    ~retryCount=3,
+  )
+  ->Promise.then(result => {
+    isTruthy(result == Error(Fetcher.HttpError(500, "Server Error")))
+    isIntEqualTo(3, calls.contents)
+    isIntEqualTo(2, sleeps.contents)
+    planned(~planned=3, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+// Exercise lifecycle through the public injectable fetch boundary.
+let lifecycleCase = (~status, ~location, ~rejectCancel, ~expectedCalls, ~expectedResult, name) =>
+  testAsync(name, planned => {
+    let events = ref([])
+    let calls = ref(0)
+    let cancels = ref(0)
+    let reads = ref(0)
+    let rawFetch = async (_url, _options) => {
+      calls := calls.contents + 1
+      events := Array.concat(events.contents, ["request"])
+      let cancel = () => {
+        cancels := cancels.contents + 1
+        events := Array.concat(events.contents, ["cancel"])
+        if rejectCancel {
+          Promise.reject(Failure("cancel failed"))
+        } else {
+          Promise.resolve()
+        }
+      }
+      fakeResponse(
+        ~cancel,
+        ~read=() => reads := reads.contents + 1,
+        calls.contents == 1 ? status : 200,
+        calls.contents == 1 ? location : None,
+        "done",
+      )
+    }
+    Fetcher.fetchOnceWithRawFetch(rawFetch, "http://example.test/start", "agent", 5, [])
+    ->Promise.then(result => {
+      isIntEqualTo(expectedCalls, calls.contents)
+      isIntEqualTo(status == 200 ? 0 : 1, cancels.contents)
+      isIntEqualTo(expectedResult == Ok("done") ? 1 : 0, reads.contents)
+      isTruthy(result == expectedResult)
+      isTextEqualTo(
+        expectedCalls == 2
+          ? "request,cancel,request"
+          : status == 200
+          ? "request"
+          : "request,cancel",
+        events.contents->Array.joinWith(","),
+      )
+      planned(~planned=5, ())
+      Promise.resolve()
+    })
+    ->ignore
+  })
+
+lifecycleCase(
+  ~status=302,
+  ~location=Some("/next"),
+  ~rejectCancel=false,
+  ~expectedCalls=2,
+  ~expectedResult=Ok("done"),
+  "redirect cancellation precedes next request",
+)
+lifecycleCase(
+  ~status=302,
+  ~location=Some("/next"),
+  ~rejectCancel=true,
+  ~expectedCalls=2,
+  ~expectedResult=Ok("done"),
+  "rejected redirect cancellation preserves success",
+)
+lifecycleCase(
+  ~status=404,
+  ~location=None,
+  ~rejectCancel=false,
+  ~expectedCalls=1,
+  ~expectedResult=Error(Fetcher.HttpError(404, "Found")),
+  "404 cancels discarded body",
+)
+lifecycleCase(
+  ~status=302,
+  ~location=None,
+  ~rejectCancel=false,
+  ~expectedCalls=1,
+  ~expectedResult=Error(Fetcher.HttpError(302, "Found")),
+  "missing Location cancels discarded body",
+)
+lifecycleCase(
+  ~status=404,
+  ~location=None,
+  ~rejectCancel=true,
+  ~expectedCalls=1,
+  ~expectedResult=Error(Fetcher.HttpError(404, "Found")),
+  "rejected cancellation preserves HTTP error",
+)
+lifecycleCase(
+  ~status=200,
+  ~location=None,
+  ~rejectCancel=false,
+  ~expectedCalls=1,
+  ~expectedResult=Ok("done"),
+  "successful body is read not canceled",
+)
 
 let recordingFetch = (calls: ref<array<recordedCall>>, responseAt) =>
   async (url: string, options: option<NodeFetch.options>) => {
