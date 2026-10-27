@@ -11,19 +11,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Install pnpm before setup-node resolves the pnpm cache location.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'pnpm'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Audit high-severity dependencies
+        run: pnpm run security:audit
 
       - name: Build ReScript
         run: pnpm run res:build
@@ -31,8 +33,8 @@ jobs:
       - name: Check formatting
         run: pnpm run res:lint
 
-      - name: Run tests
-        run: pnpm run res:test
-
       - name: Build bundle
         run: pnpm run bundle
+
+      - name: Run tests
+        run: pnpm run res:test
