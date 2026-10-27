@@ -100,6 +100,13 @@ For HTTP 429 and 503 retries, a valid `Retry-After` seconds value or HTTP-date
 replaces exponential backoff, clamped to 0–60 seconds. Missing or invalid hints
 use normal backoff. The `--retry` total-attempt budget is unchanged.
 
+Proxy configuration is environment-only: nonempty `HTTP_PROXY`/`http_proxy`,
+`HTTPS_PROXY`/`https_proxy`, or `ALL_PROXY`/`all_proxy` activate the optional
+`undici` EnvHttpProxyAgent. The agent owns variable precedence and routing;
+`NO_PROXY`/`no_proxy` are its bypass settings, not activation settings.
+`ALL_PROXY`/`all_proxy` detection is gate symmetry, not a guarantee that the
+installed agent routes them. There is no `--proxy` flag.
+
 ## Key Features
 
 ### 10 Field Types for Semi-Structured Data Extraction
