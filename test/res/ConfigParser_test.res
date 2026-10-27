@@ -81,6 +81,21 @@ test("ConfigParser rejects invalid config.limit values", () => {
   })
 })
 
+test("ConfigParser rejects non-string config.rowSelector", () => {
+  [("5", "number"), ("[\"li\"]", "array"), ("{}", "object"), ("true", "boolean")]->Array.forEach(((
+    rowSelectorJson,
+    jsonType,
+  )) => {
+    let schemaJson = `{"fields":{"item":{"selector":".x"}},"config":{"rowSelector":${rowSelectorJson}}}`
+    switch SchemaParser.parseSchema(TestHelpers.objectFromJsonString(schemaJson)) {
+    | Error(InvalidJson(msg)) =>
+      isTextEqualTo(`config.rowSelector must be a string, got ${jsonType}`, msg)
+    | Error(_) => failWith("Expected InvalidJson for invalid config.rowSelector")
+    | Ok(_) => failWith("Expected invalid config.rowSelector to be rejected")
+    }
+  })
+})
+
 test("ConfigParser rejects inert defaults.number.onError", () => {
   let schemaJson = "{\"fields\":{\"item\":{\"selector\":\".x\"}},\"config\":{\"defaults\":{\"number\":{\"onError\":\"returnDefault\"}}}}"
   switch SchemaParser.parseSchema(TestHelpers.objectFromJsonString(schemaJson)) {

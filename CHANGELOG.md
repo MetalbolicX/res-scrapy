@@ -13,6 +13,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - **Breaking:** Text fields with `join` now join all matches within each row, or broadcast one document-wide joined value in zip mode. Joined-only zip schemas produce one row when a selector matches, otherwise none; Count/List-only schemas still produce no rows.
 - **Breaking:** Table mode and schema table fields omit the first pure header row inside `tbody`; mixed header/data rows, explicit schema row selectors, and no-tbody fallback behavior are unchanged.
 - **Breaking:** Missing zip Boolean Presence cells now produce `false` instead of `null` when no explicit default is supplied; required checks and row-mode behavior are unchanged.
+- **Breaking:** `listOptions.limit` must be a non-negative integer, and `config.rowSelector` / `tableOptions.rowSelector` must be strings; other non-null values now fail schema validation instead of truncating lists unexpectedly or crashing extraction.
 - **Breaking:** Zip extraction retains the longest ordinary scalar selector's rows, padding missing cells with their default or null instead of truncating to the first selector.
 
 ### Fixed

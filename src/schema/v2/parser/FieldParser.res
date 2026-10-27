@@ -43,7 +43,7 @@ let parseFieldTypeVisitor: parseFieldTypeVisitor<{..}> = {
     | Ok(opts) => Ok(DateTime(opts))
     | Error(msg) => Error(msg)
     },
-  list: fieldJson => Ok(List(OptionsParser.parseListOptions(fieldJson))),
+  list: fieldJson => OptionsParser.parseListOptions(fieldJson)->Result.map(opts => List(opts)),
   table: fieldJson =>
     switch OptionsParser.parseTableOptions(fieldJson) {
     | Ok(opts) => Ok(Table(opts))

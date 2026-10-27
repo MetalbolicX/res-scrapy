@@ -11,12 +11,15 @@ test("parsed list limits preserve null unlimited, zero, positive and join", () =
     ("{\"limit\":0}", "[]"),
     ("{\"limit\":null,\"join\":\"|\"}", "\"A|B\""),
   ]->Array.forEach(((raw, expected)) => {
-    let opts = OptionsParser.parseListOptions(
+    switch OptionsParser.parseListOptions(
       TestHelpers.objectFromJsonString(`{"listOptions":${raw}}`),
-    )
-    switch ListExtractor.extract(els, opts) {
-    | Some(value) => isTextEqualTo(expected, NodeUtil.jsonStringify(value))
-    | None => failWith("Expected list output")
+    ) {
+    | Error(msg) => failWith(`Expected list options to parse, got ${msg}`)
+    | Ok(opts) =>
+      switch ListExtractor.extract(els, opts) {
+      | Some(value) => isTextEqualTo(expected, NodeUtil.jsonStringify(value))
+      | None => failWith("Expected list output")
+      }
     }
   })
 })

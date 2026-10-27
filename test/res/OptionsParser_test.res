@@ -4,8 +4,51 @@ open TestHelpers
 open FieldTypes
 
 test("null list limit is omitted", () => {
-  let opts = OptionsParser.parseListOptions(objectFromJsonString(`{"listOptions":{"limit":null}}`))
-  isOptionEqualTo(None, opts.limit, ~eq=(a, b) => a == b)
+  switch OptionsParser.parseListOptions(objectFromJsonString(`{"listOptions":{"limit":null}}`)) {
+  | Ok(opts) => isOptionEqualTo(None, opts.limit, ~eq=(a, b) => a == b)
+  | Error(msg) => failWith(`Expected null limit to be accepted, got ${msg}`)
+  }
+})
+
+test("list limit accepts non-negative integers and rejects everything else", () => {
+  [("0", 0), ("3", 3)]->Array.forEach(((limitJson, expected)) =>
+    switch OptionsParser.parseListOptions(
+      objectFromJsonString(`{"listOptions":{"limit":${limitJson}}}`),
+    ) {
+    | Ok(opts) => isOptionEqualTo(Some(expected), opts.limit, ~eq=(a, b) => a == b)
+    | Error(msg) => failWith(`Expected limit ${limitJson} to be accepted, got ${msg}`)
+    }
+  )
+  ["-1", "2.5", "\"2\"", "true", "[]"]->Array.forEach(limitJson =>
+    switch OptionsParser.parseListOptions(
+      objectFromJsonString(`{"listOptions":{"limit":${limitJson}}}`),
+    ) {
+    | Ok(_) => failWith(`Expected limit ${limitJson} to be rejected`)
+    | Error(msg) =>
+      isTextEqualTo(`listOptions.limit must be a non-negative integer, got ${limitJson}`, msg)
+    }
+  )
+})
+
+test("table rowSelector must be a string when present", () => {
+  let columns = `"columns":[{"name":"a","selector":"td"}]`
+  [("5", "number"), ("[\"tr\"]", "array"), ("{}", "object")]->Array.forEach(((
+    rowSelectorJson,
+    jsonType,
+  )) =>
+    switch OptionsParser.parseTableOptions(
+      objectFromJsonString(`{"tableOptions":{"rowSelector":${rowSelectorJson},${columns}}}`),
+    ) {
+    | Ok(_) => failWith(`Expected rowSelector ${rowSelectorJson} to be rejected`)
+    | Error(msg) => isTextEqualTo(`tableOptions.rowSelector must be a string, got ${jsonType}`, msg)
+    }
+  )
+  switch OptionsParser.parseTableOptions(
+    objectFromJsonString(`{"tableOptions":{"rowSelector":"tr.data",${columns}}}`),
+  ) {
+  | Ok(opts) => isOptionEqualTo(Some("tr.data"), opts.rowSelector, ~eq=(a, b) => a == b)
+  | Error(msg) => failWith(`Expected string rowSelector to be accepted, got ${msg}`)
+  }
 })
 
 test("count constraints reject exact field messages including null and min precedence", () => {
@@ -246,7 +289,13 @@ test("OptionsParser.parseListOptions parses attr itemType", () => {
   let field = TestHelpers.objectFromJsonString(
     "{\"listOptions\":{\"itemType\":\"attr:data-id\",\"unique\":true,\"filter\":\"^a\",\"limit\":3,\"join\":\",\"}}",
   )
-  let opts = OptionsParser.parseListOptions(field)
+  let opts = switch OptionsParser.parseListOptions(field) {
+  | Ok(opts) => opts
+  | Error(msg) => {
+      failWith(`Expected list options to parse, got ${msg}`)
+      {itemType: ListText}
+    }
+  }
   switch opts.itemType {
   | ListAttribute(name) => isTextEqualTo("data-id", name)
   | _ => failWith("Expected ListAttribute itemType")

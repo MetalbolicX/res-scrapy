@@ -26,6 +26,50 @@ testAsync("count constraint CLI rejects before extraction", planned => {
   ->ignore
 })
 
+[
+  (
+    "negative list limit",
+    `{"config":{"rowSelector":"ul"},"fields":{"x":{"selector":"li","type":"list","listOptions":{"limit":-1}}}}`,
+    "Invalid field type \"listOptions.limit must be a non-negative integer, got -1\" for field \"x\"\n",
+  ),
+  (
+    "string list limit",
+    `{"config":{"rowSelector":"ul"},"fields":{"x":{"selector":"li","type":"list","listOptions":{"limit":"2"}}}}`,
+    "Invalid field type \"listOptions.limit must be a non-negative integer, got \"2\"\" for field \"x\"\n",
+  ),
+  (
+    "numeric config rowSelector",
+    `{"config":{"rowSelector":5},"fields":{"x":{"selector":"li"}}}`,
+    "config.rowSelector must be a string, got number\n",
+  ),
+  (
+    "numeric table rowSelector",
+    `{"fields":{"t":{"selector":"table","type":"table","tableOptions":{"rowSelector":5,"columns":[{"name":"a","selector":"td"}]}}}}`,
+    "Invalid field type \"tableOptions.rowSelector must be a string, got number\" for field \"t\"\n",
+  ),
+]->Array.forEach(((name, schema, expectedStderr)) => {
+  testAsync(`schema type CLI rejects ${name} before extraction`, planned => {
+    runCli(~args=["--schema", schema], ~input="<ul><li>a</li><li>b</li><li>c</li></ul>")
+    ->Promise.then(
+      result => {
+        isIntEqualTo(1, result.exitCode)
+        isTextEqualTo("", result.stdout)
+        isTextEqualTo(expectedStderr, result.stderr)
+        planned(~planned=3, ())
+        Promise.resolve()
+      },
+    )
+    ->Promise.catch(
+      _ => {
+        failWith("CLI execution failed")
+        planned(~planned=0, ())
+        Promise.resolve()
+      },
+    )
+    ->ignore
+  })
+})
+
 ["all", "join"]->Array.forEach(mode => {
   testAsync(`guide attribute CLI ${mode} returns joined string`, planned => {
     runCli(

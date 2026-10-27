@@ -644,7 +644,7 @@ Key options:
 - `attribute` (for attribute items).
 - `unique`.
 - `filter` (regex).
-- `limit`: omitted or null means unlimited; numeric 0 means zero items.
+- `limit`: omitted or null means unlimited; numeric 0 means zero items. Any other value must be a non-negative integer; negatives, fractions, strings and booleans fail schema validation.
 - `join` (return string).
 
 Example:
@@ -670,7 +670,7 @@ Removed keys: `numberOptions.onError`, `dateOptions.strict`, `jsonOptions.onErro
 
 Top-level `config` keys you will use:
 
-- `rowSelector` (string): root selector for row-based extraction. Null is treated as absent and selects the default zip strategy.
+- `rowSelector` (string): root selector for row-based extraction. Null is treated as absent and selects the default zip strategy. Any other non-string value fails schema validation (`tableOptions.rowSelector` follows the same rule).
 - `ignoreErrors` (boolean): controls required-field-missing and table-column extraction errors (default: false; see [Error handling](#error-handling))
 - `limit` (number): max rows to return (0 = unlimited). Explicit `null` is accepted and means unlimited (same as `0`).
 - `defaults`: object to set per-type default options (text, number, boolean, datetime, url)

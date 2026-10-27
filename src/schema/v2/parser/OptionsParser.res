@@ -156,12 +156,6 @@ let parseCountOptionsResult: {..} => result<option<countOptions>, string> = fiel
   }
 }
 
-let parseCountOptions: {..} => option<countOptions> = fieldJson =>
-  switch parseCountOptionsResult(fieldJson) {
-  | Ok(opts) => opts
-  | Error(_) => None
-  }
-
 // ---------------------------------------------------------------------------
 // url options
 // ---------------------------------------------------------------------------
@@ -277,7 +271,7 @@ let parseListItemType: string => listItemType = s => {
   }
 }
 
-let parseListOptions: {..} => listOptions = fieldJson => {
+let parseListOptions: {..} => result<listOptions, string> = fieldJson => {
   let raw: option<{..}> = dictGet(fieldJson, "listOptions")
   let itemType = switch dictGetField(raw, "itemType") {
   | Some(s) => parseListItemType(s)
@@ -285,12 +279,17 @@ let parseListOptions: {..} => listOptions = fieldJson => {
   }
   let unique: option<bool> = dictGetField(raw, "unique")
   let filter: option<string> = dictGetField(raw, "filter")
-  let limit: option<int> = switch (dictGetField(raw, "limit"): option<JSON.t>) {
-  | None | Some(JSON.Null) => None
-  | Some(value) => Some(Obj.magic(value))
-  }
   let join: option<string> = dictGetField(raw, "join")
-  {itemType, ?unique, ?filter, ?limit, ?join}
+  // The guard proves the JSON value is a safe non-negative integer before the cast.
+  let limitResult: result<option<int>, string> = switch (
+    dictGetField(raw, "limit"): option<JSON.t>
+  ) {
+  | None | Some(JSON.Null) => Ok(None)
+  | Some(value) if ObjectBinding.isNonNegativeInteger(value) => Ok(Some(Obj.magic(value)))
+  | Some(value) =>
+    Error(`listOptions.limit must be a non-negative integer, got ${NodeUtil.jsonStringify(value)}`)
+  }
+  limitResult->Result.map(limit => {itemType, ?unique, ?filter, ?limit, ?join})
 }
 
 // ---------------------------------------------------------------------------
@@ -367,7 +366,7 @@ let parseColumnFieldTypeVisitor: parseColumnFieldTypeVisitor<{..}> = {
     | Ok(opts) => Ok(ColumnDateTime(opts))
     | Error(msg) => Error(msg)
     },
-  list: columnJson => Ok(ColumnList(parseListOptions(columnJson))),
+  list: columnJson => parseListOptions(columnJson)->Result.map(opts => ColumnList(opts)),
   attribute: columnJson =>
     switch dictGet(columnJson, "attributes") {
     | Some(attributes) if !ObjectBinding.isNonEmptyStringArray(attributes) =>
@@ -430,11 +429,19 @@ let parseColumnField: {..} => result<columnField, string> = columnJson => {
   }
 }
 
+let parseTableRowSelector: {..} => result<option<string>, string> = raw =>
+  switch (dictGet(raw, "rowSelector"): option<JSON.t>) {
+  | None | Some(JSON.Null) => Ok(None)
+  | Some(JSON.String(selector)) => Ok(Some(selector))
+  | Some(other) =>
+    Error(`tableOptions.rowSelector must be a string, got ${ObjectBinding.jsonType(other)}`)
+  }
+
 let parseTableOptions: {..} => result<tableOptions, string> = fieldJson => {
   switch dictGet(fieldJson, "tableOptions") {
   | None => Error("table field requires a \"tableOptions\" object")
   | Some(raw) => {
-      let rowSelector: option<string> = dictGet(raw, "rowSelector")
+      let rowSelectorResult = parseTableRowSelector(raw)
       switch dictGet(raw, "columns") {
       | None => Error("table field requires \"tableOptions.columns\"")
       | Some(columnsRaw) if !ObjectBinding.isArray(columnsRaw) =>
@@ -471,7 +478,8 @@ let parseTableOptions: {..} => result<tableOptions, string> = fieldJson => {
 
                 switch parsedColumnsResult {
                 | Error(e) => Error(e)
-                | Ok(columns) => Ok({?rowSelector, columns})
+                | Ok(columns) =>
+                  rowSelectorResult->Result.map(rowSelector => {?rowSelector, columns})
                 }
               }
             }

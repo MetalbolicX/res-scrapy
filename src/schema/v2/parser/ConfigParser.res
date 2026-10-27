@@ -223,17 +223,22 @@ let parseConfigResult: {..} => result<schemaConfig, schemaError> = schemaJson =>
       | Ok(limit) =>
         switch validateDefaultsOptions(raw) {
         | Error(e) => Error(e)
-        | Ok() => {
-            let rowSelector: option<string> = switch (dictGet(raw, "rowSelector"): option<JSON.t>) {
-            | None | Some(JSON.Null) => None
-            | Some(value) => Some(Obj.magic(value))
+        | Ok() =>
+          switch (dictGet(raw, "rowSelector"): option<JSON.t>) {
+          | None | Some(JSON.Null) => Ok(None)
+          | Some(JSON.String(selector)) => Ok(Some(selector))
+          | Some(other) =>
+            Error(
+              InvalidJson(
+                `config.rowSelector must be a string, got ${ObjectBinding.jsonType(other)}`,
+              ),
+            )
+          }->Result.map(rowSelector =>
+            switch parseDefaults(raw) {
+            | None => {ignoreErrors, limit, ?rowSelector}
+            | Some(defaults) => {ignoreErrors, limit, ?rowSelector, defaults}
             }
-            let defaults = parseDefaults(raw)
-            switch defaults {
-            | None => Ok({ignoreErrors, limit, ?rowSelector})
-            | Some(defaults) => Ok({ignoreErrors, limit, ?rowSelector, defaults})
-            }
-          }
+          )
         }
       }
     }
