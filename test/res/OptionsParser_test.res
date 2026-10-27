@@ -49,6 +49,12 @@ test("table rowSelector must be a string when present", () => {
   | Ok(opts) => isOptionEqualTo(Some("tr.data"), opts.rowSelector, ~eq=(a, b) => a == b)
   | Error(msg) => failWith(`Expected string rowSelector to be accepted, got ${msg}`)
   }
+  switch OptionsParser.parseTableOptions(
+    objectFromJsonString(`{"tableOptions":{"rowSelector":null,${columns}}}`),
+  ) {
+  | Ok(opts) => isOptionEqualTo(None, opts.rowSelector, ~eq=(a, b) => a == b)
+  | Error(msg) => failWith(`Expected null rowSelector to be treated as absent, got ${msg}`)
+  }
 })
 
 test("count constraints reject exact field messages including null and min precedence", () => {
