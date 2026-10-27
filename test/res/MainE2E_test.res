@@ -161,11 +161,9 @@ testAsync("table CLI: null tableOptions.rowSelector matches omitted rowSelector"
     buffered-stdout E2E writes a large known-length payload (> 64 KB, more
     than the kernel pipe absorbs while the reader is paused). */
 let itemHtml = (count: int): string => {
-  let items =
-    Belt.Array.mapWithIndex(
-      Belt.Array.make(count, 0),
-      (i, _) => `<li class="item">item number ${i->Int.toString}</li>`,
-    )
+  let items = Belt.Array.mapWithIndex(Belt.Array.make(count, 0), (i, _) =>
+    `<li class="item">item number ${i->Int.toString}</li>`
+  )
   ["<ul>"]->Array.concat(items)->Array.concat(["</ul>"])->Array.join("")
 }
 
@@ -189,7 +187,10 @@ testAsync(
       // 10k rows: 10000×(14 + digits) + 9999 commas + 2 brackets + 1 newline
       // does not escape, and the input is pure ASCII, chars = bytes.
       isIntEqualTo(188892, String.length(result.stdout))
-      isTextEqualTo("item number 9999", Array.last(result.stdout->TestHelpers.stringArrayFromJsonString)->Option.getOr(""))
+      isTextEqualTo(
+        "item number 9999",
+        Array.last(result.stdout->TestHelpers.stringArrayFromJsonString)->Option.getOr(""),
+      )
       planned(~planned=4, ())
       Promise.resolve()
     })
@@ -965,10 +966,11 @@ testAsync(
           let matching =
             warnings
             ->Array.get(0)
-            ->Option.map(first =>
-              [undiciUnavailableText, allProxyOnlyText]
-              ->Array.filter(w => w == first)
-              ->Array.length
+            ->Option.map(
+              first =>
+                [undiciUnavailableText, allProxyOnlyText]
+                ->Array.filter(w => w == first)
+                ->Array.length,
             )
             ->Option.getOr(0)
           isIntEqualTo(1, matching)
