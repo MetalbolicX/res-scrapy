@@ -102,6 +102,52 @@ module TestSupport = {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Flush-before-exit — bounded stdout drain for fatal exits. */
+/* -------------------------------------------------------------------------- */
+
+/** Minimal writable-stream surface needed to flush buffered output. */
+type writable
+
+/** Bytes buffered in the stream but not yet handed to the operating system. */
+@get external writableLength: writable => int = "writableLength"
+
+/** Writes a chunk; `cb` fires once that chunk and every earlier write landed. */
+@send external writeChunk: (writable, string, unit => unit) => bool = "write"
+
+type flushTimer
+external scheduleTimeout: (unit => unit, int) => flushTimer = "setTimeout"
+external cancelTimeout: flushTimer => unit = "clearTimeout"
+
+/** `process.stdout`, the stream whose buffered bytes must flush before exit. */
+@val @scope("process") external stdout: writable = "stdout"
+
+/** Runs `exitFn(code)` exactly once: immediately when nothing is buffered,
+  * otherwise after a zero-length write callback flushes earlier writes, with
+  * `graceMs` as the upper bound. Does not set `process.exitCode`. */
+let exitWhenFlushed = (stream: writable, exitFn: int => unit, graceMs: int, code: int): unit => {
+  let exited = ref(false)
+  let exitOnce = () =>
+    if !exited.contents {
+      exited.contents = true
+      exitFn(code)
+    }
+  if stream->writableLength == 0 {
+    exitOnce()
+  } else {
+    let timer = scheduleTimeout(() => exitOnce(), graceMs)
+    stream
+    ->writeChunk("", () => {
+      timer->cancelTimeout
+      exitOnce()
+    })
+    ->ignore
+  }
+}
+
+/** Production exit path: flush `process.stdout` (bounded to 2 s), then exit. */
+let exitAfterFlush = (code: int): unit => exitWhenFlushed(stdout, code => exit(code), 2000, code)
+
+/* -------------------------------------------------------------------------- */
 /* Global runtime event handlers — typed wrapper around a %raw FFI island. */
 /* -------------------------------------------------------------------------- */
 
@@ -110,7 +156,9 @@ module TestSupport = {
   * a globalThis flag.
   *
   * - `reporter` — callback invoked with each error message.
-  * - `exitFn`   — callback invoked with the desired exit code on fatal events.
+  * - `exitFn`   — callback invoked with the desired exit code on fatal events;
+  *                production passes `exitAfterFlush` so buffered stdout drains
+  *                before the process terminates.
   */
 let registerGlobalRuntimeHandlers: (
   string => unit,

@@ -67,11 +67,12 @@ let isExecutedAsScript = ImportMetaBinding.isExecutedAsScript
 
 /** Register global Node.js event handlers for uncaught exceptions, unhandled
   * rejections, and termination signals. Handlers report and then terminate
-  * the process with the given exit code via src/bindings/NodeProcess.res.
+  * the process with the given exit code via src/bindings/NodeProcess.res,
+  * flushing buffered stdout first.
   */
 let registerGlobalRuntimeHandlers = NodeProcess.registerGlobalRuntimeHandlers
 
 if isExecutedAsScript() {
-  registerGlobalRuntimeHandlers(Console.error, NodeProcess.exit)
+  registerGlobalRuntimeHandlers(Console.error, NodeProcess.exitAfterFlush)
   await main()
 }

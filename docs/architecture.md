@@ -471,6 +471,13 @@ errors and setup failures pause input and release retained chunks without
 destroying shared stdin or removing unrelated listeners. Setup failures resolve
 the existing `ReadError` result rather than rejecting the promise.
 
+### Fatal exits (`NodeProcess.res`)
+
+Uncaught exceptions, unhandled rejections and termination signals activate the
+same `exitAfterFlush` path: when `process.stdout` still has buffered bytes it
+waits for a zero-length write callback to drain them (bounded by a 2-second
+grace period) and then exits once, so piped output is never truncated.
+
 ## 11. Build Pipeline
 
 ```mermaid
