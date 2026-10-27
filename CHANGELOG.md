@@ -7,6 +7,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ## [Unreleased]
 
 ### Fixed
+- Stdin limits count UTF-8 bytes; aborted reads pause input, detach owned listeners and release timers/chunks without destroying shared stdin.
 - HTTP 429/503 retries honor valid Retry-After seconds/date hints with a 60-second cap and unchanged attempt budgets.
 - Fetched responses above 50 MiB are rejected without retries; unknown-length bodies are checked after buffering, not streamed under a strict memory bound.
 - Fetched HTML now respects declared response charsets with a bounded meta sniff and UTF-8 fallback.

@@ -41,8 +41,66 @@ type stdInput = {
 /** Resumes a paused readable stream, allowing data events to flow. */
 @send external resume: stdInput => unit = "resume"
 
+/** Stop flow without destroying a stream owned by the process/caller. */
+@send external pause: stdInput => unit = "pause"
+@send
+external removeDataListener: (stdInput, @as("data") _, string => unit) => unit = "removeListener"
+@send external removeEndListener: (stdInput, @as("end") _, unit => unit) => unit = "removeListener"
+@send
+external removeErrorListener: (stdInput, @as("error") _, JsExn.t => unit) => unit = "removeListener"
+/** UTF-8 byte count, independent of JS UTF-16 string length. */
+@val @scope("Buffer") external utf8ByteLength: (string, @as("utf8") _) => int = "byteLength"
+
 /** Sets the character encoding for data events (e.g. `"utf8"`). */
 @send external setEncoding: (stdInput, string) => unit = "setEncoding"
+/** Test-only owned PassThrough fixtures. Raw interop is confined here so tests
+    never mutate process.stdin or global timers. Sentinel listeners belong to
+    the fixture, not the reader, and setup faults exercise partial cleanup. */
+module TestSupport = {
+  type t
+  @module("node:stream") @new external makePassThrough: unit => stdInput = "PassThrough"
+  let wrap: (stdInput, option<bool>, option<string>) => t = %raw(`(stream, tty, failAt) => {
+    stream.isTTY = tty;
+    const state = { stream, sentinelEnds: 0, sentinelErrors: 0, resumes: 0 };
+    stream.on('end', () => { state.sentinelEnds++; });
+    stream.on('error', () => { state.sentinelErrors++; });
+    const on = stream.on;
+    stream.on = function(event, cb) {
+      if (failAt === event) throw new Error('fixture ' + event);
+      return on.call(this, event, cb);
+    };
+    const encoding = stream.setEncoding;
+    stream.setEncoding = function(value) {
+      if (failAt === 'encoding') throw new Error('fixture encoding');
+      return encoding.call(this, value);
+    };
+    const resume = stream.resume;
+    stream.resume = function() {
+      state.resumes++;
+      if (failAt === 'resume') throw new Error('fixture resume');
+      return resume.call(this);
+    };
+    return state;
+  }`)
+  let make = (~tty=?, ~failAt=?, ()) => wrap(makePassThrough(), tty, failAt)
+  @get external stream: t => stdInput = "stream"
+  @get external sentinelEnds: t => int = "sentinelEnds"
+  @get external sentinelErrors: t => int = "sentinelErrors"
+  @get external resumes: t => int = "resumes"
+  @send external write: (stdInput, string) => unit = "write"
+  @send external end_: stdInput => unit = "end"
+  @send external destroy: stdInput => unit = "destroy"
+  @send external listenerCount: (stdInput, string) => int = "listenerCount"
+  let paused: stdInput => bool = %raw(`stream => stream.readableFlowing === false`)
+  let emitError: (
+    stdInput,
+    string,
+  ) => unit = %raw(`(stream, message) => { stream.emit('error', new Error(message)); }`)
+  let lateEvents: stdInput => unit = %raw(`stream => {
+    stream.emit('data', 'late'); stream.emit('end'); stream.emit('error', new Error('late'));
+  }`)
+}
+
 /* -------------------------------------------------------------------------- */
 /* Global runtime event handlers — typed wrapper around a %raw FFI island. */
 /* -------------------------------------------------------------------------- */

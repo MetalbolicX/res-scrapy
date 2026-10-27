@@ -456,6 +456,16 @@ Transport parameters have sensible defaults:
 
 ---
 
+### Stdin lifecycle (`StdIn.res`)
+
+Stdin reads enforce a 50 MiB UTF-8 byte limit and a 30-second deadline. The
+injectable `readFromStream` reader keeps the zero-argument production wrapper
+unchanged. Every terminal path clears the timer and removes only the reader's
+own data/end/error callbacks before resolving once. Overflow, timeout, stream
+errors and setup failures pause input and release retained chunks without
+destroying shared stdin or removing unrelated listeners. Setup failures resolve
+the existing `ReadError` result rather than rejecting the promise.
+
 ## 11. Build Pipeline
 
 ```mermaid
