@@ -7,10 +7,17 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 ## [Unreleased]
 
 ### Changed
+- **Breaking:** Count `min`/`max` constraints, including `config.defaults.count` counterparts and present-null values, now fail schema validation instead of being silently ignored.
+- **Breaking:** Text fields with `join` now join all matches within each row, or broadcast one document-wide joined value in zip mode. Joined-only zip schemas produce one row when a selector matches, otherwise none; Count/List-only schemas still produce no rows.
+- **Breaking:** Table mode and schema table fields omit the first pure header row inside `tbody`; mixed header/data rows, explicit schema row selectors, and no-tbody fallback behavior are unchanged.
 - **Breaking:** Missing zip Boolean Presence cells now produce `false` instead of `null` when no explicit default is supplied; required checks and row-mode behavior are unchanged.
 - **Breaking:** Zip extraction retains the longest ordinary scalar selector's rows, padding missing cells with their default or null instead of truncating to the first selector.
 
 ### Fixed
+- Explicit null list limits now mean unlimited (numeric zero still means zero items), and null `config.rowSelector` selects zip mode like an omitted selector.
+- JSON dot paths now accept an optional leading `$.` or standalone `$` for the whole value; this is not full JSONPath support.
+- URL `validate:false` now preserves nonempty raw attributes on parse failure only; successfully parsed unsafe schemes remain rejected.
+- The schema guide now documents attribute mode `first` as the default and `attributeOptions.joinSep`; `all` and `join` both return the same joined string.
 - Invalid URL templates now report their error once, without an additional misleading empty-template error.
 - Stdin mode warns about ignored fetch options only when explicitly supplied, not when using defaults.
 - The CLI now terminates after reporting SIGINT, SIGTERM, or a fatal runtime error instead of leaving pending work running.

@@ -94,7 +94,8 @@ When present, the extractor treats each element matching `rowSelector` as an out
 Without `rowSelector`, each selector runs against the whole document and results
 are zipped by index. Row count is the maximum match count across ordinary scalar
 fields, independent of field order; `config.limit` caps that maximum afterwards.
-Missing scalar cells use their explicit default or null. Required missing cells
+Missing scalar cells use their explicit default or null (absent Boolean Presence
+uses false when no default is supplied; see [Boolean](#5-boolean)). Required missing cells
 fail with `RequiredFieldMissing` unless `ignoreErrors` is true. Count/List and joined
 text are cached aggregates broadcast to each row, not row-count drivers. Count/List-only
 schemas return `[]`; joined-only schemas retain the one-row-if-matched exception.
@@ -365,8 +366,11 @@ Key options:
 
 - `attribute` (legacy single).
 - `attributes` (array).
-- `attrMode` (`first`, `firstNonEmpty` (default), `all`, `join`).
-- `attrJoin`.
+- `attrMode` (`first` (default), `firstNonEmpty`, `all`, `join`).
+- `attributeOptions.joinSep` (default: one space).
+
+`all` and `join` behave identically: both return a separator-joined **string**,
+not an array. Missing attributes are skipped; empty attribute values are retained.
 
 Example (lazy image):
 
@@ -379,6 +383,32 @@ Example (lazy image):
     "attrMode": "firstNonEmpty"
   }
 }
+```
+
+Example (both attributes nonempty):
+
+```html
+<img data-src="lazy.jpg" src="fallback.jpg">
+```
+
+```json
+{
+  "fields": {
+    "image": {
+      "selector": "img",
+      "type": "attribute",
+      "attributes": ["data-src", "src"],
+      "attrMode": "all",
+      "attributeOptions": { "joinSep": "|" }
+    }
+  }
+}
+```
+
+With either `"attrMode": "all"` or `"attrMode": "join"`, `--schema` returns:
+
+```json
+[{"image":"lazy.jpg|fallback.jpg"}]
 ```
 
 ### 3. HTML
@@ -441,16 +471,16 @@ Purpose: interpret truthy/falsey values.
 Key options:
 
 - `mode` (`mapping` default, `presence`, `attributeCheck`).
+- `trueValues`.
+- `falseValues`.
+- `attribute`.
+- `onUnknown` (`false` default).
 
 In zip mode, an absent Presence cell becomes `false` unless an explicit default
 (including `null`) is supplied. Required checks still run before this fallback;
 `ignoreErrors: true` permits it. In row mode, absent Presence remains `false`
 even with an explicit default. Mapping and attributeCheck missing cells remain
 `null` unless a default is supplied.
-- `trueValues`.
-- `falseValues`.
-- `attribute`.
-- `onUnknown` (`false` default).
 
 Example (presence):
 
@@ -639,11 +669,11 @@ Default values (summary):
 
 ## Error handling
 
-`ignoreErrors` (default `false`) governs two situations. (1) Required fields: when a required field matches nothing, extraction fails unless `ignoreErrors` is true; when true, the field is assigned its configured `default` value or `null` and the row continues. (2) Table field columns: with `ignoreErrors` true, a cell whose extraction fails is replaced with that column's configured default or `null` instead of failing the row. This does not suppress other extraction errors elsewhere. If no rows match at all, extraction returns an empty result regardless of the flag; required-missing errors require an existing row.
+`ignoreErrors` (default `false`) governs two situations. (1) Required fields: when a required field matches nothing, extraction fails unless `ignoreErrors` is true; when true, the field is assigned its configured `default` value or `null` and the row continues (zip Presence without a default uses `false`). Row-mode absent Presence is an existing exception: it returns `false` before required checks and ignores explicit defaults. (2) Table field columns: with `ignoreErrors` true, a cell whose extraction fails is replaced with that column's configured default or `null` instead of failing the row. This does not suppress other extraction errors elsewhere. If no rows match at all, extraction returns an empty result regardless of the flag; required-missing errors require an existing row.
 
 Other field-level failures follow these rules:
 
-1. Unsupported inert options are rejected during schema validation: `numberOptions.onError`, `dateOptions.strict`, and `jsonOptions.onError` (including corresponding number and datetime defaults).
+1. Unsupported count constraints (`countOptions.min`/`max` and `config.defaults.count.min`/`max`) are rejected during schema validation, including present-null values. Other unsupported inert options are also rejected: `numberOptions.onError`, `dateOptions.strict`, and `jsonOptions.onError` (including corresponding number and datetime defaults).
 2. Validation errors (e.g., URL invalid): treated per field policy
 
 Schema-level validation errors include: invalid JSON, missing `fields`, invalid field type, invalid selector, invalid options.

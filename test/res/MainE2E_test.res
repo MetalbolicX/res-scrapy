@@ -3,6 +3,58 @@ open Assertions
 open TestHelpers
 open CliRunner
 
+testAsync("count constraint CLI rejects before extraction", planned => {
+  runCli(
+    ~args=["--schema", `{"fields":{"n":{"selector":"i","type":"count","countOptions":{"min":1}}}}`],
+    ~input="<i>A</i>",
+  )
+  ->Promise.then(result => {
+    isIntEqualTo(1, result.exitCode)
+    isTextEqualTo("", result.stdout)
+    isTextEqualTo(
+      "Invalid field type \"count option min is accepted but not implemented; this build rejects it instead of silently ignoring it\" for field \"n\"\n",
+      result.stderr,
+    )
+    planned(~planned=3, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("CLI execution failed")
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+["all", "join"]->Array.forEach(mode => {
+  testAsync(`guide attribute CLI ${mode} returns joined string`, planned => {
+    runCli(
+      ~args=[
+        "--schema",
+        `{"fields":{"image":{"selector":"img","type":"attribute","attributes":["data-src","src"],"attrMode":"${mode}","attributeOptions":{"joinSep":"|"}}}}`,
+      ],
+      ~input=`<img data-src="lazy.jpg" src="fallback.jpg">`,
+    )
+    ->Promise.then(
+      result => {
+        isIntEqualTo(0, result.exitCode)
+        isTextEqualTo("[{\"image\":\"lazy.jpg|fallback.jpg\"}]\n", result.stdout)
+        isTextEqualTo("", result.stderr)
+        planned(~planned=3, ())
+        Promise.resolve()
+      },
+    )
+    ->Promise.catch(
+      _ => {
+        failWith("CLI execution failed")
+        planned(~planned=0, ())
+        Promise.resolve()
+      },
+    )
+    ->ignore
+  })
+})
+
 [
   ("maximum", "<i>I</i><s>A</s><s>B</s>", "[{\"i\":\"I\",\"s\":\"A\"},{\"i\":null,\"s\":\"B\"}]\n"),
   ("equal-length control", "<i>I</i><s>A</s>", "[{\"i\":\"I\",\"s\":\"A\"}]\n"),
