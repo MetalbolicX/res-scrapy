@@ -864,9 +864,11 @@ testAsync("output file: invalid format returns CLI error", planned => {
   ->ignore
 })
 
-// undici is not a dependency, so the agent never loads here: the run must print
-// exactly the unavailable warning and never the ALL_PROXY-only note on top of it.
+// E2E contract: exactly one proxy warning line per run. Which of the two known
+// texts is emitted depends on whether undici's agent actually loads; the unit
+// tests in NodeUndiciBinding_test.res pin that choice deterministically.
 let undiciUnavailableText = "Warning: HTTP_PROXY/http_proxy/HTTPS_PROXY/https_proxy/ALL_PROXY/all_proxy is set but undici is unavailable — proxy will be ignored. Install undici with: npm install undici"
+let allProxyOnlyText = "Warning: ALL_PROXY/all_proxy is set but undici's EnvHttpProxyAgent does not route it — requests will connect directly. Set HTTP_PROXY/HTTPS_PROXY instead."
 
 testAsync(
   "ALL_PROXY-only environment prints exactly one warning on stderr",
@@ -911,8 +913,21 @@ testAsync(
             result.stderr
             ->String.split("\n")
             ->Array.filter(line => line->String.startsWith("Warning:"))
-          isTruthy(warnings == [undiciUnavailableText])
-          planned(~planned=3, ())
+          // (a) exactly one Warning: line — the run report follows on stderr, so
+          // pin the set of warning lines rather than the whole stream.
+          isIntEqualTo(1, warnings->Array.length)
+          // (b)+(c) that single line is one of the two known texts, never both.
+          let matching =
+            warnings
+            ->Array.get(0)
+            ->Option.map(first =>
+              [undiciUnavailableText, allProxyOnlyText]
+              ->Array.filter(w => w == first)
+              ->Array.length
+            )
+            ->Option.getOr(0)
+          isIntEqualTo(1, matching)
+          planned(~planned=4, ())
         | Error(_) =>
           failWith("ALL_PROXY warning E2E spawn failed")
           planned(~planned=0, ())
