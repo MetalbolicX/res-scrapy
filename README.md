@@ -96,6 +96,10 @@ Options:
 --cookie Cookie value (repeatable, sugar for --header)
 ```
 
+For HTTP 429 and 503 retries, a valid `Retry-After` seconds value or HTTP-date
+replaces exponential backoff, clamped to 0–60 seconds. Missing or invalid hints
+use normal backoff. The `--retry` total-attempt budget is unchanged.
+
 ## Key Features
 
 ### 10 Field Types for Semi-Structured Data Extraction

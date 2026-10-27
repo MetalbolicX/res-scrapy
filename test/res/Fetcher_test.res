@@ -19,6 +19,7 @@ let fakeResponse = (
   ~cancel=() => Promise.resolve(),
   ~read=() => (),
   ~contentLength: option<string>=None,
+  ~retryAfter: option<string>=None,
   status,
   location,
   body,
@@ -27,6 +28,8 @@ let fakeResponse = (
     get: name =>
       if name == "location" {
         location
+      } else if name == "retry-after" {
+        retryAfter
       } else if name == "content-length" {
         contentLength
       } else {
@@ -54,6 +57,179 @@ let fakeResponse = (
   }
   Obj.magic(response)
 }
+
+let retryNow = 1735689600000.0 // 2025-01-01T00:00:00Z
+let delayCases = [
+  (Some("2"), 2000),
+  (Some("0"), 0),
+  (Some(" 2 "), 2000),
+  (Some("Wed, 01 Jan 2025 00:00:05 GMT"), 5000),
+  (Some("Tue, 31 Dec 2024 23:59:59 GMT"), 0),
+  (Some("60"), 60000),
+  (Some("61"), 60000),
+  (Some("Wed, 01 Jan 2025 00:01:01 GMT"), 60000),
+  (None, 777),
+  (Some(""), 777),
+  (Some("  "), 777),
+  (Some("-1"), 777),
+  (Some("1.5"), 777),
+  (Some("garbage"), 777),
+  (Some("Infinity"), 777),
+  (Some("1e3"), 777),
+]
+delayCases->Array.forEachWithIndex((item, index) => {
+  let (retryAfter, expected) = item
+  test(`Retry-After delay case ${Int.toString(index)}`, () => {
+    isIntEqualTo(expected, Fetcher.retryAfterDelay(~retryAfter, ~nowMs=retryNow, ~backoffMs=777))
+  })
+})
+
+type retryResponse = {status: int, hint: option<string>, location: option<string>}
+let retryResponse = (~hint=None, ~location=None, status) => {status, hint, location}
+let retryCase = (
+  ~responses: array<retryResponse>,
+  ~budget=3,
+  ~expectedCalls,
+  ~waits,
+  ~expected,
+  name,
+) =>
+  testAsync(name, planned => {
+    let calls = ref(0)
+    let delays = ref([])
+    let cancels = ref(0)
+    let reads = ref(0)
+    let rawFetch = async (_, _) => {
+      let response = responses[min(calls.contents, Array.length(responses) - 1)]->Option.getOrThrow
+      calls := calls.contents + 1
+      fakeResponse(
+        ~retryAfter=response.hint,
+        ~cancel=() => {
+          cancels := cancels.contents + 1
+          Promise.resolve()
+        },
+        ~read=() => reads := reads.contents + 1,
+        response.status,
+        response.location,
+        "done",
+      )
+    }
+    Fetcher.retryWithRawFetch(
+      ~rawFetch,
+      ~sleep=ms => {
+        delays := Array.concat(delays.contents, [ms])
+        Promise.resolve()
+      },
+      ~nowMs=() => retryNow,
+      ~backoff=attempt => attempt * 777,
+      ~retryCount=budget,
+    )
+    ->Promise.then(result => {
+      isIntEqualTo(expectedCalls, calls.contents)
+      isTruthy(delays.contents == waits)
+      isTruthy(result == expected)
+      let success = expected == Ok("done")
+      isIntEqualTo(success ? 1 : 0, reads.contents)
+      isIntEqualTo(expectedCalls - (success ? 1 : 0), cancels.contents)
+      isTextEqualTo("HTTP 429: Found", Fetcher.fetchErrorToMessage(HttpError(429, "Found")))
+      planned(~planned=6, ())
+      Promise.resolve()
+    })
+    ->ignore
+  })
+
+retryCase(
+  ~responses=[retryResponse(~hint=Some("2"), 429), retryResponse(200)],
+  ~expectedCalls=2,
+  ~waits=[2000],
+  ~expected=Ok("done"),
+  "Retry-After 429 survives detailed transport",
+)
+retryCase(
+  ~responses=[retryResponse(~hint=Some("Wed, 01 Jan 2025 00:00:05 GMT"), 503), retryResponse(200)],
+  ~expectedCalls=2,
+  ~waits=[5000],
+  ~expected=Ok("done"),
+  "Retry-After 503 date survives detailed transport",
+)
+retryCase(
+  ~responses=[retryResponse(~hint=Some("2"), 500), retryResponse(200)],
+  ~expectedCalls=2,
+  ~waits=[777],
+  ~expected=Ok("done"),
+  "Retry-After ignored on 500",
+)
+retryCase(
+  ~responses=[retryResponse(~hint=Some("2"), 404)],
+  ~expectedCalls=1,
+  ~waits=[],
+  ~expected=Error(HttpError(404, "Found")),
+  "Retry-After 404 never retries",
+)
+retryCase(
+  ~responses=[retryResponse(~hint=Some("2"), 429)],
+  ~budget=1,
+  ~expectedCalls=1,
+  ~waits=[],
+  ~expected=Error(HttpError(429, "Found")),
+  "Retry-After exhausted budget never sleeps",
+)
+retryCase(
+  ~responses=[retryResponse(429), retryResponse(200)],
+  ~expectedCalls=2,
+  ~waits=[777],
+  ~expected=Ok("done"),
+  "Retry-After absent uses backoff",
+)
+retryCase(
+  ~responses=[retryResponse(~hint=Some("2"), 429), retryResponse(429), retryResponse(200)],
+  ~expectedCalls=3,
+  ~waits=[2000, 1554],
+  ~expected=Ok("done"),
+  "Retry-After does not leak across attempts",
+)
+retryCase(
+  ~responses=[
+    retryResponse(~hint=Some("2"), ~location=Some("/next"), 302),
+    retryResponse(429),
+    retryResponse(200),
+  ],
+  ~expectedCalls=3,
+  ~waits=[777],
+  ~expected=Ok("done"),
+  "Retry-After redirect hint does not leak",
+)
+
+testAsync("Retry-After network failure clears prior attempt hint", planned => {
+  let calls = ref(0)
+  let waits = ref([])
+  let rawFetch = async (_, _) => {
+    calls := calls.contents + 1
+    if calls.contents == 2 {
+      await Promise.reject(Failure("network failure"))
+    } else {
+      fakeResponse(~retryAfter=Some("2"), calls.contents == 1 ? 429 : 200, None, "done")
+    }
+  }
+  Fetcher.retryWithRawFetch(
+    ~rawFetch,
+    ~sleep=ms => {
+      waits := Array.concat(waits.contents, [ms])
+      Promise.resolve()
+    },
+    ~nowMs=() => retryNow,
+    ~backoff=n => n * 777,
+    ~retryCount=3,
+  )
+  ->Promise.then(result => {
+    isTruthy(result == Ok("done"))
+    isTruthy(waits.contents == [2000, 1554])
+    isIntEqualTo(3, calls.contents)
+    planned(~planned=3, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
 
 let sizeCase = (
   ~contentLength=None,

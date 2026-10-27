@@ -106,6 +106,22 @@ let decodeBytes: (arrayBuffer, string) => string = %raw(`(buffer, label) => {
 let decodeHtml = (buffer, contentType) =>
   decodeBytes(buffer, declaredCharset(contentType, asciiView(bytePrefix(buffer, 1024))))
 
+/** Retry-After numeric/date parsing stays at the JS runtime boundary.
+    Date.parse accepts bare numbers and malformed numeric strings as dates, so
+    require an HTTP-date shape before asking the runtime to parse it. */
+let retryAfterMilliseconds: (string, float) => option<float> = %raw(`(value, nowMs) => {
+  value = value.trim();
+  let ms;
+  if (/^[0-9]+$/.test(value)) ms = Number(value) * 1000;
+  else {
+    const httpDate = /^(?:[A-Za-z]{3}, [0-9]{2} [A-Za-z]{3} [0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2} GMT|[A-Za-z]+, [0-9]{2}-[A-Za-z]{3}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2} GMT|[A-Za-z]{3} [A-Za-z]{3} [ 0-9][0-9] [0-9]{2}:[0-9]{2}:[0-9]{2} [0-9]{4})$/;
+    if (!httpDate.test(value)) return undefined;
+    ms = Date.parse(value) - nowMs;
+  }
+  return Number.isFinite(ms) ? ms : undefined;
+}`)
+@val @scope("Date") external nowMs: unit => float = "now"
+
 /** Configuration object for fetch requests. */
 type options = {
   method?: string,

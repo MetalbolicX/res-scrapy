@@ -78,6 +78,16 @@ let retryWithAttempt: (
   ~retryCount: int,
 ) => promise<result<string, fetchError>>
 
+/** @internal Deterministic Retry-After selection and raw-transport retry seam. */
+let retryAfterDelay: (~retryAfter: option<string>, ~nowMs: float, ~backoffMs: int) => int
+let retryWithRawFetch: (
+  ~rawFetch: (string, option<NodeFetch.options>) => promise<NodeFetch.response>,
+  ~sleep: int => promise<unit>,
+  ~nowMs: unit => float,
+  ~backoff: int => int,
+  ~retryCount: int,
+) => promise<result<string, fetchError>>
+
 /**
   * Fetches all URLs with concurrency control.
   */

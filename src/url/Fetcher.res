@@ -4,6 +4,9 @@ type fetchError =
   | HttpError(int, string)
   | ParseError(string)
 
+type attemptOutcome = {result: result<string, fetchError>, retryAfter: option<string>}
+let outcome = result => {result, retryAfter: None}
+
 type fetchResult = {
   url: string,
   result: result<string, fetchError>,
@@ -107,9 +110,9 @@ let rec fetchWithRedirects = async (
   ~controller: NodeFetch.AbortSignal.controller,
   ~requests: int,
   ~maxBodyBytes: int,
-): result<string, fetchError> => {
+): attemptOutcome => {
   if requests >= 20 {
-    Error(NetworkError("Too many redirects (20)"))
+    outcome(Error(NetworkError("Too many redirects (20)")))
   } else {
     let options: NodeFetch.options = {
       method: "GET",
@@ -154,9 +157,11 @@ let rec fetchWithRedirects = async (
           ->Option.getOr(false)
         let rejectSize = async () => {
           await NodeFetch.cancelBody(response)
-          Error(
-            ParseError(
-              `Response exceeds maximum size of ${Int.toString(maxBodyBytes / (1024 * 1024))} MB`,
+          outcome(
+            Error(
+              ParseError(
+                `Response exceeds maximum size of ${Int.toString(maxBodyBytes / (1024 * 1024))} MB`,
+              ),
             ),
           )
         }
@@ -167,19 +172,28 @@ let rec fetchWithRedirects = async (
           if exceedsLimit(NodeFetch.byteLength(bytes)) {
             await rejectSize()
           } else {
-            Ok(NodeFetch.decodeHtml(bytes, NodeFetch.getHeader(response.headers, "content-type")))
+            outcome(
+              Ok(
+                NodeFetch.decodeHtml(bytes, NodeFetch.getHeader(response.headers, "content-type")),
+              ),
+            )
           }
         }
       } else {
+        let retryAfter = if response.status == 429 || response.status == 503 {
+          NodeFetch.getHeader(response.headers, "retry-after")
+        } else {
+          None
+        }
         await NodeFetch.cancelBody(response)
-        Error(HttpError(response.status, response.statusText))
+        {result: Error(HttpError(response.status, response.statusText)), retryAfter}
       }
     }
   }
 }
 
 /** Internal testing seam; public wrappers retain their existing signatures. */
-let fetchOnceWithBodyLimit = async (
+let fetchOnceDetailedWithRawFetch = async (
   ~maxBodyBytes=StdIn.maxStdinBytes,
   rawFetch,
   url,
@@ -212,21 +226,35 @@ let fetchOnceWithBodyLimit = async (
       | None => "Unknown error"
       }
       let isAborted = NodeFetch.AbortSignal.aborted(NodeFetch.AbortSignal.signal(controller))
-      classifyError(~message, ~isAborted, ~timeoutSeconds)
+      outcome(classifyError(~message, ~isAborted, ~timeoutSeconds))
     }
   }
+}
+
+let fetchOnceWithBodyLimit = async (
+  ~maxBodyBytes=StdIn.maxStdinBytes,
+  rawFetch,
+  url,
+  userAgent,
+  timeoutSeconds,
+  headers,
+) => {
+  let detail = await fetchOnceDetailedWithRawFetch(
+    ~maxBodyBytes,
+    rawFetch,
+    url,
+    userAgent,
+    timeoutSeconds,
+    headers,
+  )
+  detail.result
 }
 
 let fetchOnceWithRawFetch = (rawFetch, url, userAgent, timeoutSeconds, headers) =>
   fetchOnceWithBodyLimit(rawFetch, url, userAgent, timeoutSeconds, headers)
 
 /** Fetches a single URL with proxy routing and one timeout across all hops. */
-let fetchOnce: (
-  string,
-  string,
-  int,
-  array<(string, string)>,
-) => promise<result<string, fetchError>> = (url, userAgent, timeoutSeconds, headers) => {
+let fetchOnceDetailed = (url, userAgent, timeoutSeconds, headers) => {
   let rawFetch = async (requestUrl, options) => {
     let dispatcher = await getEnvProxyDispatcher()
     let optionsWithDispatcher: option<NodeFetch.options> = switch (dispatcher, options) {
@@ -240,35 +268,71 @@ let fetchOnce: (
     }
     await NodeFetch.fetch(requestUrl, optionsWithDispatcher)
   }
-  fetchOnceWithRawFetch(rawFetch, url, userAgent, timeoutSeconds, headers)
+  fetchOnceDetailedWithRawFetch(rawFetch, url, userAgent, timeoutSeconds, headers)
 }
 
-/** Shared retry loop: size ParseErrors use the existing non-retryable policy. */
-let retryWithAttempt = async (~attempt, ~sleep, ~retryCount) => {
-  let rec tryFetch = async (attemptNumber: int, maxAttempts: int) => {
-    let result = await attempt()
+let fetchOnce = async (url, userAgent, timeoutSeconds, headers) => {
+  let detail = await fetchOnceDetailed(url, userAgent, timeoutSeconds, headers)
+  detail.result
+}
 
-    switch result {
-    | Ok(_) => result
+/** Finite milliseconds are clamped before conversion to a ReScript int. */
+let retryAfterDelay = (~retryAfter, ~nowMs, ~backoffMs) =>
+  switch retryAfter->Option.flatMap(value => NodeFetch.retryAfterMilliseconds(value, nowMs)) {
+  | Some(ms) => Float.toInt(max(0.0, min(60000.0, ms)))
+  | None => backoffMs
+  }
+
+/** One retry loop owns the budget and per-attempt hint lifetime. */
+let retryDetailed = async (~attempt, ~sleep, ~nowMs, ~backoff, ~retryCount) => {
+  let rec tryFetch = async attemptNumber => {
+    let detail: attemptOutcome = await attempt()
+    switch detail.result {
+    | Ok(_) => detail.result
     | Error(err) =>
-      if attemptNumber < maxAttempts && isRetryable(err) {
-        let delayMs = backoffDelay(attemptNumber)
+      if attemptNumber < retryCount && isRetryable(err) {
+        let delayMs = retryAfterDelay(
+          ~retryAfter=detail.retryAfter,
+          ~nowMs=nowMs(),
+          ~backoffMs=backoff(attemptNumber),
+        )
         await sleep(delayMs)
-        await tryFetch(attemptNumber + 1, maxAttempts)
+        await tryFetch(attemptNumber + 1)
       } else {
-        result
+        detail.result
       }
     }
   }
-
-  await tryFetch(1, retryCount)
+  await tryFetch(1)
 }
 
-/** Fetches a URL with the unchanged total-attempt budget. */
+/** Preserve the existing result-only testing interface. */
+let retryWithAttempt = (~attempt, ~sleep, ~retryCount) =>
+  retryDetailed(
+    ~attempt=async () => outcome(await attempt()),
+    ~sleep,
+    ~nowMs=NodeFetch.nowMs,
+    ~backoff=backoffDelay,
+    ~retryCount,
+  )
+
+/** Injectable transport uses the exact detailed path used in production. */
+let retryWithRawFetch = (~rawFetch, ~sleep, ~nowMs, ~backoff, ~retryCount) =>
+  retryDetailed(
+    ~attempt=() => fetchOnceDetailedWithRawFetch(rawFetch, "http://example.test/", "agent", 5, []),
+    ~sleep,
+    ~nowMs,
+    ~backoff,
+    ~retryCount,
+  )
+
+/** Do not project away Retry-After before entering the production retry loop. */
 let fetchWithRetry = (url, userAgent, timeoutSeconds, retryCount, headers) =>
-  retryWithAttempt(
-    ~attempt=() => fetchOnce(url, userAgent, timeoutSeconds, headers),
+  retryDetailed(
+    ~attempt=() => fetchOnceDetailed(url, userAgent, timeoutSeconds, headers),
     ~sleep=delay,
+    ~nowMs=NodeFetch.nowMs,
+    ~backoff=backoffDelay,
     ~retryCount,
   )
 

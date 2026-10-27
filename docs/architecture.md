@@ -429,7 +429,7 @@ buffered.
 Transport parameters have sensible defaults:
 
 - **Timeout:** Configurable via `--timeout` (default: 30s, min: 1s). Implemented via `AbortController`.
-- **Retry:** Configurable via `--retry` (default: 3, min: 1). The value is the total fetch attempts per URL on retryable failures. It waits ~2s before the 2nd attempt, then ~4s, 8s, ... (doubling, ±0.5s jitter).
+- **Retry:** Configurable via `--retry` (default: 3, min: 1). The value is the total fetch attempts per URL on retryable failures. It waits ~2s before the 2nd attempt, then ~4s, 8s, ... (doubling, ±0.5s jitter). For terminal HTTP 429/503 responses only, a valid `Retry-After` integer-seconds value or HTTP-date replaces backoff, clamped to 0–60 seconds (past dates mean zero). Missing/invalid hints use backoff. Private per-attempt metadata reaches the shared retry loop without changing public results or error messages; redirect/prior-attempt hints never carry forward. Exhausted budgets never sleep.
 - **Retryable errors:** Network errors, timeouts, HTTP 429 (rate limit), HTTP 5xx (server errors).
 - **Concurrency:** Hand-rolled semaphore (no external dependency). Hard cap at 20 concurrent requests.
 - **User-Agent:** Configurable via `--user-agent`. Defaults to `res-scrapy/{version}`.
