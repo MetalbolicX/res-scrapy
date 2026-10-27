@@ -82,6 +82,11 @@ let dispatcherCase = (~env, ~loads, ~expectedReports, ~expectedLoads, ~expectsAg
       planned(~planned=3, ())
       Promise.resolve()
     })
+    ->Promise.catch(exn => {
+      failWithExn(`proxy dispatcher warnings: ${name} assertions failed`, exn)
+      planned(~planned=0, ())
+      Promise.resolve()
+    })
     ->ignore
   })
 

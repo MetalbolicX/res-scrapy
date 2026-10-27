@@ -91,3 +91,12 @@ let passWith: string => unit
  * @throws Will throw an exception to fail the current test
  */
 let failWith: string => unit
+/**
+ Explicitly fails a test with the caught exception's message appended, so
+ promise rejections report what actually failed instead of a canned string.
+ @param {string} message - Failure message to display
+ @param {exn} exn - The exception caught in a Promise.catch handler
+ @returns {unit}
+ @throws Will throw an exception to fail the current test
+*/
+let failWithExn: (string, exn) => unit
