@@ -414,17 +414,22 @@ meta charset or http-equiv content-type declaration within the first 1024 raw by
 otherwise UTF-8. Unsupported selected labels fall directly back to UTF-8. This is a
 bounded declaration sniff, not full browser encoding/BOM detection.
 
-Fetched responses have a 50 MiB (52,428,800-byte) acceptance cap, shared with
-`StdIn.maxStdinBytes`. A valid nonnegative decimal Content-Length above the cap is
-rejected before reading; actual bytes delivered by fetch (after content decoding)
-are also checked before charset decoding. Oversize responses return a non-retryable
+Fetched responses have a 50 MiB (52,428,800-byte) acceptance cap defined once in
+`SizeLimit.maxInputBytes` and shared with stdin (`StdIn.maxStdinBytes`). A valid
+nonnegative decimal Content-Length above the cap is rejected before reading; the
+body is otherwise streamed through `NodeFetch.readBodyWithin`, which keeps a
+running byte total and cancels the response stream on the first chunk that pushes
+the total over the cap. Oversize responses return a non-retryable
 `Parse error: Response exceeds maximum size of 50 MB`.
 
-**Maintenance limitation:** Unknown-length or understated bodies are checked only
-after `arrayBuffer()` buffers them. This is not a strict peak-memory bound and does
-not prevent allocation of an unlimited chunked body. Strict download-time memory
-protection needs a separate incremental byte-limited reader; HTML parsing remains
-buffered.
+Size messages use `SizeLimit.describe`: a whole number of MiB renders as `N MB`,
+any other cap renders its exact byte count, so a test-sized cap of 4 bytes prints
+`4 bytes` instead of `0 MB`.
+
+**Memory bound:** the cap bounds peak response memory because an unknown-length or
+understated body is cancelled as soon as it crosses the cap; the buffered bytes
+never exceed one chunk beyond the limit. In-range bodies are still joined into one
+buffer before charset decoding, so HTML parsing remains buffered.
 
 Transport parameters have sensible defaults:
 

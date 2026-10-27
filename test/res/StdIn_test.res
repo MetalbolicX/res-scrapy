@@ -100,7 +100,7 @@ streamCase(
   ~cap=3,
   ~finish=false,
   ~abort=true,
-  ~expected=Error(ReadError("Stdin exceeds maximum size of 0 MB")),
+  ~expected=Error(ReadError("Stdin exceeds maximum size of 3 bytes")),
   "stdin UTF8 exceeds cap three with producer open",
 )
 streamCase(~input="abcd", ~expected=Ok("abcd"), "stdin ASCII exact cap succeeds")
@@ -108,7 +108,7 @@ streamCase(
   ~input="abcde",
   ~finish=false,
   ~abort=true,
-  ~expected=Error(ReadError("Stdin exceeds maximum size of 0 MB")),
+  ~expected=Error(ReadError("Stdin exceeds maximum size of 4 bytes")),
   "stdin overflow pauses and detaches open producer",
 )
 streamCase(

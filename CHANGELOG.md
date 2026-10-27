@@ -27,7 +27,8 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Lowercase proxy environment variables now activate the optional proxy agent; routing and bypass support remain agent-owned.
 - Stdin limits count UTF-8 bytes; aborted reads pause input, detach owned listeners and release timers/chunks without destroying shared stdin.
 - HTTP 429/503 retries honor valid Retry-After seconds/date hints with a 60-second cap and unchanged attempt budgets.
-- Fetched responses above 50 MiB are rejected without retries; unknown-length bodies are checked after buffering, not streamed under a strict memory bound.
+- Fetched responses above 50 MiB are rejected without retries, and unknown-length or understated bodies now stop streaming at the cap instead of buffering the whole body first.
+- Size-limit errors print the exact byte count for caps that are not a whole number of MiB, so a sub-MiB cap no longer reports "0 MB".
 - Fetched HTML now respects declared response charsets with a bounded meta sniff and UTF-8 fallback.
 - Invalid URL templates now report their error once, without an additional misleading empty-template error.
 - Stdin mode warns about ignored fetch options only when explicitly supplied, not when using defaults.

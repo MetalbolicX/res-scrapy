@@ -9,9 +9,8 @@ let startTimeout: (int, unit => unit) => timeoutId = (ms, cb) => setTimeoutImpl(
 external clearTimeoutImpl: timeoutId => unit = "clearTimeout"
 let clearTimeout_ = clearTimeoutImpl
 
-/** Maximum UTF-8 stdin size in bytes (50 MiB). */
-let maxStdinBytes =
-  50 * 1024 * 1024
+/** Maximum UTF-8 stdin size in bytes, shared with the fetched-response cap. */
+let maxStdinBytes = SizeLimit.maxInputBytes
 /** Maximum time to wait for stdin completion (30 seconds). */
 let maxStdinMs =
   30 * 1000
@@ -66,11 +65,7 @@ let readFromStream = (
             if nextSize > maxBytes {
               complete(
                 ~abort=true,
-                Error(
-                  ReadError(
-                    `Stdin exceeds maximum size of ${Int.toString(maxBytes / 1024 / 1024)} MB`,
-                  ),
-                ),
+                Error(ReadError(`Stdin exceeds maximum size of ${SizeLimit.describe(maxBytes)}`)),
               )
             } else {
               totalBytes := nextSize

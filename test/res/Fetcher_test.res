@@ -10,14 +10,15 @@ type fakeResponseObject = {
   status: int,
   statusText: string,
   headers: fakeHeaders,
-  text: unit => promise<string>,
-  arrayBuffer: unit => promise<NodeFetch.arrayBuffer>,
-  body: {cancel: unit => promise<unit>},
+  body: NodeFetch.body,
 }
 
+/** `read` counts chunks the reader actually received; `cancel` fires when the
+    stream itself is cancelled (discarded body or cap reached mid-stream). */
 let fakeResponse = (
   ~cancel=() => Promise.resolve(),
   ~read=() => (),
+  ~chunks=?,
   ~contentLength: option<string>=None,
   ~retryAfter: option<string>=None,
   status,
@@ -45,15 +46,11 @@ let fakeResponse = (
       "Found"
     },
     headers,
-    text: () => {
-      read()
-      Promise.resolve(body)
-    },
-    arrayBuffer: () => {
-      read()
-      Promise.resolve(NodeFetch.bytesFromString(body))
-    },
-    body: {cancel: cancel},
+    body: NodeFetch.TestSupport.chunkStream(
+      ~chunks=chunks->Option.getOr([body]),
+      ~onChunk=read,
+      ~onCancel=cancel,
+    ),
   }
   Obj.magic(response)
 }
@@ -234,6 +231,7 @@ testAsync("Retry-After network failure clears prior attempt hint", planned => {
 let sizeCase = (
   ~contentLength=None,
   ~body="abcde",
+  ~chunks=?,
   ~cap=4,
   ~accepted=false,
   ~expectedReads=1,
@@ -247,6 +245,7 @@ let sizeCase = (
       calls := calls.contents + 1
       fakeResponse(
         ~contentLength,
+        ~chunks?,
         ~read=() => reads := reads.contents + 1,
         ~cancel=() => {
           cancels := cancels.contents + 1
@@ -274,9 +273,7 @@ let sizeCase = (
             accepted
               ? Ok(body)
               : Error(
-                  Fetcher.ParseError(
-                    `Response exceeds maximum size of ${Int.toString(cap / (1024 * 1024))} MB`,
-                  ),
+                  Fetcher.ParseError(`Response exceeds maximum size of ${SizeLimit.describe(cap)}`),
                 )
           ),
       )
@@ -290,6 +287,14 @@ let sizeCase = (
     ->ignore
   })
 
+sizeCase(
+  ~body="abcdefgh",
+  ~chunks=["ab", "cd", "ef", "gh"],
+  ~cap=3,
+  ~expectedReads=2,
+  "size overflow stops reading at the cap",
+)
+
 sizeCase(~contentLength=Some("5"), ~expectedReads=0, "size header rejects before read")
 sizeCase(~contentLength=Some("4294967296"), ~expectedReads=0, "size header does not overflow int32")
 sizeCase(~contentLength=Some("4"), ~body="abcd", ~accepted=true, "size exact boundary accepted")
@@ -299,6 +304,52 @@ sizeCase(~contentLength=Some("-1"), "size negative length checks actual bytes")
 sizeCase(~contentLength=Some("1"), "size understated length checks actual bytes")
 sizeCase(~body="éé", ~cap=3, "size counts bytes not UTF16")
 sizeCase(~body="éé", ~cap=4, ~accepted=true, "size multibyte boundary accepted")
+
+let defaultCapCase = (~contentLength, ~accepted, ~expectedReads, name) =>
+  testAsync(name, planned => {
+    let reads = ref(0)
+    let cancels = ref(0)
+    let rawFetch = async (_, _) =>
+      fakeResponse(
+        ~contentLength,
+        ~read=() => reads := reads.contents + 1,
+        ~cancel=() => {
+          cancels := cancels.contents + 1
+          Promise.resolve()
+        },
+        200,
+        None,
+        "ok",
+      )
+    Fetcher.fetchOnceWithRawFetch(rawFetch, "http://example.test/", "agent", 5, [])
+    ->Promise.then(result => {
+      isTruthy(
+        result == (
+            accepted
+              ? Ok("ok")
+              : Error(Fetcher.ParseError("Response exceeds maximum size of 50 MB"))
+          ),
+      )
+      isIntEqualTo(expectedReads, reads.contents)
+      isIntEqualTo(accepted ? 0 : 1, cancels.contents)
+      planned(~planned=3, ())
+      Promise.resolve()
+    })
+    ->ignore
+  })
+
+defaultCapCase(
+  ~contentLength=Some("52428801"),
+  ~accepted=false,
+  ~expectedReads=0,
+  "default 50 MB cap rejects a declared length above it",
+)
+defaultCapCase(
+  ~contentLength=Some("52428800"),
+  ~accepted=true,
+  ~expectedReads=1,
+  "default 50 MB cap accepts a declared length at the boundary",
+)
 
 testAsync("size rejection never retries in production retry loop", planned => {
   let calls = ref(0)
@@ -335,7 +386,7 @@ testAsync("size rejection never retries in production retry loop", planned => {
     ~retryCount=3,
   )
   ->Promise.then(result => {
-    isTruthy(result == Error(Fetcher.ParseError("Response exceeds maximum size of 0 MB")))
+    isTruthy(result == Error(Fetcher.ParseError("Response exceeds maximum size of 4 bytes")))
     isIntEqualTo(1, calls.contents)
     isIntEqualTo(1, reads.contents)
     isIntEqualTo(1, cancels.contents)

@@ -155,23 +155,20 @@ let rec fetchWithRedirects = async (
           ->Option.flatMap(NodeFetch.decimalLength)
           ->Option.map(exceedsLimit)
           ->Option.getOr(false)
+        let sizeError = () => Error(
+          ParseError(`Response exceeds maximum size of ${SizeLimit.describe(maxBodyBytes)}`),
+        )
         let rejectSize = async () => {
           await NodeFetch.cancelBody(response)
-          outcome(
-            Error(
-              ParseError(
-                `Response exceeds maximum size of ${Int.toString(maxBodyBytes / (1024 * 1024))} MB`,
-              ),
-            ),
-          )
+          outcome(sizeError())
         }
         if declaredTooLarge {
           await rejectSize()
         } else {
-          let bytes = await NodeFetch.arrayBuffer(response)
-          if exceedsLimit(NodeFetch.byteLength(bytes)) {
-            await rejectSize()
-          } else {
+          let bytes = await NodeFetch.readBodyWithin(response, Float.fromInt(maxBodyBytes))
+          switch bytes {
+          | None => outcome(sizeError())
+          | Some(bytes) =>
             outcome(
               Ok(
                 NodeFetch.decodeHtml(bytes, NodeFetch.getHeader(response.headers, "content-type")),
@@ -194,7 +191,7 @@ let rec fetchWithRedirects = async (
 
 /** Internal testing seam; public wrappers retain their existing signatures. */
 let fetchOnceDetailedWithRawFetch = async (
-  ~maxBodyBytes=StdIn.maxStdinBytes,
+  ~maxBodyBytes=SizeLimit.maxInputBytes,
   rawFetch,
   url,
   userAgent,
@@ -232,7 +229,7 @@ let fetchOnceDetailedWithRawFetch = async (
 }
 
 let fetchOnceWithBodyLimit = async (
-  ~maxBodyBytes=StdIn.maxStdinBytes,
+  ~maxBodyBytes=SizeLimit.maxInputBytes,
   rawFetch,
   url,
   userAgent,

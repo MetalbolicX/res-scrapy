@@ -62,9 +62,68 @@ let decimalLength: string => option<
 
 type arrayBuffer
 type byteView
-@send external arrayBuffer: response => promise<arrayBuffer> = "arrayBuffer"
-@get external byteLength: arrayBuffer => float = "byteLength"
-let bytesFromString: string => arrayBuffer = %raw(`text => new TextEncoder().encode(text).buffer`)
+
+/** Response body as a web byte stream (fetch's `response.body`). */
+type body
+
+/** Reads the body chunk by chunk and stops at the cap: the first chunk that
+  * pushes the running total past `limit` cancels the stream and returns None
+  * instead of buffering the rest. A body that is absent (204, HEAD) yields an
+  * empty buffer, and an in-range body is joined into one ArrayBuffer. */
+let readBodyWithin: (
+  response,
+  float,
+) => promise<option<arrayBuffer>> = %raw(`async (response, limit) => {
+  const body = response.body;
+  if (body === null || body === undefined) return new ArrayBuffer(0);
+  const reader = body.getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) {
+      try { await reader.cancel(); } catch (_) { /* the size outcome wins */ }
+      return undefined;
+    }
+    chunks.push(value);
+  }
+  const joined = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    joined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return joined.buffer;
+}`)
+
+/** Test-only byte-chunk bodies so fetch fakes drive the real streaming reader.
+    Raw interop stays in this binding island. */
+module TestSupport = {
+  let chunkStream: (
+    ~chunks: array<string>,
+    ~onChunk: unit => unit,
+    ~onCancel: unit => promise<unit>,
+  ) => body = %raw(`(chunks, onChunk, onCancel) => {
+    let index = 0;
+    return new ReadableStream({
+      start() {},
+      pull(controller) {
+        if (index >= chunks.length) {
+          controller.close();
+          return;
+        }
+        controller.enqueue(new TextEncoder().encode(chunks[index++]));
+        onChunk();
+      },
+      cancel() {
+        return onCancel();
+      },
+    }, { highWaterMark: 0 });
+  }`)
+}
+
 let bytePrefix: (
   arrayBuffer,
   int,
