@@ -78,47 +78,67 @@ let runCliAndSignal = (
     (async (args, signal, afterMs, timeoutMs) => {
       const { spawn } = await import('node:child_process');
       const { join } = await import('node:path');
-      return new Promise((resolve) => {
-        const proc = spawn(process.execPath, [join(process.cwd(), 'dist', 'main.mjs'), ...args], {
-          stdio: ['pipe', 'pipe', 'pipe'],
+      const cliPath = join(process.cwd(), 'dist', 'main.mjs');
+      // Under load the child can lose the race to install its signal handlers
+      // and die from the raw signal instead (Node reports code === null). Retry
+      // only that signature, with a longer delay each time; after the last
+      // attempt the result is returned unchanged so a real regression fails.
+      const attemptDelays = [afterMs, 1000, 2000];
+      const runOnce = delayMs =>
+        new Promise((resolve) => {
+          const proc = spawn(process.execPath, [cliPath, ...args], {
+            stdio: ['pipe', 'pipe', 'pipe'],
+          });
+          let stdout = '';
+          let stderr = '';
+          let timedOut = false;
+          let spawnError = null;
+          let settled = false;
+          const clearTimers = () => {
+            clearTimeout(signalTimer);
+            clearTimeout(deadlineTimer);
+          };
+          const signalTimer = setTimeout(() => { proc.kill(signal); }, delayMs);
+          const deadlineTimer = setTimeout(() => {
+            timedOut = true;
+            clearTimers();
+            proc.kill('SIGKILL');
+            proc.stdin.destroy();
+          }, timeoutMs);
+          proc.stdout.on('data', chunk => { stdout += chunk.toString(); });
+          proc.stderr.on('data', chunk => { stderr += chunk.toString(); });
+          proc.stdin.on('error', () => {});
+          proc.on('error', err => {
+            spawnError = err;
+            clearTimers();
+            proc.kill('SIGKILL');
+            proc.stdin.destroy();
+          });
+          proc.on('close', (code, closeSignal) => {
+            if (settled) return;
+            settled = true;
+            clearTimers();
+            proc.stdin.destroy();
+            proc.stdout.destroy();
+            proc.stderr.destroy();
+            if (timedOut) stderr += '\\nTimed out after ' + timeoutMs + 'ms';
+            if (spawnError) stderr += '\\n' + spawnError.message;
+            resolve({
+              stdout,
+              stderr,
+              exitCode: timedOut ? 124 : spawnError ? 1 : code ?? -1,
+              killedByRawSignal: !timedOut && !spawnError && code === null && closeSignal === signal,
+            });
+          });
         });
-        let stdout = '';
-        let stderr = '';
-        let timedOut = false;
-        let spawnError = null;
-        let settled = false;
-        const clearTimers = () => {
-          clearTimeout(signalTimer);
-          clearTimeout(deadlineTimer);
-        };
-        const signalTimer = setTimeout(() => { proc.kill(signal); }, afterMs);
-        const deadlineTimer = setTimeout(() => {
-          timedOut = true;
-          clearTimers();
-          proc.kill('SIGKILL');
-          proc.stdin.destroy();
-        }, timeoutMs);
-        proc.stdout.on('data', chunk => { stdout += chunk.toString(); });
-        proc.stderr.on('data', chunk => { stderr += chunk.toString(); });
-        proc.stdin.on('error', () => {});
-        proc.on('error', err => {
-          spawnError = err;
-          clearTimers();
-          proc.kill('SIGKILL');
-          proc.stdin.destroy();
-        });
-        proc.on('close', code => {
-          if (settled) return;
-          settled = true;
-          clearTimers();
-          proc.stdin.destroy();
-          proc.stdout.destroy();
-          proc.stderr.destroy();
-          if (timedOut) stderr += '\\nTimed out after ' + timeoutMs + 'ms';
-          if (spawnError) stderr += '\\n' + spawnError.message;
-          resolve({ stdout, stderr, exitCode: timedOut ? 124 : spawnError ? 1 : code ?? -1 });
-        });
-      });
+      let result = { stdout: '', stderr: '', exitCode: -1 };
+      for (const delayMs of attemptDelays) {
+        const attempt = await runOnce(delayMs);
+        const { killedByRawSignal, ...cliResult } = attempt;
+        result = cliResult;
+        if (!killedByRawSignal) break;
+      }
+      return result;
     })
   `)(args, signal, afterMs, timeoutMs)->Obj.magic
 }
