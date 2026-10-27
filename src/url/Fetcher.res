@@ -106,6 +106,7 @@ let rec fetchWithRedirects = async (
   ~userAgent: string,
   ~controller: NodeFetch.AbortSignal.controller,
   ~requests: int,
+  ~maxBodyBytes: int,
 ): result<string, fetchError> => {
   if requests >= 20 {
     Error(NetworkError("Too many redirects (20)"))
@@ -140,12 +141,35 @@ let rec fetchWithRedirects = async (
           ~userAgent,
           ~controller,
           ~requests=requests + 1,
+          ~maxBodyBytes,
         )
       }
     | _ =>
       if response.ok {
-        let bytes = await NodeFetch.arrayBuffer(response)
-        Ok(NodeFetch.decodeHtml(bytes, NodeFetch.getHeader(response.headers, "content-type")))
+        let exceedsLimit = size => size > Float.fromInt(maxBodyBytes)
+        let declaredTooLarge =
+          NodeFetch.getHeader(response.headers, "content-length")
+          ->Option.flatMap(NodeFetch.decimalLength)
+          ->Option.map(exceedsLimit)
+          ->Option.getOr(false)
+        let rejectSize = async () => {
+          await NodeFetch.cancelBody(response)
+          Error(
+            ParseError(
+              `Response exceeds maximum size of ${Int.toString(maxBodyBytes / (1024 * 1024))} MB`,
+            ),
+          )
+        }
+        if declaredTooLarge {
+          await rejectSize()
+        } else {
+          let bytes = await NodeFetch.arrayBuffer(response)
+          if exceedsLimit(NodeFetch.byteLength(bytes)) {
+            await rejectSize()
+          } else {
+            Ok(NodeFetch.decodeHtml(bytes, NodeFetch.getHeader(response.headers, "content-type")))
+          }
+        }
       } else {
         await NodeFetch.cancelBody(response)
         Error(HttpError(response.status, response.statusText))
@@ -154,14 +178,9 @@ let rec fetchWithRedirects = async (
   }
 }
 
-/** Fetches a URL with an injectable raw fetch function for redirect-policy tests. */
-let fetchOnceWithRawFetch: (
-  (string, option<NodeFetch.options>) => promise<NodeFetch.response>,
-  string,
-  string,
-  int,
-  array<(string, string)>,
-) => promise<result<string, fetchError>> = async (
+/** Internal testing seam; public wrappers retain their existing signatures. */
+let fetchOnceWithBodyLimit = async (
+  ~maxBodyBytes=StdIn.maxStdinBytes,
   rawFetch,
   url,
   userAgent,
@@ -181,6 +200,7 @@ let fetchOnceWithRawFetch: (
       ~userAgent,
       ~controller,
       ~requests=0,
+      ~maxBodyBytes,
     )
     clearTimeout(timeoutId)
     result
@@ -196,6 +216,9 @@ let fetchOnceWithRawFetch: (
     }
   }
 }
+
+let fetchOnceWithRawFetch = (rawFetch, url, userAgent, timeoutSeconds, headers) =>
+  fetchOnceWithBodyLimit(rawFetch, url, userAgent, timeoutSeconds, headers)
 
 /** Fetches a single URL with proxy routing and one timeout across all hops. */
 let fetchOnce: (
@@ -220,32 +243,18 @@ let fetchOnce: (
   fetchOnceWithRawFetch(rawFetch, url, userAgent, timeoutSeconds, headers)
 }
 
-/**
-  * Fetches a URL with retries.
-  */
-let fetchWithRetry: (
-  string,
-  string,
-  int,
-  int,
-  array<(string, string)>,
-) => promise<result<string, fetchError>> = async (
-  url,
-  userAgent,
-  timeoutSeconds,
-  retryCount,
-  headers,
-) => {
-  let rec tryFetch = async (attempt: int, maxAttempts: int) => {
-    let result = await fetchOnce(url, userAgent, timeoutSeconds, headers)
+/** Shared retry loop: size ParseErrors use the existing non-retryable policy. */
+let retryWithAttempt = async (~attempt, ~sleep, ~retryCount) => {
+  let rec tryFetch = async (attemptNumber: int, maxAttempts: int) => {
+    let result = await attempt()
 
     switch result {
     | Ok(_) => result
     | Error(err) =>
-      if attempt < maxAttempts && isRetryable(err) {
-        let delayMs = backoffDelay(attempt)
-        await delay(delayMs)
-        await tryFetch(attempt + 1, maxAttempts)
+      if attemptNumber < maxAttempts && isRetryable(err) {
+        let delayMs = backoffDelay(attemptNumber)
+        await sleep(delayMs)
+        await tryFetch(attemptNumber + 1, maxAttempts)
       } else {
         result
       }
@@ -254,6 +263,14 @@ let fetchWithRetry: (
 
   await tryFetch(1, retryCount)
 }
+
+/** Fetches a URL with the unchanged total-attempt budget. */
+let fetchWithRetry = (url, userAgent, timeoutSeconds, retryCount, headers) =>
+  retryWithAttempt(
+    ~attempt=() => fetchOnce(url, userAgent, timeoutSeconds, headers),
+    ~sleep=delay,
+    ~retryCount,
+  )
 
 /**
   * Fetches all URLs with concurrency control.

@@ -414,6 +414,18 @@ meta charset or http-equiv content-type declaration within the first 1024 raw by
 otherwise UTF-8. Unsupported selected labels fall directly back to UTF-8. This is a
 bounded declaration sniff, not full browser encoding/BOM detection.
 
+Fetched responses have a 50 MiB (52,428,800-byte) acceptance cap, shared with
+`StdIn.maxStdinBytes`. A valid nonnegative decimal Content-Length above the cap is
+rejected before reading; actual bytes delivered by fetch (after content decoding)
+are also checked before charset decoding. Oversize responses return a non-retryable
+`Parse error: Response exceeds maximum size of 50 MB`.
+
+**Maintenance limitation:** Unknown-length or understated bodies are checked only
+after `arrayBuffer()` buffers them. This is not a strict peak-memory bound and does
+not prevent allocation of an unlimited chunked body. Strict download-time memory
+protection needs a separate incremental byte-limited reader; HTML parsing remains
+buffered.
+
 Transport parameters have sensible defaults:
 
 - **Timeout:** Configurable via `--timeout` (default: 30s, min: 1s). Implemented via `AbortController`.

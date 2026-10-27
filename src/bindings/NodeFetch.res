@@ -55,6 +55,11 @@ let cancelBody: response => promise<unit> = %raw(`async response => {
 /** Extracts the response body as text. */
 @send external text: response => promise<string> = "text"
 
+/** Decimal HTTP length stays a JS number, never a wrapping ReScript int. */
+let decimalLength: string => option<
+  float,
+> = %raw(`value => /^[0-9]+$/.test(value.trim()) ? Number(value.trim()) : undefined`)
+
 type arrayBuffer
 type byteView
 @send external arrayBuffer: response => promise<arrayBuffer> = "arrayBuffer"
