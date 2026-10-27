@@ -2,6 +2,60 @@ open Test
 open Assertions
 open FieldTypes
 
+test("row absent Presence still ignores explicit true default", () => {
+  let schema: schema = {
+    fields: [
+      (
+        "badge",
+        {
+          selector: ".badge",
+          fieldType: Boolean(Some({mode: Presence})),
+          required: false,
+          default: JSON.Encode.bool(true),
+        },
+      ),
+    ],
+    config: {rowSelector: "div", limit: 0, ignoreErrors: false},
+  }
+  switch RowExtractor.run(HtmlFixture.parse("<div></div>"), schema) {
+  | Ok(value) => isTextEqualTo("[{\"badge\":false}]", NodeUtil.jsonStringify(value))
+  | Error(_) => failWith("Expected row Presence exception")
+  }
+})
+
+test("row text joins are row-local and no-join still selects first", () => {
+  let doc = HtmlFixture.parse(
+    "<div><span>A</span><span>B</span></div><div><span>C</span><span>D</span></div>",
+  )
+  [
+    (Some(({join: "|"}: textOptions)), "[{\"t\":\"A|B\"},{\"t\":\"C|D\"}]"),
+    (None, "[{\"t\":\"A\"},{\"t\":\"C\"}]"),
+  ]->Array.forEach(((opts, expected)) => {
+    let schema: schema = {
+      fields: [("t", {selector: "span", fieldType: Text(opts), required: false})],
+      config: {rowSelector: "div", limit: 0, ignoreErrors: false},
+    }
+    switch RowExtractor.run(doc, schema) {
+    | Ok(value) => isTextEqualTo(expected, NodeUtil.jsonStringify(value))
+    | Error(_) => failWith("Expected row output")
+    }
+  })
+})
+
+test("joined row text retains required empty-match handling", () => {
+  let schema: schema = {
+    fields: [("t", {selector: "span", fieldType: Text(Some({join: "|"})), required: true})],
+    config: {rowSelector: "div", limit: 0, ignoreErrors: false},
+  }
+  switch RowExtractor.run(HtmlFixture.parse("<div></div>"), schema) {
+  | Error(RequiredFieldMissing({fieldName, selector})) => {
+      isTextEqualTo("t", fieldName)
+      isTextEqualTo("span", selector)
+    }
+  | _ => failWith("Expected required joined text error")
+  }
+})
+
 test("RowExtractor - Strategy metadata is correct", () => {
   isTextEqualTo("row", RowExtractor.Strategy.name)
 

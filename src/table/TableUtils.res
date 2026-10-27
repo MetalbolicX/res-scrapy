@@ -24,7 +24,13 @@ let resolveRows: (htmlElement, option<string>) => array<htmlElement> = (table, r
   | None => {
       let fromTbody = table->querySelectorAll("tbody tr")
       if Array.length(fromTbody) > 0 {
-        fromTbody
+        switch fromTbody[0] {
+        | Some(firstRow)
+          if Array.length(firstRow->querySelectorAll("th")) > 0 &&
+            Array.length(firstRow->querySelectorAll("td")) == 0 =>
+          Array.slice(fromTbody, ~start=1, ~end=Array.length(fromTbody))
+        | _ => fromTbody
+        }
       } else {
         let allRows = table->querySelectorAll("tr")
         if Array.length(allRows) <= 1 {

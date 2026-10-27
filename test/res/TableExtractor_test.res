@@ -6,6 +6,29 @@ let run = (~html, ~selector="table") => {
   TableExtractor.extract(doc, selector)
 }
 
+test("tbody pure header is skipped once, mixed rows retained", () => {
+  [
+    (
+      "<table><tbody><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></tbody></table>",
+      "[{\"A\":\"1\",\"B\":\"2\"}]",
+    ),
+    ("<table><tbody><tr><th>A</th><th>B</th></tr></tbody></table>", "[]"),
+    (
+      "<table><tbody><tr><th>A</th><td>1</td></tr><tr><td>2</td></tr></tbody></table>",
+      "[{\"A\":\"1\"},{\"A\":\"2\"}]",
+    ),
+    (
+      "<table><tbody><tr><th>A</th></tr><tr><th>Later</th></tr></tbody><tbody><tr><td>1</td></tr></tbody></table>",
+      "[{\"A\":\"\"},{\"A\":\"1\"}]",
+    ),
+  ]->Array.forEach(((html, expected)) => {
+    switch run(~html) {
+    | Ok(rows) => isTextEqualTo(expected, NodeUtil.jsonStringify(rows))
+    | Error(_) => failWith("Expected tbody extraction")
+    }
+  })
+})
+
 test("TableExtractor extracts rows using thead headers and tbody rows", () => {
   let html = "<table class='products'><thead><tr><th>Name</th><th>Price</th></tr></thead><tbody><tr><td>A</td><td>10</td></tr><tr><td>B</td><td>20</td></tr></tbody></table>"
   switch run(~html, ~selector=".products") {

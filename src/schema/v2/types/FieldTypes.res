@@ -223,6 +223,7 @@ let isMultiElementType: fieldType => bool = ft =>
   switch ft {
   | Count(_) => true
   | List(_) => true
+  | Text(Some(opts)) => opts.join->Option.isSome
   | _ => false
   }
 

@@ -41,6 +41,13 @@ let getJsonSource: (NodeHtmlParserBinding.htmlElement, option<jsonOptions>) => o
 external testAny: 'a => bool = "%is_nullable"
 
 let getPath: (JSON.t, string) => option<JSON.t> = (obj, path) => {
+  let path = if path == "$" {
+    ""
+  } else if String.startsWith(path, "$.") {
+    String.slice(path, ~start=2, ~end=String.length(path))
+  } else {
+    path
+  }
   if path == "" {
     Some(obj)
   } else {

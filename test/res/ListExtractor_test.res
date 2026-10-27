@@ -2,6 +2,25 @@ open Test
 open Assertions
 open FieldTypes
 
+test("parsed list limits preserve null unlimited, zero, positive and join", () => {
+  let els = HtmlFixture.parse("<li>A</li><li>B</li>")->HtmlFixture.selectAll("li")
+  [
+    ("{}", "[\"A\",\"B\"]"),
+    ("{\"limit\":null}", "[\"A\",\"B\"]"),
+    ("{\"limit\":1}", "[\"A\"]"),
+    ("{\"limit\":0}", "[]"),
+    ("{\"limit\":null,\"join\":\"|\"}", "\"A|B\""),
+  ]->Array.forEach(((raw, expected)) => {
+    let opts = OptionsParser.parseListOptions(
+      TestHelpers.objectFromJsonString(`{"listOptions":${raw}}`),
+    )
+    switch ListExtractor.extract(els, opts) {
+    | Some(value) => isTextEqualTo(expected, NodeUtil.jsonStringify(value))
+    | None => failWith("Expected list output")
+    }
+  })
+})
+
 let collectStrings = (json: option<JSON.t>): array<string> => {
   switch json {
   | Some(j) =>

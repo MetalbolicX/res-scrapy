@@ -7,7 +7,7 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<textOptions>) => option<
   el,
   opts,
 ) => {
-  // If join is set the caller may pass multiple elements; for single element join is ignored.
+  // Single-element transforms; Registry routes joined match sets to extractJoined.
   let base = el.textContent
 
   let s = ref(base)
@@ -49,7 +49,7 @@ let extract: (NodeHtmlParserBinding.htmlElement, option<textOptions>) => option<
   }
 }
 
-/** Join text from multiple elements, used when a field targets a list. */
+/** Transform each match, omit absent parts, then join into a scalar. */
 let extractJoined: (
   array<NodeHtmlParserBinding.htmlElement>,
   string,

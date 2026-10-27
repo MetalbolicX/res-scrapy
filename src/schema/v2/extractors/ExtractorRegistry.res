@@ -5,7 +5,7 @@
   *
   * Two entry points:
   *   extractValue      — single htmlElement; used by all scalar field types.
-  *   extractValueList  — full element array; used by Count (and future List).
+  *   extractValueList  — full element array; used by Count, List, and joined Text.
   */
 open FieldTypes
 
@@ -115,7 +115,7 @@ let rec extractValue: (
 }
 
 /** Multi-element dispatch for field types that operate on the whole match set.
-  * Currently handles Count. Scalar types fall back to extractValue on the
+  * Handles Count, List, and joined Text. Other types fall back to extractValue on the
   * first element (or null when the list is empty). */
 let extractValueList: (
   array<NodeHtmlParserBinding.htmlElement>,
@@ -129,6 +129,11 @@ let extractValueList: (
     | Count(_) =>
       switch CountExtractor.extract(els) {
       | Some(n) => Ok(JSON.Encode.int(n))
+      | None => Ok(JSON.Encode.null)
+      }
+    | Text(Some(opts)) if opts.join->Option.isSome =>
+      switch TextExtractor.extractJoined(els, opts.join->Option.getOr(""), Some(opts)) {
+      | Some(value) => Ok(JSON.Encode.string(value))
       | None => Ok(JSON.Encode.null)
       }
     | List(opts) =>

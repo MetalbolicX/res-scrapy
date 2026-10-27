@@ -138,7 +138,29 @@ let parseNumberOptions: {..} => option<numberOptions> = fieldJson =>
 // count options
 // ---------------------------------------------------------------------------
 
-let parseCountOptions: {..} => option<countOptions> = _ => None
+let parseCountOptionsResult: {..} => result<option<countOptions>, string> = fieldJson => {
+  switch dictGet(fieldJson, "countOptions") {
+  | None => Ok(None)
+  | Some(raw) =>
+    switch (dictGet(raw, "min"), dictGet(raw, "max")) {
+    | (Some(_), _) =>
+      Error(
+        "count option min is accepted but not implemented; this build rejects it instead of silently ignoring it",
+      )
+    | (_, Some(_)) =>
+      Error(
+        "count option max is accepted but not implemented; this build rejects it instead of silently ignoring it",
+      )
+    | _ => Ok(None)
+    }
+  }
+}
+
+let parseCountOptions: {..} => option<countOptions> = fieldJson =>
+  switch parseCountOptionsResult(fieldJson) {
+  | Ok(opts) => opts
+  | Error(_) => None
+  }
 
 // ---------------------------------------------------------------------------
 // url options
@@ -263,7 +285,10 @@ let parseListOptions: {..} => listOptions = fieldJson => {
   }
   let unique: option<bool> = dictGetField(raw, "unique")
   let filter: option<string> = dictGetField(raw, "filter")
-  let limit: option<int> = dictGetField(raw, "limit")
+  let limit: option<int> = switch (dictGetField(raw, "limit"): option<JSON.t>) {
+  | None | Some(JSON.Null) => None
+  | Some(value) => Some(Obj.magic(value))
+  }
   let join: option<string> = dictGetField(raw, "join")
   {itemType, ?unique, ?filter, ?limit, ?join}
 }

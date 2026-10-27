@@ -91,7 +91,17 @@ echo '<html>...</html>' | res-scrapy -s '.product-card' -m -e text -o results.nd
 
 When present, the extractor treats each element matching `rowSelector` as an output row and evaluates each field selector relative to that row. This is the recommended and most robust model for repeated items (product cards, list items, search results).
 
-Without `rowSelector` the extractor uses the legacy zip-by-index behavior: each field selector runs against the whole document and rows are created by zipping field results by index (fragile and often surprising).
+Without `rowSelector`, each selector runs against the whole document and results
+are zipped by index. Row count is the maximum match count across ordinary scalar
+fields, independent of field order; `config.limit` caps that maximum afterwards.
+Missing scalar cells use their explicit default or null (absent Boolean Presence
+uses false when no default is supplied; see [Boolean](#5-boolean)). Required missing cells
+fail with `RequiredFieldMissing` unless `ignoreErrors` is true. Count/List and joined
+text are cached aggregates broadcast to each row, not row-count drivers. Count/List-only
+schemas return `[]`; joined-only schemas retain the one-row-if-matched exception.
+
+For `<i>I</i><s>A</s><s>B</s>`, text fields `i` then `s` selecting their tags return
+`[{"i":"I","s":"A"},{"i":null,"s":"B"}]`.
 
 Example (row-based):
 
@@ -273,6 +283,12 @@ Output:
 ]
 ```
 
+Table mode and schema table fields skip exactly the first matched `tbody tr`
+when it contains `th` but no `td`. Header-only tbody therefore returns `[]`.
+Mixed th/td rows and later header-like rows remain data; multiple tbody sections
+are combined. An explicit schema `tableOptions.rowSelector` remains authoritative,
+even when it selects a header. The no-tbody fallback is unchanged.
+
 When to use table vs schema mode:
 
 <!-- tabs:start -->
@@ -323,6 +339,25 @@ Example:
 }
 ```
 
+`textOptions.join` joins all matches after per-element transforms, omitting empty
+transformed parts; no surviving parts yields null in an existing row. An empty
+separator is valid. Defaults (`config.defaults.text.join`) apply unless overridden.
+
+For `<div><span>A</span><span>B</span></div><div><span>C</span><span>D</span></div>`,
+field `t` selecting `span` with `textOptions: {"join":"|"}` and
+`config.rowSelector: "div"` returns `[{"t":"A|B"},{"t":"C|D"}]`: joins stay inside each row.
+
+Without rowSelector, joined text collects all document matches once and broadcasts
+the scalar. For `<i>I</i><i>J</i><span>A</span><span>B</span>`, ordinary field `i`
+selecting `i` plus the joined field returns
+`[{"i":"I","t":"A|B"},{"i":"J","t":"A|B"}]`.
+Ordinary scalar fields alone drive row count when present, even with no matches.
+With joined text but no ordinary scalars, at least one joined selector match creates
+one row: `<span>A</span><span>B</span>` returns `[{"t":"A|B"}]`; no matches returns `[]`.
+Count/List-only schemas still return `[]`. Text without join retains first-match
+row behavior and one value per zip index. Required empty match sets still error
+when an output row exists and ignoreErrors is false.
+
 ### 2. Attribute
 
 Purpose: extract attributes (href/src/data-\*).
@@ -331,8 +366,11 @@ Key options:
 
 - `attribute` (legacy single).
 - `attributes` (array).
-- `attrMode` (`first`, `firstNonEmpty` (default), `all`, `join`).
-- `attrJoin`.
+- `attrMode` (`first` (default), `firstNonEmpty`, `all`, `join`).
+- `attributeOptions.joinSep` (default: one space).
+
+`all` and `join` behave identically: both return a separator-joined **string**,
+not an array. Missing attributes are skipped; empty attribute values are retained.
 
 Example (lazy image):
 
@@ -345,6 +383,32 @@ Example (lazy image):
     "attrMode": "firstNonEmpty"
   }
 }
+```
+
+Example (both attributes nonempty):
+
+```html
+<img data-src="lazy.jpg" src="fallback.jpg">
+```
+
+```json
+{
+  "fields": {
+    "image": {
+      "selector": "img",
+      "type": "attribute",
+      "attributes": ["data-src", "src"],
+      "attrMode": "all",
+      "attributeOptions": { "joinSep": "|" }
+    }
+  }
+}
+```
+
+With either `"attrMode": "all"` or `"attrMode": "join"`, `--schema` returns:
+
+```json
+[{"image":"lazy.jpg|fallback.jpg"}]
 ```
 
 ### 3. HTML
@@ -421,6 +485,12 @@ Key options:
 - `attribute`.
 - `onUnknown` (`false` default).
 
+In zip mode, an absent Presence cell becomes `false` unless an explicit default
+(including `null`) is supplied. Required checks still run before this fallback;
+`ignoreErrors: true` permits it. In row mode, absent Presence remains `false`
+even with an explicit default. Mapping and attributeCheck missing cells remain
+`null` unless a default is supplied.
+
 Example (presence):
 
 ```json
@@ -477,10 +547,10 @@ Example:
 
 Purpose: return integer count of matched elements.
 
-Key options:
-
-- `min`.
-- `max` (validation).
+Count has no supported constraints. `countOptions.min`, `countOptions.max`,
+`config.defaults.count.min`, and `config.defaults.count.max` are rejected during
+schema validation, even when their value is null. Omitted or empty count options
+and empty count defaults remain accepted.
 
 Example:
 
@@ -501,7 +571,7 @@ Key options:
 
 - `base`.
 - `resolve` (default true).
-- `validate` (default true).
+- `validate` (default true). With false, a nonempty attribute that fails URL parsing is returned byte-for-byte (including query/hash), without normalization. Parsed URLs still require safe http/https schemes and must match any explicit protocol; resolvable relative URLs still use the base.
 - `protocol` (`http`/`https`).
 - `stripQuery`.
 - `stripHash`.
@@ -533,7 +603,10 @@ Key options:
 
 - `source` (`text`/`attribute`).
 - `attribute`.
-- `path` (dot notation, e.g. `offers.price`).
+- `path`: dot notation (`offers.price`) with an optional leading `$.`
+  (`$.offers.price`). Standalone `$` or an empty path returns the whole object.
+  Only the leading root notation is removed; nested `$` keys remain literal.
+  This is not full JSONPath: bracket syntax and recursive selection are unsupported.
 
 Example:
 
@@ -549,6 +622,18 @@ Example:
 }
 ```
 
+For the JSON field above, sample HTML:
+
+```html
+<script type="application/ld+json">{"offers":{"price":42}}</script>
+```
+
+Wrapped in `{"fields": {...}}` and run with `--schema`, the example returns:
+
+```json
+[{"ld":42}]
+```
+
 ### 10. List
 
 Purpose: collect multiple matches into an array of typed items.
@@ -559,7 +644,7 @@ Key options:
 - `attribute` (for attribute items).
 - `unique`.
 - `filter` (regex).
-- `limit`.
+- `limit`: omitted or null means unlimited; numeric 0 means zero items.
 - `join` (return string).
 
 Example:
@@ -585,7 +670,7 @@ Removed keys: `numberOptions.onError`, `dateOptions.strict`, `jsonOptions.onErro
 
 Top-level `config` keys you will use:
 
-- `rowSelector` (string): root selector for row-based extraction
+- `rowSelector` (string): root selector for row-based extraction. Null is treated as absent and selects the default zip strategy.
 - `ignoreErrors` (boolean): controls required-field-missing and table-column extraction errors (default: false; see [Error handling](#error-handling))
 - `limit` (number): max rows to return (0 = unlimited). Explicit `null` is accepted and means unlimited (same as `0`).
 - `defaults`: object to set per-type default options (text, number, boolean, datetime, url)
@@ -602,11 +687,11 @@ Default values (summary):
 
 ## Error handling
 
-`ignoreErrors` (default `false`) governs two situations. (1) Required fields: when a required field matches nothing, extraction fails unless `ignoreErrors` is true; when true, the field is assigned its configured `default` value or `null` and the row continues. (2) Table field columns: with `ignoreErrors` true, a cell whose extraction fails is replaced with that column's configured default or `null` instead of failing the row. This does not suppress other extraction errors elsewhere. If no rows match at all, extraction returns an empty result regardless of the flag; required-missing errors require an existing row.
+`ignoreErrors` (default `false`) governs two situations. (1) Required fields: when a required field matches nothing, extraction fails unless `ignoreErrors` is true; when true, the field is assigned its configured `default` value or `null` and the row continues (zip Presence without a default uses `false`). Row-mode absent Presence is an existing exception: it returns `false` before required checks and ignores explicit defaults. (2) Table field columns: with `ignoreErrors` true, a cell whose extraction fails is replaced with that column's configured default or `null` instead of failing the row. This does not suppress other extraction errors elsewhere. If no rows match at all, extraction returns an empty result regardless of the flag; required-missing errors require an existing row.
 
 Other field-level failures follow these rules:
 
-1. Unsupported inert options are rejected during schema validation: `numberOptions.onError`, `dateOptions.strict`, and `jsonOptions.onError` (including corresponding number and datetime defaults).
+1. Unsupported count constraints (`countOptions.min`/`max` and `config.defaults.count.min`/`max`) are rejected during schema validation, including present-null values. Other unsupported inert options are also rejected: `numberOptions.onError`, `dateOptions.strict`, and `jsonOptions.onError` (including corresponding number and datetime defaults).
 2. Validation errors (e.g., URL invalid): treated per field policy
 
 Schema-level validation errors include: invalid JSON, missing `fields`, invalid field type, invalid selector, invalid options.

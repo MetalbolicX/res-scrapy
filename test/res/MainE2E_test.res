@@ -3,6 +3,145 @@ open Assertions
 open TestHelpers
 open CliRunner
 
+testAsync("count constraint CLI rejects before extraction", planned => {
+  runCli(
+    ~args=["--schema", `{"fields":{"n":{"selector":"i","type":"count","countOptions":{"min":1}}}}`],
+    ~input="<i>A</i>",
+  )
+  ->Promise.then(result => {
+    isIntEqualTo(1, result.exitCode)
+    isTextEqualTo("", result.stdout)
+    isTextEqualTo(
+      "Invalid field type \"count option min is accepted but not implemented; this build rejects it instead of silently ignoring it\" for field \"n\"\n",
+      result.stderr,
+    )
+    planned(~planned=3, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(_ => {
+    failWith("CLI execution failed")
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
+["all", "join"]->Array.forEach(mode => {
+  testAsync(`guide attribute CLI ${mode} returns joined string`, planned => {
+    runCli(
+      ~args=[
+        "--schema",
+        `{"fields":{"image":{"selector":"img","type":"attribute","attributes":["data-src","src"],"attrMode":"${mode}","attributeOptions":{"joinSep":"|"}}}}`,
+      ],
+      ~input=`<img data-src="lazy.jpg" src="fallback.jpg">`,
+    )
+    ->Promise.then(
+      result => {
+        isIntEqualTo(0, result.exitCode)
+        isTextEqualTo("[{\"image\":\"lazy.jpg|fallback.jpg\"}]\n", result.stdout)
+        isTextEqualTo("", result.stderr)
+        planned(~planned=3, ())
+        Promise.resolve()
+      },
+    )
+    ->Promise.catch(
+      _ => {
+        failWith("CLI execution failed")
+        planned(~planned=0, ())
+        Promise.resolve()
+      },
+    )
+    ->ignore
+  })
+})
+
+[
+  ("maximum", "<i>I</i><s>A</s><s>B</s>", "[{\"i\":\"I\",\"s\":\"A\"},{\"i\":null,\"s\":\"B\"}]\n"),
+  ("equal-length control", "<i>I</i><s>A</s>", "[{\"i\":\"I\",\"s\":\"A\"}]\n"),
+]->Array.forEach(((name, input, expected)) => {
+  testAsync(`zip CLI ${name}`, planned => {
+    runCli(~args=["--schema", `{"fields":{"i":{"selector":"i"},"s":{"selector":"s"}}}`], ~input)
+    ->Promise.then(
+      result => {
+        isIntEqualTo(0, result.exitCode)
+        isTextEqualTo(expected, result.stdout)
+        isTextEqualTo("", result.stderr)
+        planned(~planned=3, ())
+        Promise.resolve()
+      },
+    )
+    ->Promise.catch(
+      _ => {
+        failWith("CLI execution failed")
+        planned(~planned=0, ())
+        Promise.resolve()
+      },
+    )
+    ->ignore
+  })
+})
+
+["$.offers.price", "offers.price"]->Array.forEach(path => {
+  testAsync(`guide JSON CLI path: ${path}`, planned => {
+    let schema = `{"fields":{"ld":{"selector":"script[type='application/ld+json']","type":"json","jsonOptions":{"path":"${path}"}}}}`
+    runCli(
+      ~args=["--schema", schema],
+      ~input=`<script type="application/ld+json">{"offers":{"price":42}}</script>`,
+    )
+    ->Promise.then(
+      result => {
+        isIntEqualTo(0, result.exitCode)
+        isTextEqualTo("[{\"ld\":42}]\n", result.stdout)
+        isTextEqualTo("", result.stderr)
+        planned(~planned=3, ())
+        Promise.resolve()
+      },
+    )
+    ->Promise.catch(
+      _ => {
+        failWith("CLI execution failed")
+        planned(~planned=0, ())
+        Promise.resolve()
+      },
+    )
+    ->ignore
+  })
+})
+
+[
+  (
+    "pure tbody header",
+    "<table><tbody><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></tbody></table>",
+    "[{\"A\":\"1\",\"B\":\"2\"}]\n",
+  ),
+  (
+    "thead preservation",
+    "<table><thead><tr><th>A</th></tr></thead><tbody><tr><td>1</td></tr></tbody></table>",
+    "[{\"A\":\"1\"}]\n",
+  ),
+]->Array.forEach(((name, input, expected)) => {
+  testAsync(`table CLI: ${name}`, planned => {
+    runCli(~args=["-t"], ~input)
+    ->Promise.then(
+      result => {
+        isIntEqualTo(0, result.exitCode)
+        isTextEqualTo(expected, result.stdout)
+        isTextEqualTo("", result.stderr)
+        planned(~planned=3, ())
+        Promise.resolve()
+      },
+    )
+    ->Promise.catch(
+      _ => {
+        failWith("CLI execution failed")
+        planned(~planned=0, ())
+        Promise.resolve()
+      },
+    )
+    ->ignore
+  })
+})
+
 [
   ("SIGINT", 130, "Interrupted (SIGINT)"),
   ("SIGTERM", 143, "Terminated (SIGTERM)"),

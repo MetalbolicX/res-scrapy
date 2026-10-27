@@ -11,6 +11,33 @@ let getElement = (doc, selector) =>
     }
   }
 
+test("JSON optional root notation preserves dot paths and nested dollar keys", () => {
+  let el =
+    HtmlFixture.parse(`<script>{"offers":{"price":42,"$value":7}}</script>`)->getElement("script")
+  [
+    ("$.offers.price", "42"),
+    ("$", "{\"offers\":{\"price\":42,\"$value\":7}}"),
+    ("offers.price", "42"),
+    ("", "{\"offers\":{\"price\":42,\"$value\":7}}"),
+    ("offers.$value", "7"),
+  ]->Array.forEach(((path, expected)) => {
+    isOptionEqualTo(
+      Some(TestHelpers.jsonFromString(expected)),
+      JsonExtractor.extract(el, Some({path: path})),
+      ~eq=(a, b) => NodeUtil.jsonStringify(a) == NodeUtil.jsonStringify(b),
+    )
+  })
+  isOptionEqualTo(None, JsonExtractor.extract(el, Some({path: "$.missing"})), ~eq=(a, b) => a == b)
+  isOptionEqualTo(
+    None,
+    JsonExtractor.extract(
+      HtmlFixture.parse("<script>invalid</script>")->getElement("script"),
+      Some({path: "$"}),
+    ),
+    ~eq=(a, b) => a == b,
+  )
+})
+
 test("JsonExtractor parses JSON from text", () => {
   let doc = HtmlFixture.parse("<script class='j'>{\"a\":1,\"b\":2}</script>")
   let el = getElement(doc, ".j")

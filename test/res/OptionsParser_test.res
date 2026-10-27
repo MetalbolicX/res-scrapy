@@ -3,6 +3,43 @@ open Assertions
 open TestHelpers
 open FieldTypes
 
+test("null list limit is omitted", () => {
+  let opts = OptionsParser.parseListOptions(objectFromJsonString(`{"listOptions":{"limit":null}}`))
+  isOptionEqualTo(None, opts.limit, ~eq=(a, b) => a == b)
+})
+
+test("count constraints reject exact field messages including null and min precedence", () => {
+  [
+    ("{\"min\":1}", "min"),
+    ("{\"max\":2}", "max"),
+    ("{\"min\":null}", "min"),
+    ("{\"max\":null}", "max"),
+    ("{\"min\":null,\"max\":2}", "min"),
+  ]->Array.forEach(((opts, key)) => {
+    let raw = objectFromJsonString(
+      `{"fields":{"n":{"selector":"i","type":"count","countOptions":${opts}}}}`,
+    )
+    switch SchemaParser.parseSchema(raw) {
+    | Error(InvalidFieldType({field, got})) => {
+        isTextEqualTo("n", field)
+        isTextEqualTo(
+          `count option ${key} is accepted but not implemented; this build rejects it instead of silently ignoring it`,
+          got,
+        )
+      }
+    | _ => failWith("Expected InvalidFieldType for count constraint")
+    }
+  })
+  ["", ",\"countOptions\":{}"]->Array.forEach(options => {
+    switch SchemaParser.parseSchema(
+      objectFromJsonString(`{"fields":{"n":{"selector":"i","type":"count"${options}}}}`),
+    ) {
+    | Ok(_) => isTruthy(true)
+    | Error(_) => failWith("Supported count rejected")
+    }
+  })
+})
+
 test("OptionsParser.parseTextOptions parses all keys", () => {
   let field = TestHelpers.objectFromJsonString(
     "{\"textOptions\":{\"trim\":false,\"normalizeWhitespace\":true,\"lowercase\":true,\"uppercase\":false,\"pattern\":\"([0-9]+)\",\"join\":\",\"}}",
