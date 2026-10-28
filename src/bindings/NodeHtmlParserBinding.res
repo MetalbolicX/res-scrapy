@@ -27,9 +27,8 @@ type htmlElement = {
   * queries with `xmlMode: true`). This matters because node-html-parser 9.x
   * routes every query through a vendored `findAll` that copies the accumulator
   * at every visited node (`result = result.concat(findAll(test, childs))`),
-  * which is quadratic in the number of matching siblings: profiled 2026-10-27,
-  * `findAll` self time was ~3.8 s of a 4.5 s `querySelectorAll` on 20k items.
-  * Any other selector falls back to the library unchanged. */
+  * which is quadratic in the number of matching siblings and dominated query
+  * time on large pages. Any other selector falls back to the library unchanged. */
 @send external querySelectorAllLib: (htmlElement, string) => array<htmlElement> = "querySelectorAll"
 
 let fastSelectAll: (

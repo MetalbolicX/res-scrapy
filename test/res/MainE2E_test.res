@@ -296,7 +296,9 @@ testAsync("stdout write failure (ENOSPC) is reported and exits 1", ~timeout=20_0
 // only THEN handled the signal; the yielding build aborts before any output
 // is written. Pin exactly that: exit 143, the exact stderr line, and no
 // partial output (a signal mid-extraction emits nothing rather than a
-// truncated result).
+// truncated result). Timing assumption: parsing 300k items must outlast the
+// 1 s signal delay (about 5 s on a developer machine); on hardware fast
+// enough to finish the whole run in under 1 s this test would see exit 0.
 testAsync(
   "SIGTERM during extraction aborts without emitting partial output",
   ~timeout=30_000,

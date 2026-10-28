@@ -3,16 +3,13 @@
  *
  * node-html-parser 9.x routes every query through a vendored `findAll` that
  * copies the accumulator at every visited node, which is quadratic in the
- * number of matching siblings (profiled 2026-10-27: ~3.8 s of a 4.5 s
- * `querySelectorAll` on 20k items). The binding now walks the tree once for
- * simple selectors and falls back to the library for everything else. These
- * tests pin two things: the fast path returns exactly what the library
- * returns (same elements, same order, same case-sensitivity), and the walk
- * stays linear (a generous timing-ratio guard that still separates linear
- * scaling from the quadratic baseline it replaced).
- *
- * Differential evidence (2026-10-27, commit 552c650): outputs byte-identical
- * to the pre-change build for the 5k/10k/20k-item benchmark inputs.
+ * number of matching siblings. The binding walks the tree once for simple
+ * selectors and falls back to the library for everything else. These tests
+ * pin two things: the fast path returns what the library returns (same
+ * elements, same order, same case-sensitivity, from the document root and
+ * from a sub-element, whose own node is never matched), and the walk stays
+ * linear (a generous timing-ratio guard that still separates linear scaling
+ * from the quadratic baseline it replaced).
  */
 open Test
 open Assertions
