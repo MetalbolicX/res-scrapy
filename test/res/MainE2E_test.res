@@ -18,8 +18,8 @@ testAsync("count constraint CLI rejects before extraction", planned => {
     planned(~planned=3, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -60,8 +60,8 @@ testAsync("count constraint CLI rejects before extraction", planned => {
       },
     )
     ->Promise.catch(
-      _ => {
-        failWith("CLI execution failed")
+      exn => {
+        failWithExn("CLI execution failed", exn)
         planned(~planned=0, ())
         Promise.resolve()
       },
@@ -89,8 +89,8 @@ testAsync("count constraint CLI rejects before extraction", planned => {
       },
     )
     ->Promise.catch(
-      _ => {
-        failWith("CLI execution failed")
+      exn => {
+        failWithExn("CLI execution failed", exn)
         planned(~planned=0, ())
         Promise.resolve()
       },
@@ -115,8 +115,8 @@ testAsync("count constraint CLI rejects before extraction", planned => {
       },
     )
     ->Promise.catch(
-      _ => {
-        failWith("CLI execution failed")
+      exn => {
+        failWithExn("CLI execution failed", exn)
         planned(~planned=0, ())
         Promise.resolve()
       },
@@ -343,8 +343,8 @@ testAsync(
       },
     )
     ->Promise.catch(
-      _ => {
-        failWith("CLI execution failed")
+      exn => {
+        failWithExn("CLI execution failed", exn)
         planned(~planned=0, ())
         Promise.resolve()
       },
@@ -377,8 +377,8 @@ testAsync(
       },
     )
     ->Promise.catch(
-      _ => {
-        failWith("CLI execution failed")
+      exn => {
+        failWithExn("CLI execution failed", exn)
         planned(~planned=0, ())
         Promise.resolve()
       },
@@ -403,8 +403,8 @@ testAsync(
       },
     )
     ->Promise.catch(
-      _ => {
-        failWith("signal CLI execution failed")
+      exn => {
+        failWithExn("signal CLI execution failed", exn)
         planned(~planned=0, ())
         Promise.resolve()
       },
@@ -443,8 +443,8 @@ testAsync(
       },
     )
     ->Promise.catch(
-      _ => {
-        failWith("CLI execution failed")
+      exn => {
+        failWithExn("CLI execution failed", exn)
         planned(~planned=0, ())
         Promise.resolve()
       },
@@ -509,8 +509,8 @@ testAsync("simple extraction: single element", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -526,8 +526,8 @@ testAsync("simple extraction: unicode text", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -544,8 +544,8 @@ testAsync("simple extraction: malformed html does not crash", planned => {
     planned(~planned=3, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -561,8 +561,8 @@ testAsync("simple extraction: multiple elements", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -578,8 +578,8 @@ testAsync("simple extraction: text mode", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -595,8 +595,8 @@ testAsync("simple extraction: innerHtml mode", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -612,8 +612,8 @@ testAsync("simple extraction: attr mode", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -629,8 +629,8 @@ testAsync("simple extraction: missing selector returns empty array", planned => 
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -646,8 +646,8 @@ testAsync("simple extraction: missing attr returns empty string", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -665,8 +665,8 @@ testAsync("table extraction: basic table", planned => {
     planned(~planned=3, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -682,8 +682,8 @@ testAsync("table extraction: custom selector", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -698,8 +698,8 @@ testAsync("schema extraction: minimal schema", planned => {
     planned(~planned=1, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -724,8 +724,8 @@ testAsync("schema extraction: with field extraction", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -740,8 +740,8 @@ testAsync("error: missing selector with no schema or table", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -756,8 +756,8 @@ testAsync("error: unknown CLI flag returns friendly parse error", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -772,8 +772,8 @@ testAsync("help flag exits with code 0", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -790,8 +790,8 @@ testAsync("version flag exits with code 0 and semantic version", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -806,8 +806,8 @@ testAsync("error: empty stdin", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -823,8 +823,8 @@ testAsync("error: invalid schema JSON", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -839,8 +839,8 @@ testAsync("error: missing selector with attr: extract", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -858,8 +858,8 @@ testAsync("schemaPath: loads schema from disk file", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -881,8 +881,8 @@ testAsync("output file: writes json when --output is provided", planned => {
     planned(~planned=3, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -916,8 +916,8 @@ testAsync("output file: writes ndjson when --format ndjson is provided", planned
     planned(~planned=4, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -936,8 +936,8 @@ testAsync("output format is ignored on stdout when --output is absent", planned 
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -979,11 +979,11 @@ testAsync("output file: permission denied returns error", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
+  ->Promise.catch(exn => {
     restorePermissions(readOnlyFile)
     cleanupPath(readOnlyFile)
     cleanupPath(tempDir)
-    failWith("CLI execution failed")
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -1005,8 +1005,8 @@ testAsync("output file: writing to directory returns error", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
@@ -1025,8 +1025,8 @@ testAsync("output file: invalid format returns CLI error", planned => {
     planned(~planned=2, ())
     Promise.resolve()
   })
-  ->Promise.catch(_ => {
-    failWith("CLI execution failed")
+  ->Promise.catch(exn => {
+    failWithExn("CLI execution failed", exn)
     planned(~planned=0, ())
     Promise.resolve()
   })
