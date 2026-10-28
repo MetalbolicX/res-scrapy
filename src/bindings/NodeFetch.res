@@ -68,16 +68,17 @@ type body
 
 type overCapResult = Within(arrayBuffer) | OverLimit
 
-/** Reads the body chunk by chunk and stops at the cap: the first chunk that
-  * pushes the running total past `limit` cancels the stream and returns
-  * `OverLimit` instead of buffering the rest. A body that is absent (204, HEAD)
-  * yields `Within` with an empty buffer, and an in-range body is joined into
-  * one buffer. The variant keeps a future `None`-shaped failure from being
-  * silently misreported as a size error in the caller. */
-let readBodyWithin: (response, float) => promise<overCapResult> = %raw(`async (response, limit) => {
+/* Reads the body chunk by chunk and stops at the cap: the first chunk that
+   pushes the running total past `limit` cancels the stream and returns null
+   instead of buffering the rest. An absent body (204, HEAD) yields an empty
+   buffer, so null means only "over the limit". Plain JS values only: the
+   variant is built in typed code below, never by hand here. */
+let readBodyWithinRaw: (
+  response,
+  float,
+) => promise<Nullable.t<arrayBuffer>> = %raw(`async (response, limit) => {
     const body = response.body;
-    if (body === null || body === undefined)
-      return { TAG: "Within", _0: new ArrayBuffer(0) }
+    if (body === null || body === undefined) return new ArrayBuffer(0);
     const reader = body.getReader();
     const chunks = [];
     let total = 0;
@@ -87,7 +88,7 @@ let readBodyWithin: (response, float) => promise<overCapResult> = %raw(`async (r
       total += value.byteLength;
       if (total > limit) {
         try { await reader.cancel(); } catch (_) { /* the size outcome wins */ }
-        return "OverLimit"
+        return null;
       }
       chunks.push(value);
     }
@@ -97,8 +98,17 @@ let readBodyWithin: (response, float) => promise<overCapResult> = %raw(`async (r
       joined.set(chunk, offset);
       offset += chunk.byteLength;
     }
-    return { TAG: "Within", _0: joined.buffer }
+    return joined.buffer;
   }`)
+
+/** Reads the body up to `limit` bytes: `Within(bytes)` for an in-range or
+  * absent body (empty buffer), `OverLimit` once the running total passes the
+  * cap (the stream is cancelled instead of buffering the rest). */
+let readBodyWithin = async (response: response, limit: float): overCapResult =>
+  switch (await readBodyWithinRaw(response, limit))->Nullable.toOption {
+  | Some(bytes) => Within(bytes)
+  | None => OverLimit
+  }
 
 /** Test-only byte-chunk bodies so fetch fakes drive the real streaming reader.
     Raw interop stays in this binding island. */
