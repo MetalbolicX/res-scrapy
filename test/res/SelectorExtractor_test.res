@@ -162,3 +162,77 @@ testAsync("SelectorExtractor missing attribute returns empty string", planned =>
   })
   ->ignore
 })
+
+// mapInBatches must keep a flat call stack: an await-per-item recursion
+// overflows the stack once a batch grows past a few thousand items.
+[10_000, 50_000]->Array.forEach(batchSize => {
+  testAsync(
+    `mapInBatches handles batch size ${batchSize->Int.toString} without stack overflow`,
+    planned => {
+      let items = Belt.Array.makeBy(100_000, i => i)
+      SelectorExtractor.mapInBatches(
+        items,
+        ~batchSize,
+        ~yieldFn=() => Promise.resolve(),
+        i => i * 2,
+      )
+      ->Promise.then(
+        out => {
+          isIntEqualTo(100_000, Array.length(out))
+          isIntEqualTo(199_998, out->Array.get(99_999)->Option.getOr(-1))
+          planned(~planned=2, ())
+          Promise.resolve()
+        },
+      )
+      ->Promise.catch(
+        exn => {
+          failWithExn(`mapInBatches batch size ${batchSize->Int.toString} failed`, exn)
+          planned(~planned=0, ())
+          Promise.resolve()
+        },
+      )
+      ->ignore
+    },
+  )
+})
+
+// It pauses after every full batch, never after the last item, keeps order,
+// and yields nothing for an empty input.
+[(10, 3, 3), (9, 3, 2), (3, 3, 0), (0, 3, 0)]->Array.forEach(((
+  count,
+  batchSize,
+  expectedYields,
+)) => {
+  testAsync(
+    `mapInBatches yields ${expectedYields->Int.toString} times for ${count->Int.toString} items in batches of ${batchSize->Int.toString}`,
+    planned => {
+      let yields = ref(0)
+      let items = Belt.Array.makeBy(count, i => i)
+      SelectorExtractor.mapInBatches(
+        items,
+        ~batchSize,
+        ~yieldFn=() => {
+          yields := yields.contents + 1
+          Promise.resolve()
+        },
+        i => i,
+      )
+      ->Promise.then(
+        out => {
+          isIntEqualTo(expectedYields, yields.contents)
+          isTruthy(out == items, ~message="output order differs from input order")
+          planned(~planned=2, ())
+          Promise.resolve()
+        },
+      )
+      ->Promise.catch(
+        exn => {
+          failWithExn("mapInBatches yield-count assertions failed", exn)
+          planned(~planned=0, ())
+          Promise.resolve()
+        },
+      )
+      ->ignore
+    },
+  )
+})
