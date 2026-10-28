@@ -20,7 +20,8 @@ type htmlElement = {
   *
   * Fast path for plain `.class`, `#id`, and `tag` selectors: walks the tree
   * once, pre-order, applying exactly the test the css-select adapter applies
-  * (isTag = nodeType 1, root itself tested, class tokens via `(?:^|\s)` regex
+  * (isTag = nodeType 1, descendants only — like css-select, the context element
+  * itself is never tested — class tokens via `(?:^|\s)` regex
   * over the raw `class` attribute, `id` by exact equality, tag names compared
   * case-sensitively against the lower-cased `rawTagName` because node-html-parser
   * queries with `xmlMode: true`). This matters because node-html-parser 9.x
@@ -50,7 +51,9 @@ let fastSelectAll: (
     return (elem.rawTagName || "").toLowerCase() === token;
   };
   const out = [];
-  const stack = [root];
+  const stack = [];
+  const top = root.childNodes;
+  if (top) for (let i = top.length - 1; i >= 0; i--) stack.push(top[i]);
   while (stack.length > 0) {
     const node = stack.pop();
     if (node.nodeType === 1 && matches(node)) out.push(node);

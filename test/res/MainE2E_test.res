@@ -125,6 +125,32 @@ testAsync("count constraint CLI rejects before extraction", planned => {
   })
 })
 
+// Row fields query INSIDE each row element. A row that matches its own field
+// selector must not count itself: nested `.comment` rows report only their
+// replies (1 and 0), matching the library semantics before the fast path.
+testAsync("schema CLI: nested rows never count themselves", planned => {
+  runCli(
+    ~args=[
+      "--schema",
+      `{"config":{"rowSelector":".comment"},"fields":{"author":{"selector":".author"},"replies":{"selector":".comment","type":"count"}}}`,
+    ],
+    ~input=`<div class="comment"><b class="author">ana</b><div class="comment"><b class="author">bo</b></div></div>`,
+  )
+  ->Promise.then(result => {
+    isIntEqualTo(0, result.exitCode)
+    isTextEqualTo(`[{"author":"ana","replies":1},{"author":"bo","replies":0}]\n`, result.stdout)
+    isTextEqualTo("", result.stderr)
+    planned(~planned=3, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(exn => {
+    failWithExn("nested-row count CLI execution failed", exn)
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
 testAsync("table CLI: null tableOptions.rowSelector matches omitted rowSelector", planned => {
   let columns = `"columns":[{"name":"A","selector":"td:nth-child(1)","type":"text"},{"name":"B","selector":"td:nth-child(2)","type":"text"}]`
   // `tbody` starts with a pure header row so both variants must skip it.

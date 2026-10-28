@@ -72,6 +72,21 @@ test("fast select falls back to the library for compound selectors", () => {
   isIntEqualTo(1, querySelectorAll(doc, "li#one")->Array.length)
 })
 
+// css-select queries the CHILDREN of a single context element, never the
+// element itself. Schema rows query inside each row element, so a row that
+// matches its own field selector must not count itself.
+let nestedHtml = `<div class="item" id="x"><span class="item">a</span><p>b</p></div>`
+
+[(".item", 1), ("#x", 0), ("div", 0), ("span", 1)]->Array.forEach(((selector, expectedCount)) => {
+  test(`fast select excludes the context element: ${selector}`, () => {
+    let context = parse(nestedHtml)->querySelector("div")->Nullable.toOption->Option.getOrThrow
+    let fast = querySelectorAll(context, selector)
+    let lib = libQuerySelectorAll(context, selector)
+    isIntEqualTo(expectedCount, fast->Array.length)
+    isTextEqualTo(signatures(lib), signatures(fast))
+  })
+})
+
 // Regression guard: linear scaling. The quadratic baseline measured 29×
 // (4,394 ms at 20k vs 152 ms at 5k); the fast path sits near 4×, so 8× keeps
 // real headroom for machine load while still failing a quadratic regression.
