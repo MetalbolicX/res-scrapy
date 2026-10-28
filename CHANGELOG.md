@@ -18,6 +18,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - **Breaking:** Zip extraction retains the longest ordinary scalar selector's rows, padding missing cells with their default or null instead of truncating to the first selector.
 
 ### Fixed
+- A stdout write failure other than an early reader close (e.g. `ENOSPC` when output goes to a full disk) is now reported on stderr and exits `1`; previously the remaining output was lost and the run could still exit `0`.
 - Fatal errors and signals now flush buffered stdout (bounded to 2 s) before exiting, so piped output is not truncated.
 - Setting only `ALL_PROXY`/`all_proxy` now prints one stderr warning (once per process) that undici's `EnvHttpProxyAgent` does not route it, so requests connect directly; the message points users to `HTTP_PROXY`/`HTTPS_PROXY`.
 - Proxy runs print at most one warning: when `undici` is unavailable only the "proxy will be ignored" line appears, never the `ALL_PROXY` note on top of it.

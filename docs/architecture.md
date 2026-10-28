@@ -482,7 +482,9 @@ Exit codes: signals exit `130` (SIGINT) / `143` (SIGTERM); uncaught errors exit
 `1`. An `EPIPE` on `stdout` — a reader that closed early, e.g.
 `res-scrapy ... | head -c N` — exits `141` (the Unix SIGPIPE status) quietly,
 with no error report and no partial output from an interrupted extraction, so
-scripts can tell truncation apart from success.
+scripts can tell truncation apart from success. Any other `stdout` write
+failure (e.g. `ENOSPC` on a full disk) is reported like a runtime error and
+exits `1`.
 
 ## 11. Build Pipeline
 

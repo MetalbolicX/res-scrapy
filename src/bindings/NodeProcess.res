@@ -192,8 +192,16 @@ let registerGlobalRuntimeHandlers: (
     return err && (err.code === "EPIPE");
   };
 
+  // Any other stdout failure (ENOSPC on a full disk, EBADF, EIO) means output
+  // was lost: report it like any runtime error and exit 1, never 0.
   process.stdout.on("error", function(err) {
-    if (isEpipe(err)) exitFn(141);
+    if (isEpipe(err)) {
+      exitFn(141);
+      return;
+    }
+    report("Unexpected runtime error:");
+    report(formatError(err));
+    exitFn(1);
   });
 
   process.on("uncaughtException", function(err) {

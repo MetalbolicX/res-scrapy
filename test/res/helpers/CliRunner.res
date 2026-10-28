@@ -268,6 +268,49 @@ let runCliWithEarlyReaderClose = (
   `)(args, input, destroyAfterBytes, timeoutMs)->Obj.magic
 }
 
+/** Spawns the CLI with stdout redirected to `stdoutPath` (e.g. `/dev/full`,
+  * which fails every write with ENOSPC like a full disk) and reports the exit
+  * code and stderr. stdout is not captured. */
+let runCliWithStdoutPath = (
+  ~args: array<string>,
+  ~input: string="",
+  ~stdoutPath: string,
+  ~timeoutMs: int=defaultTimeoutMs,
+): promise<cliResult> => {
+  %raw(`
+    (async (args, input, stdoutPath, timeoutMs) => {
+      const { spawn } = await import('node:child_process');
+      const fs = await import('node:fs');
+      const { join } = await import('node:path');
+      const cliPath = join(process.cwd(), 'dist', 'main.mjs');
+      const outFd = fs.openSync(stdoutPath, 'w');
+      return new Promise((resolve) => {
+        const proc = spawn(process.execPath, [cliPath, ...args], {
+          stdio: ['pipe', outFd, 'pipe'],
+        });
+        fs.closeSync(outFd);
+        let stderr = '';
+        const timer = setTimeout(() => {
+          proc.kill('SIGKILL');
+          resolve({ stdout: '', stderr: (stderr + '\\nTimed out after ' + timeoutMs + 'ms').trim(), exitCode: 124 });
+        }, timeoutMs);
+        proc.stderr.on('data', chunk => { stderr += chunk.toString(); });
+        proc.stdin.on('error', () => {});
+        proc.on('error', err => {
+          clearTimeout(timer);
+          resolve({ stdout: '', stderr: err.message, exitCode: 1 });
+        });
+        proc.on('close', code => {
+          clearTimeout(timer);
+          resolve({ stdout: '', stderr, exitCode: code ?? -1 });
+        });
+        if (input) { proc.stdin.write(input); }
+        proc.stdin.end();
+      });
+    })
+  `)(args, input, stdoutPath, timeoutMs)->Obj.magic
+}
+
 let runCliWithSchemaFile = (
   ~schemaContent: string,
   ~cliArgs: array<string>=[],

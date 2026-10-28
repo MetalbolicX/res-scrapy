@@ -259,6 +259,34 @@ testAsync(
   },
 )
 
+// Any stdout write failure other than EPIPE must surface: with stdout on a
+// full disk (/dev/full fails every write with ENOSPC) the run reports the error
+// on stderr and exits 1 instead of losing the output and exiting 0.
+testAsync("stdout write failure (ENOSPC) is reported and exits 1", ~timeout=20_000, planned => {
+  runCliWithStdoutPath(
+    ~args=["--selector", ".item", "--mode", "--extract", "text"],
+    ~input=itemHtml(1_000),
+    ~stdoutPath="/dev/full",
+    ~timeoutMs=15_000,
+  )
+  ->Promise.then(result => {
+    isIntEqualTo(1, result.exitCode)
+    isTruthy(
+      result.stderr->String.startsWith("Unexpected runtime error:\n"),
+      ~message=`stderr was: ${result.stderr}`,
+    )
+    isTruthy(result.stderr->String.includes("ENOSPC"), ~message=`stderr was: ${result.stderr}`)
+    planned(~planned=3, ())
+    Promise.resolve()
+  })
+  ->Promise.catch(exn => {
+    failWithExn("stdout ENOSPC CLI execution failed", exn)
+    planned(~planned=0, ())
+    Promise.resolve()
+  })
+  ->ignore
+})
+
 // Signals must take effect DURING extraction, not only after it finishes:
 // JS signal handlers cannot run while the main thread is busy, so Multiple
 // mode yields to the event loop between batches. The parser itself stays
