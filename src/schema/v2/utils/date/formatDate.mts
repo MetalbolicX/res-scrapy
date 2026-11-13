@@ -347,10 +347,11 @@ const createTokenDefinitions = (
  * - Time zone handling ensures that the formatted output can reflect the correct local time for a given IANA time zone, or UTC if none is specified.
  */
 export default function formatDate(
-  date: Date,
+  instant: Temporal.Instant,
   outputFormat?: string,
   timeZone?: string,
 ): string {
+  const date = new Date(instant.epochMilliseconds);
   if (outputFormat === "epoch")
     return String(Math.floor(date.getTime() / 1000));
   if (outputFormat === "epochMillis") return String(date.getTime());

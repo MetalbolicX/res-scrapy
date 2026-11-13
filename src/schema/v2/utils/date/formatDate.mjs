@@ -105,7 +105,8 @@ const createTokenDefinitions = (components) => [
     { token: "s", value: String(components.sec) },
     { token: "a", value: components.hour < 12 ? "am" : "pm" },
 ];
-export default function formatDate(date, outputFormat, timeZone) {
+export default function formatDate(instant, outputFormat, timeZone) {
+    const date = new Date(instant.epochMilliseconds);
     if (outputFormat === "epoch")
         return String(Math.floor(date.getTime() / 1000));
     if (outputFormat === "epochMillis")

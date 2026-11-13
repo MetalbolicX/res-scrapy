@@ -1,7 +1,7 @@
 open FieldTypes
 
-type jsDate
+type jsInstant
 
-let tryParseWithFormat: (string, string) => option<jsDate>
-let parseDate: (string, array<string>) => option<jsDate>
-let formatDate: (jsDate, dateOutput, option<string>) => string
+let tryParseWithFormat: (string, string) => option<jsInstant>
+let parseDate: (string, array<string>) => option<jsInstant>
+let formatDate: (jsInstant, dateOutput, option<string>) => string

@@ -7,18 +7,18 @@ open FieldTypes
 
 module Iter = NodeIter
 
-type jsDate
+type jsInstant
 
 @module("./date/parseDate.mjs")
-external tryParseWithFormat: (string, string) => option<jsDate> = "default"
+external tryParseWithFormat: (string, string) => option<jsInstant> = "default"
 
 @module("./date/formatDate.mjs")
-external formatDateInternal: (jsDate, string, string) => string = "default"
+external formatDateInternal: (jsInstant, string, string) => string = "default"
 
 /** Try each format in order; return the first successful parse.
   * Defaults to ["ISO"] when the array is empty.
   */
-let parseDate: (string, array<string>) => option<jsDate> = (str, formats) => {
+let parseDate: (string, array<string>) => option<jsInstant> = (str, formats) => {
   let fmts = if Array.length(formats) === 0 {
     ["ISO"]
   } else {
@@ -32,8 +32,8 @@ let parseDate: (string, array<string>) => option<jsDate> = (str, formats) => {
   }, None)
 }
 
-/** Format a `jsDate` according to the `dateOutput` variant. */
-let formatDate: (jsDate, dateOutput, option<string>) => string = (date, output, timezone) => {
+/** Format a `jsInstant` according to the `dateOutput` variant. */
+let formatDate: (jsInstant, dateOutput, option<string>) => string = (date, output, timezone) => {
   let tz = Option.getOr(timezone, "UTC")
   let spec = switch output {
   | Iso8601 => "iso8601"

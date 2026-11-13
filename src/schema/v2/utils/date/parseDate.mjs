@@ -1,10 +1,22 @@
+const tryInstant = (build) => {
+    try {
+        return build();
+    }
+    catch (error) {
+        if (error instanceof RangeError)
+            return undefined;
+        throw error;
+    }
+};
+const OFFSETLESS_ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/;
+const ISO_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 const parseISO = (input) => {
-    const offsetlessIsoDateTime = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/;
-    const normalized = offsetlessIsoDateTime.test(input)
-        ? input.replace(" ", "T") + "Z"
-        : input;
-    const parsedDate = new Date(normalized);
-    return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
+    const normalized = ISO_DATE_ONLY.test(input)
+        ? `${input}T00:00Z`
+        : OFFSETLESS_ISO_DATE_TIME.test(input)
+            ? input.replace(" ", "T") + "Z"
+            : input;
+    return tryInstant(() => Temporal.Instant.from(normalized));
 };
 const parseEpochSeconds = (secondsInput) => {
     const seconds = typeof secondsInput === "number"
@@ -12,9 +24,7 @@ const parseEpochSeconds = (secondsInput) => {
         : parseInt(String(secondsInput), 10);
     if (Number.isNaN(seconds))
         return undefined;
-    const milliseconds = seconds * 1000;
-    const parsedDate = new Date(milliseconds);
-    return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
+    return tryInstant(() => Temporal.Instant.fromEpochMilliseconds(seconds * 1000));
 };
 const parseEpochMilliseconds = (millisInput) => {
     const milliseconds = typeof millisInput === "number"
@@ -22,8 +32,7 @@ const parseEpochMilliseconds = (millisInput) => {
         : parseInt(String(millisInput), 10);
     if (Number.isNaN(milliseconds))
         return undefined;
-    const parsedDate = new Date(milliseconds);
-    return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
+    return tryInstant(() => Temporal.Instant.fromEpochMilliseconds(milliseconds));
 };
 const parseEpochMillis = (millisInput) => parseEpochMilliseconds(millisInput);
 const MONTHS_FULL = [
@@ -256,6 +265,7 @@ export default function tryParseWithFormat(datetime, format) {
         return undefined;
     const tokenMap = mapMatchToGroupValues(groupNames, matchResult);
     const { year, month, day, hour, minute, second } = normalizeDateParts(tokenMap);
-    const resultDate = new Date(Date.UTC(year, month, day, hour, minute, second));
-    return Number.isNaN(resultDate.getTime()) ? undefined : resultDate;
+    return tryInstant(() => Temporal.PlainDateTime.from({ year, month: month + 1, day, hour, minute, second }, { overflow: "reject" })
+        .toZonedDateTime("UTC")
+        .toInstant());
 }

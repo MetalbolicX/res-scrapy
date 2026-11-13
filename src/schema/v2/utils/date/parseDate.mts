@@ -59,32 +59,51 @@ interface RegexBuildResult {
 }
 
 /**
- * Parses an ISO-8601 date string into a Date object.
+ * Runs a Temporal constructor and maps its RangeError to `undefined`.
  *
- * Recognized offset-less ISO date-times are interpreted as UTC. Explicit
- * offsets identify the instant unchanged; other inputs retain native parsing.
- * Attempts to construct a Date from the provided input string. If the input
- * cannot be parsed into a valid Date (i.e., results in NaN time), the function
- * returns undefined.
+ * Temporal signals invalid calendar values, malformed ISO strings, and
+ * out-of-range instants with RangeError; for this parser those are ordinary
+ * parse failures, not exceptions. Any other error is a bug and is rethrown.
+ */
+const tryInstant = (
+  build: () => Temporal.Instant,
+): Temporal.Instant | undefined => {
+  try {
+    return build();
+  } catch (error) {
+    if (error instanceof RangeError) return undefined;
+    throw error;
+  }
+};
+
+const OFFSETLESS_ISO_DATE_TIME =
+  /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/;
+const ISO_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Parses a strict ISO-8601 string into a Temporal.Instant.
  *
- * @param input - The ISO-8601 date string to parse (e.g., "2023-03-14T15:09:26Z").
- * @returns A Date instance when parsing succeeds, or undefined for invalid input.
+ * `Temporal.Instant.from` only accepts strings that carry an offset, so
+ * offset-less date-times (`T` or space separator) and date-only strings are
+ * normalized to UTC first. Explicit offsets identify the instant unchanged.
+ * Non-ISO strings (e.g. "Mar 14 2023") are rejected.
+ *
+ * @param input - The ISO-8601 string to parse (e.g., "2023-03-14T15:09:26Z").
+ * @returns The parsed instant, or undefined for invalid input.
  * @example
  * ```TypeScript
- * const date1 = parseISO("2023-03-14T15:09:26Z");
- * console.log(date1); // Outputs: 2023-03-14T15:09:26.000Z
- * const date2 = parseISO("invalid-date");
- * console.log(date2); // Outputs: undefined
+ * parseISO("2023-03-14T15:09:26+02:00"); // Instant 2023-03-14T13:09:26Z
+ * parseISO("2024-01-02"); // Instant 2024-01-02T00:00:00Z
+ * parseISO("Mar 14 2023"); // undefined
  * ```
  */
-const parseISO = (input: string): Date | undefined => {
-  const offsetlessIsoDateTime =
-    /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/;
-  const normalized = offsetlessIsoDateTime.test(input)
-    ? input.replace(" ", "T") + "Z"
-    : input;
-  const parsedDate = new Date(normalized);
-  return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
+const parseISO = (input: string): Temporal.Instant | undefined => {
+  const normalized = ISO_DATE_ONLY.test(input)
+    ? `${input}T00:00Z`
+    : OFFSETLESS_ISO_DATE_TIME.test(input)
+      ? input.replace(" ", "T") + "Z"
+      : input;
+  return tryInstant(() => Temporal.Instant.from(normalized));
 };
 
 /**
@@ -119,15 +138,15 @@ const parseISO = (input: string): Date | undefined => {
  * console.log(date5); // Outputs: 1969-12-31T23:59:59.000Z
  * ```
  */
-const parseEpochSeconds = (secondsInput: string | number): Date | undefined => {
+const parseEpochSeconds = (
+  secondsInput: string | number,
+): Temporal.Instant | undefined => {
   const seconds =
     typeof secondsInput === "number"
       ? Math.trunc(secondsInput)
       : parseInt(String(secondsInput), 10);
   if (Number.isNaN(seconds)) return undefined;
-  const milliseconds = seconds * 1000;
-  const parsedDate = new Date(milliseconds);
-  return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
+  return tryInstant(() => Temporal.Instant.fromEpochMilliseconds(seconds * 1000));
 };
 
 /**
@@ -157,14 +176,13 @@ const parseEpochSeconds = (secondsInput: string | number): Date | undefined => {
  */
 const parseEpochMilliseconds = (
   millisInput: string | number,
-): Date | undefined => {
+): Temporal.Instant | undefined => {
   const milliseconds =
     typeof millisInput === "number"
       ? Math.trunc(millisInput)
       : parseInt(String(millisInput), 10);
   if (Number.isNaN(milliseconds)) return undefined;
-  const parsedDate = new Date(milliseconds);
-  return Number.isNaN(parsedDate.getTime()) ? undefined : parsedDate;
+  return tryInstant(() => Temporal.Instant.fromEpochMilliseconds(milliseconds));
 };
 
 /**
@@ -194,7 +212,9 @@ const parseEpochMilliseconds = (
  * @remarks
  * This is a thin wrapper that delegates parsing to parseEpochMilliseconds.
  */
-const parseEpochMillis = (millisInput: string | number): Date | undefined =>
+const parseEpochMillis = (
+  millisInput: string | number,
+): Temporal.Instant | undefined =>
   parseEpochMilliseconds(millisInput);
 
 const MONTHS_FULL = [
@@ -593,7 +613,8 @@ const invalidDateParts = (): DateParts => ({
  * For other string formats, a regex is constructed from the format (via buildRegexFromFormat),
  * the input is matched, named capture groups are mapped to values (via mapMatchToGroupValues),
  * and the parts are normalized into year, month, day, hour, minute, and second (via normalizeDateParts).
- * The resulting Date is created with Date.UTC(...), so it represents the parsed time in UTC.
+ * The parts are validated with `overflow: "reject"`, so impossible calendar values
+ * (Feb 30, month 13, hour 24) fail instead of rolling over, and are read as UTC.
  *
  * Returns undefined for null/empty inputs, non-string formats, regex/build or match failures,
  * or when the constructed Date is invalid.
@@ -605,7 +626,7 @@ const invalidDateParts = (): DateParts => ({
 export default function tryParseWithFormat(
   datetime: string | null | undefined,
   format: string | null | undefined,
-): Date | undefined {
+): Temporal.Instant | undefined {
   if (!datetime) return undefined;
 
   if (format === "ISO") return parseISO(datetime);
@@ -623,6 +644,12 @@ export default function tryParseWithFormat(
   const { year, month, day, hour, minute, second } =
     normalizeDateParts(tokenMap);
 
-  const resultDate = new Date(Date.UTC(year, month, day, hour, minute, second));
-  return Number.isNaN(resultDate.getTime()) ? undefined : resultDate;
+  return tryInstant(() =>
+    Temporal.PlainDateTime.from(
+      { year, month: month + 1, day, hour, minute, second },
+      { overflow: "reject" },
+    )
+      .toZonedDateTime("UTC")
+      .toInstant(),
+  );
 }
