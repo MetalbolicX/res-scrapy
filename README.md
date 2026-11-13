@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/res-scrapy"><img src="https://img.shields.io/npm/v/res-scrapy.svg" alt="npm version"></a>
-  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node->=22.0.0-272e33?logo=node.js&logoColor=white" alt="Node.js"></a>
+  <a href="https://nodejs.org"><img src="https://img.shields.io/badge/node->=26.0.0-272e33?logo=node.js&logoColor=white" alt="Node.js"></a>
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
   <img src="https://img.shields.io/badge/ReScript-12.2.0-ff69ce?logo=rescript&logoColor=white" alt="ReScript">
 </p>
@@ -35,7 +35,7 @@ npx res-scrapy -h
 ```
 
 > [!NOTE]
-> Requirements: Node.js >= 22.0.0
+> Requirements: Node.js >= 26.0.0
 
 ## Quick Start Examples
 

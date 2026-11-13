@@ -33,7 +33,7 @@ E2E suites spawn `dist/main.mjs`, so run `pnpm run bundle` before `pnpm run res:
 
 ## Architecture Overview
 
-- **Type**: CLI tool, Node.js ≥ 22 (`engines.node`).
+- **Type**: CLI tool, Node.js ≥ 26 (`engines.node`; required for the native `Temporal` API).
 - **Language**: ReScript v12 (`@rescript/runtime` ^12.3.0, `rescript` ^12.3.0).
 - **Bundle**: Rolldown 1.1.3 + `rollup-plugin-esbuild` for minification; ESM output with `#!/usr/bin/env node` banner.
 - **Entry point**: `src/Main.res` → compiles to `src/Main.res.mjs` → bundled to `dist/main.mjs`.

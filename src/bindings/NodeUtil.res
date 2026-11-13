@@ -1,7 +1,7 @@
 /**
   * Bindings to the Node.js `node:util` module, scoped to the `parseArgs` API.
   *
-  * `parseArgs` (available since Node 18.3 / our requirement ≥ 22) provides
+  * `parseArgs` (available since Node 18.3 / our requirement ≥ 26) provides
   * first-class CLI argument parsing without external dependencies.
   */
 /**

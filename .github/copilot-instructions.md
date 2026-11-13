@@ -25,7 +25,7 @@ Notes:
 
 - Language & runtime:
   - Implemented in ReScript. Sources live under `src/` and are compiled in-source to `.res.mjs` files per `rescript.json`.
-  - Node engine required: `>=22.0.0` (see package.json `engines`).
+  - Node engine required: `>=26.0.0` (see package.json `engines`).
 - Entry point: `src/Main.res` (compiled to `src/Main.res.mjs`) — it:
   1. Parses CLI flags (modules under `src/cli`).
   2. Reads HTML from stdin (module `src/stdio`).

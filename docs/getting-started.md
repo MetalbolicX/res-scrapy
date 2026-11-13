@@ -4,7 +4,7 @@
 
 ## For Node.js
 
-To work with Node.js, you must have **version 22.0.0** or higher installed.
+To work with Node.js, you must have **version 26.0.0** or higher installed.
 
 Check your Node.js version with the following command:
 

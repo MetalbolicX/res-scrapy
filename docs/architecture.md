@@ -666,7 +666,7 @@ sequenceDiagram
 
 ## 15. Notable Constraints & Tradeoffs
 
-1. **Node.js ≥ 22 required** — Uses `Iterator` helpers, `parseArgs`, global `fetch`, and top-level `await`.
+1. **Node.js ≥ 26 required** — Uses the `Temporal` API, `Iterator` helpers, `parseArgs`, global `fetch`, and top-level `await`.
 2. **No streaming HTML parsing** — `node-html-parser` loads the entire document into memory. Fine for typical web pages; problematic for very large documents.
 3. **Single-threaded** — Concurrency is cooperative (Promise-based semaphore), not parallel. CPU-bound extraction runs sequentially.
 4. **TypeScript date helpers** — Date parsing/formatting is implemented in TypeScript and compiled to `.mjs`, committed to source. This is a pragmatic compromise for complex date logic.
