@@ -518,6 +518,17 @@ yields `2024-01-02T13:04:00Z`).
 `dateOptions.timezone` controls output formatting, not the timezone assigned to
 an offset-less input. To preserve a local-time instant, supply an explicit offset.
 
+Parsing is strict (it uses the native `Temporal` API). A value that does not
+match any format yields `null` instead of a guessed date:
+
+- `"ISO"` accepts ISO 8601 only. `Mar 14 2023` or a bare year such as `2024`
+  is rejected; add a custom format such as `MMM dd yyyy` for such inputs.
+- Custom formats reject impossible calendar values instead of rolling them
+  over: `02/30/2024`, month `13`, or hour `24` yield `null`, while the leap
+  day `02/29/2024` is accepted.
+- `yyyy` keeps the year as written, so `0099-01-01` is year 99, not 1999.
+- Epoch inputs outside ±8.64e15 ms (about ±273,790 years) are rejected.
+
 Key options:
 
 - `formats` (array).
