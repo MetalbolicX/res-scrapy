@@ -97,133 +97,33 @@ const padToFourDigits = (value: number | string): string =>
   String(value).padStart(4, "0");
 
 /**
- * Parse a timezone string of the form "GMT±HH" or "GMT±HH:MM" and return the offset in minutes.
+ * Resolves the calendar components of an instant in an IANA time zone.
  *
- * @param timeZoneName - Optional timezone string. Expected to start with "GMT" followed immediately by '+' or '-' and hour digits, with an optional ":MM" minute component.
- * @returns The timezone offset in minutes (positive for '+' offsets, negative for '-' offsets). Returns 0 for falsy or non-matching inputs.
+ * `toZonedDateTimeISO` handles DST and historical offsets directly, so no
+ * locale formatting or offset-string parsing is needed. Offsets with a seconds
+ * part (e.g. the 1874 New York LMT offset -04:56:02) are truncated to whole
+ * minutes to match the `±HH:MM` output.
  *
- * @example
- * ```TypeScript
- * console.log(parseTimeZoneOffsetMinutes("GMT+02")); // Outputs: 120
- * console.log(parseTimeZoneOffsetMinutes("GMT-05:30")); // Outputs: -330
- * console.log(parseTimeZoneOffsetMinutes("GMT+00:15")); // Outputs: 15
- * console.log(parseTimeZoneOffsetMinutes("GMT-00:45")); // Outputs: -45
- * console.log(parseTimeZoneOffsetMinutes("UTC")); // Outputs: 0 (non-matching input)
- * console.log(parseTimeZoneOffsetMinutes(null)); // Outputs: 0 (falsy input)
- * console.log(parseTimeZoneOffsetMinutes(undefined)); // Outputs: 0 (falsy input)
- * ```
- *
- * @remarks
- * - The pattern matching is case-sensitive and requires the exact prefix "GMT".
- * - Hours and minutes are parsed as base-10 integers; minutes default to 0 if omitted.
- */
-const parseTimeZoneOffsetMinutes = (timeZoneName?: string): number => {
-  if (!timeZoneName) return 0;
-  const match = timeZoneName.match(/GMT([+-])(\d+)(?::(\d+))?/);
-  if (!match) return 0;
-  const sign = match[1] === "+" ? 1 : -1;
-  const hours = parseInt(match[2], 10) || 0;
-  const minutes = parseInt(match[3] || "0", 10);
-  return sign * (hours * 60 + minutes);
-};
-
-/**
- * Extracts UTC-based date and time components from the given Date.
- *
- * @param date - The Date instance to read UTC components from.
- * @returns An object with the following properties:
- *          - year: UTC full year,
- *          - month: UTC month (zero-based, 0 = January),
- *          - day: UTC day of the month,
- *          - hour: UTC hour,
- *          - min: UTC minutes,
- *          - sec: UTC seconds,
- *          - offset: timezone offset in minutes (always 0 for UTC).
- */
-const getUtcDateComponents = (date: Date): DateComponents => ({
-  year: date.getUTCFullYear(),
-  month: date.getUTCMonth(),
-  day: date.getUTCDate(),
-  hour: date.getUTCHours(),
-  min: date.getUTCMinutes(),
-  sec: date.getUTCSeconds(),
-  offset: 0,
-});
-
-/**
- * Extracts localized date and time components for a given Date in a specified IANA time zone.
- *
- * Uses Intl.DateTimeFormat with the "en-US" locale and the "shortOffset" timeZoneName to produce
- * numeric year, month, day, hour, minute, second and a timezone offset string which is parsed into
- * minutes via parseTimeZoneOffsetMinutes.
- *
- * Special behaviors:
- * - The returned month is zero-indexed (0 = January).
- * - If Intl yields an hour value of 24 it is normalized to 0.
- * - If the timeZoneName part is missing or unparsable, parseTimeZoneOffsetMinutes will handle it
- *   and the returned offset may be 0 or a fallback value.
- *
- * @param date - The Date object to convert into components.
+ * @param instant - The instant to resolve.
  * @param timeZone - An IANA time zone identifier (e.g. "UTC", "America/New_York").
- * @returns An object of type DateComponents containing:
- *   - year: full numeric year
- *   - month: zero-indexed month (0-11)
- *   - day: day of month
- *   - hour: hour of day (0-23)
- *   - min: minute (0-59)
- *   - sec: second (0-59)
- *   - offset: time zone offset in minutes from UTC
+ * @returns The DateComponents with a zero-based month and the offset in minutes.
+ * @throws RangeError when `timeZone` is not a valid time zone identifier.
  */
-const getTimeZoneDateComponents = (
-  date: Date,
+const getDateComponents = (
+  instant: Temporal.Instant,
   timeZone: string,
 ): DateComponents => {
-  const dateTimeFormatter = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-    timeZoneName: "shortOffset",
-  });
-
-  const dateParts = Object.fromEntries(
-    dateTimeFormatter
-      .formatToParts(date)
-      .map(({ type, value }) => [type, value]),
-  ) as Record<string, string>;
-
-  let hour = parseInt(dateParts.hour, 10);
-  if (hour === 24) hour = 0;
-
+  const zoned = instant.toZonedDateTimeISO(timeZone);
   return {
-    year: parseInt(dateParts.year, 10),
-    month: parseInt(dateParts.month, 10) - 1,
-    day: parseInt(dateParts.day, 10),
-    hour,
-    min: parseInt(dateParts.minute, 10),
-    sec: parseInt(dateParts.second, 10),
-    offset: parseTimeZoneOffsetMinutes(dateParts.timeZoneName || ""),
+    year: zoned.year,
+    month: zoned.month - 1,
+    day: zoned.day,
+    hour: zoned.hour,
+    min: zoned.minute,
+    sec: zoned.second,
+    offset: Math.trunc(zoned.offsetNanoseconds / 60_000_000_000),
   };
 };
-
-/**
- * Returns the constituent date/time components for a given instant, resolved either in UTC or in a specified time zone.
- *
- * If `timeZone` is omitted or equal to `"UTC"`, UTC components are returned via `getUtcDateComponents`.
- * Otherwise, components are computed for the provided `timeZone` via `getTimeZoneDateComponents`.
- *
- * @param date - The Date instance representing the instant to extract components from.
- * @param timeZone - Optional IANA time zone identifier; use `"UTC"` to force UTC semantics.
- * @returns The DateComponents (e.g., year, month, day, hour, minute, second, millisecond) corresponding to the resolved time zone.
- */
-const getDateComponents = (date: Date, timeZone?: string): DateComponents =>
-  !timeZone || timeZone === "UTC"
-    ? getUtcDateComponents(date)
-    : getTimeZoneDateComponents(date, timeZone);
 
 /**
  * Formats a time zone offset, given in minutes, into an ISO 8601 time zone designator.
@@ -311,7 +211,7 @@ const createTokenDefinitions = (
 ];
 
 /**
- * Format a Date into a string according to one of several built-in formats or a custom token-based format.
+ * Format a Temporal.Instant into a string according to one of several built-in formats or a custom token-based format.
  *
  * Supported special outputFormat values:
  * - "epoch"       - seconds since Unix epoch (rounded down) as a string
@@ -327,16 +227,16 @@ const createTokenDefinitions = (
  * - If timeZone is not provided, "UTC" is used.
  * - If outputFormat is omitted or an empty string is passed, the function returns an empty string.
  *
- * @param date - The Date instance to format.
+ * @param instant - The instant to format.
  * @param outputFormat - Optional format specifier ("epoch", "epochMillis", "iso8601", or a custom token format).
  * @param timeZone - Optional IANA time zone identifier (defaults to "UTC") used to compute date components.
  * @returns The formatted date as a string according to the requested format.
  *
  * @example
  * ```TypeScript
- * const date = new Date("2024-01-02T15:04:05Z");
- * console.log(formatDate(date, "epoch")); // Outputs: "1704654245"
- * console.log(formatDate(date, "epochMillis")); // Outputs: "1704654245000"
+ * const date = Temporal.Instant.from("2024-01-02T15:04:05Z");
+ * console.log(formatDate(date, "epoch")); // Outputs: "1704207845"
+ * console.log(formatDate(date, "epochMillis")); // Outputs: "1704207845000"
  * console.log(formatDate(date, "iso8601")); // Outputs: "2024-01-02T15:04:05Z"
  * console.log(formatDate(date, "yyyy/MM/dd HH:mm:ss")); // Outputs: "2024/01/02 15:04:05"
  * console.log(formatDate(date, "MMM d, yyyy h:mm a", "America/New_York")); // Outputs: "Jan 2, 2024 10:04 am"
@@ -351,12 +251,11 @@ export default function formatDate(
   outputFormat?: string,
   timeZone?: string,
 ): string {
-  const date = new Date(instant.epochMilliseconds);
   if (outputFormat === "epoch")
-    return String(Math.floor(date.getTime() / 1000));
-  if (outputFormat === "epochMillis") return String(date.getTime());
+    return String(Math.floor(instant.epochMilliseconds / 1000));
+  if (outputFormat === "epochMillis") return String(instant.epochMilliseconds);
 
-  const components = getDateComponents(date, timeZone || "UTC");
+  const components = getDateComponents(instant, timeZone || "UTC");
 
   if (outputFormat === "iso8601") {
     return `${padToFourDigits(components.year)}-${padToTwoDigits(components.month + 1)}-${padToTwoDigits(components.day)}T${padToTwoDigits(components.hour)}:${padToTwoDigits(components.min)}:${padToTwoDigits(components.sec)}${formatTimeZoneOffset(components.offset)}`;

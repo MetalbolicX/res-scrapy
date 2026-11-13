@@ -127,3 +127,27 @@ test("DateUtils rejects out-of-range epoch millis", () => {
   | Some(date) => failWith(`Expected None, got ${isoUtc(date)}`)
   }
 })
+
+[
+  ("2024-01-02T15:04:05Z", FieldTypes.Iso8601, "America/New_York", "2024-01-02T10:04:05-05:00"),
+  ("2024-01-02T15:04:05Z", FieldTypes.Iso8601, "Asia/Kolkata", "2024-01-02T20:34:05+05:30"),
+  ("2024-03-10T06:59:59Z", FieldTypes.Iso8601, "America/New_York", "2024-03-10T01:59:59-05:00"),
+  ("2024-03-10T07:00:00Z", FieldTypes.Iso8601, "America/New_York", "2024-03-10T03:00:00-04:00"),
+  ("2024-01-02T05:00:00Z", FieldTypes.Iso8601, "America/New_York", "2024-01-02T00:00:00-05:00"),
+  ("1874-12-07T12:00:00Z", FieldTypes.Iso8601, "America/New_York", "1874-12-07T07:03:58-04:56"),
+  (
+    "2024-01-02T15:04:05Z",
+    FieldTypes.Custom("MMM d, yyyy h:mm a"),
+    "America/New_York",
+    "Jan 2, 2024 10:04 am",
+  ),
+  ("2024-01-02T05:00:00Z", FieldTypes.Custom("hh a"), "America/New_York", "12 am"),
+  ("2024-01-02T15:04:05Z", FieldTypes.Epoch, "America/New_York", "1704207845"),
+]->Array.forEach(((input, output, timezone, expected)) => {
+  test(`DateUtils formats ${input} in ${timezone} as ${expected}`, () => {
+    switch parseDate(input, ["ISO"]) {
+    | Some(date) => isTextEqualTo(expected, formatDate(date, output, Some(timezone)))
+    | None => failWith("Expected valid ISO date")
+    }
+  })
+})
